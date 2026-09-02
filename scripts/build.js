@@ -100,7 +100,6 @@ const html = `<!DOCTYPE html>
 <meta name="theme-color" content="#fff8ef">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>小火龙学英语 · 北京版小学英语</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐲</text></svg>">
 <style>
 ${css}
 </style>
