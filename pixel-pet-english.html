@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="YsBSeSqY8L1K3y1tSWzvaC">
-<head data-page-node-id="zNuwILG0Wgul3TXtzklCWt">
-<meta charset="UTF-8" data-page-node-id="kCVG43lPaDiYVGNnXIZN9i">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no" data-page-node-id="f0GBOnYpal8qiIJEn1iAzT">
-<meta name="theme-color" content="#fff8ef" data-page-node-id="SrjjkH4RWaW7hq6DyaLHc9">
-<meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="ehQCGLojO4BYAO8EWsKfBy">
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#fff8ef">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>皮克学英语 · Pixel Pet English</title>
 <style>
 :root {
@@ -614,17 +614,17 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 
 </style>
 </head>
-<body data-page-node-id="fJBnXCU7oNf4qugVtWkkhs">
-<div id="app" data-page-node-id="gxAGLacHaUJeCOtrVpVmbW">
-  <div class="topbar" data-page-node-id="5XOsG7O0KUov4JlFvKONqw">
-    <div class="brand" data-page-node-id="hDpRQcxveJJwJLqeyKttnp"><span class="logo" data-page-node-id="H3pGeO1eF89GjyErNZpp9h">🐲</span><span data-page-node-id="M9upcAvqRG1iQbbIRB5pug">皮克学英语</span></div>
-    <div class="spacer" data-page-node-id="2ITft2DnBojqi3L2ZPjAZC"></div>
-    <div class="pill" id="book-pill" data-page-node-id="QYWEO5nPBPuS5OuDcLGGy5">📗 一上</div>
-    <button class="pill pill-btn" id="btn-settings" title="设置" data-page-node-id="esNCQ8HhhjrSxbHEGvK2dT">⚙️</button>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><span class="logo">🐲</span><span>皮克学英语</span></div>
+    <div class="spacer"></div>
+    <div class="pill" id="book-pill">📗 一上</div>
+    <button class="pill pill-btn" id="btn-settings" title="设置">⚙️</button>
   </div>
-  <div id="view" data-page-node-id="JUNmj44avYUdIUancMuw1B"></div>
+  <div id="view"></div>
 </div>
-<nav class="tabbar" id="tabbar" data-page-node-id="VG40az7ooIkiTFRaTY4eXU"></nav>
+<nav class="tabbar" id="tabbar"></nav>
 
 <script>
 window.__TEXTBOOKS__ = {"books":[{"key":"g1a","grade":"一年级","term":"上册","title":"一年级上册","publisher":"北京出版社","version":"北京版","words":["school","classroom","ruler","book","schoolbag","eraser","pencil","family","mother","sister","face","mouth","nose","father","eyes","brother","grandma","ears","jiaozi","fish","grandpa"]},{"key":"g1b","grade":"一年级","term":"下册","title":"一年级下册","publisher":"北京出版社","version":"北京版","words":[]},{"key":"g2a","grade":"二年级","term":"上册","title":"二年级上册","publisher":"北京出版社","version":"北京版","words":["Monday","cook","bus","Tuesday","car","bike","walk","Wednesday","write","draw","leg","rabbit","monkey","bear","elephant","dog","cat","tiger","duck","Thursday","read","Friday","clean","Saturday","Sunday"]}]};
@@ -1442,6 +1442,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   var learnRecognizer = null;   // 单例 SpeechRecognition
   var learnBusy = false;        // 录音进行中，避免重复触发
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
+  var learnTimer = null;        // 8s 兜底超时的句柄，必须可清除
   function renderLearn(v) {
     v = v || $('#view');
     v.innerHTML = '';
@@ -1474,7 +1475,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
 
     /* 单词主体：复用之前的词卡视觉（视觉 + 词形 + 中文 + 字素块 + 喇叭） */
     var wd = el('div', 'card wordcard');
-    wd.innerHTML = learnWordCardHtml(word, /*showKnowBtn*/ false);
+    wd.innerHTML = learnWordCardHtml(word);
     v.appendChild(wd);
     bindWordCardPlayback(wd, word);
 
@@ -1713,15 +1714,18 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   }
   function startLearnMic() {
     if (learnBusy) return;
+    if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
     var r = ensureRecognizer();
     if (!r) { toast('当前浏览器不支持语音识别'); return; }
     learnBusy = true;
     try { r.start(); } catch (e) { learnBusy = false; return; }
     var mic = $('#mic-btn'); if (mic) mic.classList.add('rec');
-    /* 8 秒兜底超时：小孩可能不说话了 */
-    setTimeout(function () { stopLearnMic(); }, 8000);
+    /* 8 秒兜底超时：小孩可能不说话了。句柄存起来，切词 / 提前命中 /
+       手动停止时都能清掉，避免上一词的定时器掐断下一词的录音。 */
+    learnTimer = setTimeout(function () { stopLearnMic(); }, 8000);
   }
   function stopLearnMic() {
+    if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
     var r = learnRecognizer;
     if (r) { try { r.stop(); } catch (e) {} }
     learnBusy = false;
@@ -1810,7 +1814,9 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     render();
   }
   function buildTodayQueue() {
-    /* 优先取未学过的；不足 dailyGoal 个再从 dueWords 补；再不足用全部。每日同一批。 */
+    /* 取当前课本里未学过的词，随机抽 dailyGoal 个；若全部都学过则退化为
+       整本词表随机抽。队列仅在会话内有效（不落 storage），故同一会话内
+       稳定；重新进入今日模式会基于剩余未学词重抽一批。 */
     var goal = Math.max(1, S.settings.dailyGoal);
     var book = S.settings.book;
     var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });

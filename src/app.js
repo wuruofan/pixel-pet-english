@@ -807,6 +807,7 @@
   var learnRecognizer = null;   // 单例 SpeechRecognition
   var learnBusy = false;        // 录音进行中，避免重复触发
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
+  var learnTimer = null;        // 8s 兜底超时的句柄，必须可清除
   function renderLearn(v) {
     v = v || $('#view');
     v.innerHTML = '';
@@ -839,7 +840,7 @@
 
     /* 单词主体：复用之前的词卡视觉（视觉 + 词形 + 中文 + 字素块 + 喇叭） */
     var wd = el('div', 'card wordcard');
-    wd.innerHTML = learnWordCardHtml(word, /*showKnowBtn*/ false);
+    wd.innerHTML = learnWordCardHtml(word);
     v.appendChild(wd);
     bindWordCardPlayback(wd, word);
 
@@ -1078,15 +1079,18 @@
   }
   function startLearnMic() {
     if (learnBusy) return;
+    if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
     var r = ensureRecognizer();
     if (!r) { toast('当前浏览器不支持语音识别'); return; }
     learnBusy = true;
     try { r.start(); } catch (e) { learnBusy = false; return; }
     var mic = $('#mic-btn'); if (mic) mic.classList.add('rec');
-    /* 8 秒兜底超时：小孩可能不说话了 */
-    setTimeout(function () { stopLearnMic(); }, 8000);
+    /* 8 秒兜底超时：小孩可能不说话了。句柄存起来，切词 / 提前命中 /
+       手动停止时都能清掉，避免上一词的定时器掐断下一词的录音。 */
+    learnTimer = setTimeout(function () { stopLearnMic(); }, 8000);
   }
   function stopLearnMic() {
+    if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
     var r = learnRecognizer;
     if (r) { try { r.stop(); } catch (e) {} }
     learnBusy = false;
@@ -1175,7 +1179,9 @@
     render();
   }
   function buildTodayQueue() {
-    /* 优先取未学过的；不足 dailyGoal 个再从 dueWords 补；再不足用全部。每日同一批。 */
+    /* 取当前课本里未学过的词，随机抽 dailyGoal 个；若全部都学过则退化为
+       整本词表随机抽。队列仅在会话内有效（不落 storage），故同一会话内
+       稳定；重新进入今日模式会基于剩余未学词重抽一批。 */
     var goal = Math.max(1, S.settings.dailyGoal);
     var book = S.settings.book;
     var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
