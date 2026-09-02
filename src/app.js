@@ -695,15 +695,17 @@
     var c1 = el('div', 'card');
     c1.innerHTML =
       '<div class="pet-wrap">' +
-      '<div class="pet-stage"><span class="lvl">Lv.' + S.pet.level + '</span>' +
-      '<div class="pet-canvas-wrap" id="pet-touch" title="点一点它"><canvas id="pet-cv" width="16" height="16"></canvas></div>' +
-      '<div class="pet-stage-name">' + petStageName() + '</div>' +
-      '<div class="pet-xp"><span>⭐ ' + S.pet.xp + '/' + xpNeed(S.pet.level) + '</span>' +
-      '<div class="bar xp"><i style="width:' + Math.round(S.pet.xp / xpNeed(S.pet.level) * 100) + '%"></i></div></div></div>' +
+      '<div class="pet-stage">' +
+        '<div class="pet-xp" title="经验值">' +
+          '<span class="lvl-mini">Lv.' + S.pet.level + '</span>' +
+          '<span class="bar xp"><i style="width:' + Math.round(S.pet.xp / xpNeed(S.pet.level) * 100) + '%"></i></span>' +
+        '</div>' +
+        '<div class="pet-canvas-wrap" id="pet-touch" title="点一点它"><canvas id="pet-cv" width="16" height="16"></canvas></div>' +
+        '<div class="pet-stage-name">' + petStageName() + '</div>' +
+      '</div>' +
       '<div class="pet-meta">' +
       '<div class="pet-name">' + esc(S.pet.name) +
       '<button id="btn-name" class="icon-btn" title="改名">✏️</button>' +
-      '<span class="pet-face">' + mood.face + '</span>' +
       '<span class="pet-say">' + mood.say + '</span></div>' +
       '<div class="pet-bars">' +
       barRow('🍖 饱食度 ' + Math.round(S.pet.sati) + '%', S.pet.sati, '',
@@ -712,9 +714,9 @@
         petAct('blue', 'fun', '🎾', '玩耍', S.pet.toy)) +
       barRow('🛁 清洁度 ' + Math.round(S.pet.clean) + '%', S.pet.clean, 'blue',
         petAct('purple', 'wash', '🛁', '洗澡', S.pet.soap)) +
+      '<div class="pet-hint">学单词得 🍖 · 拼读得 🎾 · 闯关得 🧼</div>' +
       '</div>' +
-      '</div></div>' +
-      '<div class="muted" style="margin-top:12px">学单词得 🍖 · 拼读得 🎾 · 闯关得 🧼</div>';
+      '</div></div>';
     v.appendChild(c1);
     drawPet($('#pet-cv'), 'idle');
     startPetBlink();

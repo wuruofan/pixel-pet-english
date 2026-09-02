@@ -136,28 +136,31 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 /* ---------- pet ---------- */
 .pet-wrap { display: flex; gap: 16px; align-items: center; }
 .pet-stage {
-  position: relative; width: 216px; flex: 0 0 auto;
-  padding: 14px 12px 12px;
-  border-radius: 32px;
+  position: relative; width: 280px; flex: 0 0 auto;
+  height: 220px;
+  padding: 28px 14px 14px;
+  border-radius: var(--r-lg);
   background: linear-gradient(165deg, #d9f4ff 0%, #ffe9f3 100%);
   border: 2px solid var(--line);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px;
   box-shadow: inset 0 -8px 0 rgba(255,255,255,.6);
 }
+/* 精灵舞台：abs 居中，闲置动画上下浮动；translate 让 canvas 不被 idle 动画位移影响横向居中 */
 .pet-canvas-wrap {
-  /* 16 × 8，整数倍放大保持像素锐利；比 stage 内容宽(188)窄 60，左右各留 30 供后续游走动画 */
-  width: 128px; height: 128px;
-  cursor: pointer; position: relative;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, calc(-50% - 8px));  /* 略偏上，给底部 stage-name 留空间 */
+  width: 96px; height: 96px;
+  cursor: pointer;
   animation: pet-idle 2.8s ease-in-out infinite;
 }
 .pet-canvas-wrap.happy { animation: hop .55s ease; }
 .pet-canvas-wrap.eat { animation: chomp .45s ease 2; }
 .pet-canvas-wrap.sad { animation: shake .4s ease; }
 #pet-cv { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
-@keyframes pet-idle { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+/* idle 浮动需要包含居中 translate，否则会覆盖 .pet-canvas-wrap 的居中位移 */
+@keyframes pet-idle { 0%,100%{transform:translate(-50%, calc(-50% - 8px))} 50%{transform:translate(-50%, calc(-50% - 13px))} }
 .float-ico {
-  position: absolute; bottom: 74px; left: 54px; font-size: 22px; pointer-events: none;
+  position: absolute; bottom: 60%; left: 30%; font-size: 22px; pointer-events: none;
   animation: float-up 1.05s ease-out forwards;
 }
 @keyframes float-up {
@@ -165,56 +168,82 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   25% { opacity: 1; transform: translateY(-16px) scale(1.1); }
   100% { opacity: 0; transform: translateY(-52px) scale(.9); }
 }
-.pet-stage-name { font-size: 11px; font-weight: 900; color: var(--ink-soft); margin-top: 2px; }
+.pet-stage-name {
+  position: absolute; left: 0; right: 0; bottom: 10px;
+  text-align: center;
+  font-size: 11px; font-weight: 900; color: var(--ink-soft);
+}
 .bar.pink > i { background: linear-gradient(90deg, #ff9ec1, #ff5f8f); }
 .bar.blue > i { background: linear-gradient(90deg, #9bd0ff, #4aa8ff); }
 @keyframes hop { 0%,100%{transform:translateY(0) scale(1)} 35%{transform:translateY(-16px) scale(1.06)} 70%{transform:translateY(0) scale(.97)} }
 @keyframes chomp { 0%,100%{transform:scale(1)} 25%{transform:scale(1.18,.86)} 60%{transform:scale(.9,1.14)} }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px) rotate(-6deg)} 75%{transform:translateX(7px) rotate(6deg)} }
-.pet-stage .lvl {
-  position: absolute; top: -8px; left: -8px;
-  background: var(--yellow); color: #6b4708; font-weight: 900; font-size: 12px;
-  border-radius: 999px; padding: 3px 10px; border: 2px solid #fff;
-}
 .pet-meta { flex: 1; min-width: 0; }
-/* 数值条：一行 = 左侧「标签 + 进度条」竖排一列，右侧照顾按钮纵向拉满同高。
-   进度条只需占左列宽度，所以比整行短很多。 */
+/* 数值条：一行 = 左侧「标签 + 进度条」撑满一列，右侧照顾按钮纵向拉满同高。
+   进度条占满左列整宽，与按钮列对齐。 */
 .pet-bars {
-  display: flex; flex-direction: column; align-items: flex-start;  /* 行宽贴合内容，按钮紧贴进度条 */
+  display: flex; flex-direction: column;
   gap: 10px; margin-top: 12px;
+  width: 100%;
 }
 .pet-bars .bar-row {
   display: grid;
-  grid-template-columns: minmax(124px, 176px) auto;
+  grid-template-columns: 1fr auto;
   grid-template-areas: "lbl btn" "bar btn";
-  justify-content: start;          /* 不让按钮列吸收剩余空间而撑宽 */
-  column-gap: 12px; row-gap: 3px;
+  align-items: stretch;
+  column-gap: 10px; row-gap: 3px;
 }
 .pet-bars .lbl {
   grid-area: lbl; font-size: 11.5px; font-weight: 900;
   color: var(--ink-soft); white-space: nowrap; line-height: 1.25;
 }
-.pet-bars .bar { grid-area: bar; }
+.pet-bars .bar { grid-area: bar; width: 100%; }
 .pet-bars .btn { grid-area: btn; align-self: stretch; }
-.pet-xp {
-  margin-top: 4px; width: 100%; max-width: 132px; text-align: center;
-  font-size: 11px; font-weight: 900; color: var(--ink-soft);
+/* 末尾统一 hint：进度条下面的"哪种练习得哪种素材"说明 */
+.pet-hint {
+  width: 100%;
+  font-size: 11.5px; font-weight: 800; color: var(--ink-soft);
+  text-align: center;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(240,226,207,.7);
+  margin-top: 2px;
 }
-.pet-xp .bar { height: 8px; margin-top: 3px; border-width: 1.5px; }
+/* 经验胶囊：Lv 标签 + 经验条合成一个左上角小胶囊，整体只占左侧空间 */
+/* 经验条胶囊坐落在 pet-stage 左上 -10px，胶囊内嵌 Lv 小白圆 + 窄经验条 */
+.pet-xp {
+  position: absolute; top: -10px; left: -10px;
+  display: flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 10px 0 4px;
+  background: var(--yellow); color: #6b4708;
+  border: 2px solid #fff; border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+  z-index: 2;
+  font-size: 11px; font-weight: 900;
+}
+.pet-xp .lvl-mini {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; color: #6b4708;
+  font-size: 11px; font-weight: 900;
+  border-radius: 999px; padding: 0 7px;
+  height: 16px;
+}
+.pet-xp .bar {
+  width: 52px; height: 6px; border-width: 1.5px; margin: 0;
+  background: rgba(255,255,255,.6);
+}
+.pet-xp .bar > i { background: linear-gradient(90deg, #6b4708, #c98a14); }
 .pet-name {
   font-size: 20px; font-weight: 900;
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 7px;
 }
-.pet-face { font-size: 22px; }
 .pet-say {
   font-size: 12.5px; font-weight: 700; color: var(--ink-soft);
   background: #fff6e9; border-radius: 999px; padding: 4px 10px;
 }
-/* 窄屏：宠物区放大居中，数值条占满整行 */
-@media (max-width: 430px) {
+/* 窄屏：宠物区放大居中，数值条占满整行。断点拉到 520，提前转竖排避免右侧按钮撑出 */
+@media (max-width: 520px) {
   .pet-wrap { flex-direction: column; align-items: stretch; }
-  .pet-stage { width: 100%; max-width: 240px; margin: 0 auto; }
-  .pet-bars .bar-row { grid-template-columns: minmax(140px, 1fr) auto; }
+  .pet-stage { width: 100%; max-width: 280px; margin: 0 auto; height: 220px; }
 }
 
 .bar { height: 14px; border-radius: 999px; background: #f2e6d6; overflow: hidden; border: 2px solid var(--line); }
