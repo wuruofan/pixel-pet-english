@@ -288,6 +288,28 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .speak-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2f8ce0; }
 .speak-btn.sm { width: 44px; height: 44px; font-size: 21px; box-shadow: 0 3px 0 #2f8ce0; }
 
+/* ---------- learn: 跟读命中条 + 录音状态 ---------- */
+.hits-row { display: flex; gap: 6px; align-items: center; }
+.hits-row .hit {
+  width: 28px; height: 12px; border-radius: 999px;
+  background: #f2e6d6; border: 1.5px solid var(--line);
+  transition: background .25s, transform .25s;
+}
+.hits-row .hit.on {
+  background: linear-gradient(90deg, var(--green), var(--brand));
+  border-color: var(--green-dk);
+  transform: scale(1.08);
+}
+.speak-btn.rec, .speak-btn.big.rec {
+  animation: mic-pulse 1s ease-in-out infinite;
+  background: var(--red) !important;
+  box-shadow: 0 5px 0 #c2362e !important;
+}
+@keyframes mic-pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 5px 0 #c2362e; }
+  50% { transform: scale(1.08); box-shadow: 0 7px 14px rgba(242,84,75,.4); }
+}
+
 /* ---------- phonics ---------- */
 .pindu { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .pindu button {
@@ -1381,7 +1403,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
           if (!t.done) { buildQueue('review'); go('play'); }
           else toast('今天的复习完成啦，明天再来～');
         } else if (t.go === 'new') {
-          learnIdx = 0; go('learn');
+          enterTodayMode();
         } else if (t.go === 'phonics') {
           go('phonics');
         } else if (t.go === 'quiz') {
@@ -1404,7 +1426,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     $('#btn-start').onclick = function () {
       var first = plan.filter(function (t) { return !t.done; })[0];
       if (!first) { buildQueue('mixed'); go('play'); return; }
-      if (first.go === 'new') { learnIdx = 0; go('learn'); }
+      if (first.go === 'new') { enterTodayMode(); }
       else if (first.go === 'phonics') { go('phonics'); }
       else if (first.go === 'review') { buildQueue('review'); go('play'); }
       else { buildQueue('mixed'); go('play'); }
@@ -1412,15 +1434,110 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   }
 
   /* ---------- LEARN ---------- */
-  var learnIdx = 0;
+  var learnIdx = 0;            // 全部词库模式下的当前游标
+  var learnMode = 'today';      // 'today' = 今日关卡（默认），'browse' = 全部词库
+  var learnQueue = [];          // 今日关卡的词序列（用户级关卡进度，不入 storage）
+  var learnPos = 0;             // 今日关卡当前第几个词
+  var learnHits = 0;            // 当前词已跟读命中次数
+  var learnRecognizer = null;   // 单例 SpeechRecognition
+  var learnBusy = false;        // 录音进行中，避免重复触发
+  var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
   function renderLearn(v) {
     v = v || $('#view');
     v.innerHTML = '';
-    var list = currentBookWords();
-    if (!list.length) { v.appendChild(empty('这本课本还没有词表')); return; }
-    if (learnIdx >= list.length) learnIdx = 0;
-    var word = list[learnIdx];
+    /* 顶部 tab 直接点学单词时若今日关卡已完成，默认进 browse 让用户自由翻 */
+    if (learnMode === 'today' && learnQueue.length && learnPos >= learnQueue.length) {
+      learnMode = 'browse';
+    }
+    if (learnMode === 'today') return renderLearnToday(v);
+    return renderLearnBrowse(v);
+  }
+  /* 今日关卡模式：从 learnQueue 顺序展示，需要跟读 3 次命中才过关 */
+  function renderLearnToday(v) {
+    if (!learnQueue.length) { learnQueue = buildTodayQueue(); learnPos = 0; }
+    if (learnPos >= learnQueue.length) { renderLearnDone(); return; }
+    var word = learnQueue[learnPos];
+    var supported = learnRecognitionSupported();
 
+    /* 顶部进度条：本课 N 个词 + 当前 hits/3 */
+    var header = el('div', 'card');
+    header.innerHTML =
+      '<div class="row" style="justify-content:space-between;align-items:center">' +
+        '<span class="muted">今日新词 · 第 ' + (learnPos + 1) + ' / ' + learnQueue.length + ' 个</span>' +
+        '<button class="pill pill-btn" id="learn-browse">📚 翻词库</button>' +
+      '</div>' +
+      '<div class="muted" style="margin-top:6px;font-size:11.5px">' +
+        '跟读 3 次算通过 · 获得 🍖 喂宠物' +
+      '</div>';
+    v.appendChild(header);
+    $('#learn-browse').onclick = enterBrowseMode;
+
+    /* 单词主体：复用之前的词卡视觉（视觉 + 词形 + 中文 + 字素块 + 喇叭） */
+    var wd = el('div', 'card wordcard');
+    wd.innerHTML = learnWordCardHtml(word, /*showKnowBtn*/ false);
+    v.appendChild(wd);
+    bindWordCardPlayback(wd, word);
+
+    /* 底部跟读区：识别按钮 + 命中计数；不支持识别时显示自评勾选 */
+    var mic = el('div', 'card');
+    if (supported) {
+      mic.innerHTML =
+        '<div class="row" style="justify-content:space-between;align-items:center">' +
+          '<div>' +
+            '<div style="font-weight:900">🎤 按住说话，读出 "' + esc(word) + '"</div>' +
+            '<div class="muted" style="font-size:11.5px;margin-top:3px">点一下开始 · 命中会自动停止 · 最多 8 秒</div>' +
+          '</div>' +
+          '<div id="hits-pill" class="pill" style="font-size:14px">' + learnHits + ' / 3</div>' +
+        '</div>' +
+        '<div class="row" style="gap:9px;margin-top:12px">' +
+          '<button class="speak-btn big" id="mic-btn" aria-label="开始跟读" style="background:var(--brand)">🎤</button>' +
+          '<div style="flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center">' +
+            '<div class="hits-row">' + hitsHtml(learnHits) + '</div>' +
+            '<div class="row" style="gap:6px">' +
+              '<button class="btn ghost xs" id="mic-skip" style="flex:1">跳过</button>' +
+              '<button class="btn xs" id="mic-self" style="flex:1;background:var(--blue);color:#fff;box-shadow:0 3px 0 #2f8ce0">我读过了（自评）</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      v.appendChild(mic);
+      $('#mic-btn').onclick = function () {
+        if (learnBusy) stopLearnMic();
+        else startLearnMic();
+      };
+      $('#mic-skip').onclick = skipLearnWord;
+      $('#mic-self').onclick = function () {
+        /* 自评等同于一次命中 */
+        if (learnBusy) stopLearnMic();
+        onLearnHit();
+      };
+    } else {
+      mic.innerHTML =
+        '<div style="background:#fff6e9;border:2px solid #ffe2b8;border-radius:14px;padding:12px;font-size:13px;font-weight:700">' +
+          '⚠️ 当前浏览器不支持语音识别（iOS Safari 等）。<br>' +
+          '请用其他按钮手动确认每次跟读。' +
+        '</div>' +
+        '<div class="row" style="gap:9px;margin-top:12px">' +
+          '<button class="speak-btn big" id="mic-btn-fb" aria-label="我读过了" style="background:var(--green);box-shadow:0 5px 0 var(--green-dk)">✅</button>' +
+          '<div style="flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center">' +
+            '<div style="font-weight:900">点 ✅ 表示读完一次 "' + esc(word) + '"</div>' +
+            '<div class="hits-row">' + hitsHtml(learnHits) + '</div>' +
+            '<button class="btn ghost xs" id="mic-skip" style="margin-top:6px">跳过这词</button>' +
+          '</div>' +
+        '</div>';
+      v.appendChild(mic);
+      $('#mic-btn-fb').onclick = function () { onLearnHit(); };
+      $('#mic-skip').onclick = skipLearnWord;
+    }
+  }
+
+  function hitsHtml(n) {
+    var s = '';
+    for (var i = 0; i < 3; i++) s += '<span class="hit' + (i < n ? ' on' : '') + '"></span>';
+    return s;
+  }
+
+  /* 词卡的视觉 HTML（不含底部按钮），给 today / browse 共用 */
+  function learnWordCardHtml(word) {
     var pd = WORDS[word].pindu || [];
     var ipa = (WORDS[word].us && WORDS[word].us.ipa) || '';
     var phoneBlock = pd.length
@@ -1431,31 +1548,52 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
         }).join('') +
         '</div>'
       : '';
-
-    var c = el('div', 'card wordcard');
-    c.innerHTML =
-      '<div class="row" style="justify-content:space-between;margin-bottom:6px">' +
-      '<span class="muted">' + BOOK_META[S.settings.book].label + ' · ' + (learnIdx + 1) + '/' + list.length + '</span>' +
-      '<span class="pill">' + boxLabel(word) + '</span>' +
-      '</div>' +
-      '<div class="wc-visual">' + visualHtml(word, 76) + '</div>' +
+    return '<div class="wc-visual">' + visualHtml(word, 76) + '</div>' +
       '<div class="wc-word">' + word + '</div>' +
       (S.settings.showIpa && ipa ? '<div class="wc-ipa">/' + ipa + '/</div>' : '') +
       phoneBlock +
       '<div class="wc-cn">' + meaningOf(word) + '</div>' +
-      '<div class="row" style="justify-content:center;gap:12px;margin-top:14px">' +
-      '<button class="speak-btn" id="s1">' + SPK + '</button>' +
-      '<button class="speak-btn sm" id="s2" title="慢速">🐢</button>' +
+      '<div class="row" style="justify-content:center;gap:12px;margin-top:10px">' +
+        '<button class="speak-btn" id="s1">' + SPK + '</button>' +
+        '<button class="speak-btn sm" id="s2" title="慢速">🐢</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:8px">点 🔊 听发音，点 🐢 听慢速' +
+      '<div class="muted" style="margin-top:6px;font-size:11px">点 🔊 听发音 · 点 🐢 听慢速' +
       (pd.length ? ' · 点彩色字块听每个音' : '') + '</div>';
-    v.appendChild(c);
+  }
 
-    $('#s1').onclick = function () { speakWord(word); };
-    $('#s2').onclick = function () { slowWord(word); };
-    $$('#wc-phon .pb').forEach(function (b) {
+  function bindWordCardPlayback(scope, word) {
+    var s1 = scope.querySelector('#s1');
+    var s2 = scope.querySelector('#s2');
+    if (s1) s1.onclick = function () { speakWord(word); };
+    if (s2) s2.onclick = function () { slowWord(word); };
+    scope.querySelectorAll('#wc-phon .pb').forEach(function (b) {
       b.onclick = function () { playPhoneme(word, +b.dataset.i, b); };
     });
+  }
+
+  /* 全部词库模式：保留原来的"我记住了 / 上一个 / 下一个"自由翻词体验 */
+  function renderLearnBrowse(v) {
+    var list = currentBookWords();
+    if (!list.length) { v.appendChild(empty('这本课本还没有词表')); return; }
+    if (learnIdx >= list.length) learnIdx = 0;
+    var word = list[learnIdx];
+    var pd = WORDS[word].pindu || [];
+
+    /* 顶部：第 N 个词 / 总数 + "回到今日关卡"入口 */
+    var header = el('div', 'card');
+    header.innerHTML =
+      '<div class="row" style="justify-content:space-between;align-items:center">' +
+        '<span class="muted">📚 翻词库 · ' + (learnIdx + 1) + '/' + list.length + '</span>' +
+        '<button class="pill pill-btn" id="learn-today">← 回今日关卡</button>' +
+      '</div>';
+    v.appendChild(header);
+    $('#learn-today').onclick = enterTodayMode;
+
+    /* 词卡（复用 today 的视觉 + 喇叭） */
+    var c = el('div', 'card wordcard');
+    c.innerHTML = learnWordCardHtml(word);
+    v.appendChild(c);
+    bindWordCardPlayback(c, word);
 
     if (pd.length) {
       var c2 = el('div', 'card');
@@ -1479,7 +1617,6 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     }
 
     var ex = (WORDS[word].examples || []).filter(function (e) { return e.en; });
-    /* 按词数升序：短句（更简单）排前面，只展示最简单的两条 */
     ex.sort(function (a, b) { return a.en.split(/\s+/).length - b.en.split(/\s+/).length; });
     ex = ex.slice(0, 2);
     if (ex.length) {
@@ -1508,10 +1645,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     v.appendChild(c4);
     $('#prev').onclick = function () { learnIdx = (learnIdx - 1 + list.length) % list.length; stopAudio(); render(); };
     $('#next').onclick = function () { learnIdx = (learnIdx + 1) % list.length; stopAudio(); render(); };
-    $('#know').onclick = function () {
-      grade(word, true); gainXp(3, 'food', 2); beep('ok'); toast('👍 记住了！获得 1 个 🍖');
-      learnIdx = (learnIdx + 1) % list.length; stopAudio(); render();
-    };
+    $('#know').onclick = finishBrowseWord;
   }
 
   function boxLabel(word) {
@@ -1526,6 +1660,162 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     var u = new SpeechSynthesisUtterance(word);
     u.lang = 'en-US'; u.rate = 0.45; u.pitch = 1.05;
     window.speechSynthesis.speak(u);
+  }
+
+  /* ---------- speech recognition (跟读) ----------
+     不支持 webkitSpeechRecognition 的浏览器（iOS Safari 等）走自评勾选降级。
+     命中判定：去掉标点和空白，转小写，判断是否包含目标词或与目标词相等。
+     复数 / 所有格允许尾字母 s 容忍（kids → kid 命中）。 */
+  function learnRecognitionSupported() {
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }
+  function normalizeSpoken(s) {
+    return (s || '').toLowerCase().replace(/[^a-z']/g, '');
+  }
+  function spokenMatches(spoken, target) {
+    var a = normalizeSpoken(spoken), b = normalizeSpoken(target);
+    if (!a || !b) return false;
+    if (a === b || a.indexOf(b) >= 0) return true;
+    /* 容忍末尾 s：kids <-> kid 都算 */
+    if (a + 's' === b || a === b + 's') return true;
+    return false;
+  }
+  function ensureRecognizer() {
+    if (learnRecognizer) return learnRecognizer;
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    var r = new Ctor();
+    r.lang = 'en-US';
+    r.continuous = true;
+    r.interimResults = true;
+    r.maxAlternatives = 5;
+    r.onresult = function (ev) {
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        var res = ev.results[i];
+        for (var j = 0; j < res.length; j++) {
+          if (spokenMatches(res[j].transcript, learnQueue[learnPos])) {
+            onLearnHit();
+            /* 命中后立即停掉，避免后续噪音继续计分 */
+            try { r.stop(); } catch (e) {}
+            return;
+          }
+        }
+      }
+    };
+    r.onerror = function () { learnBusy = false; render(); };
+    r.onend = function () {
+      learnBusy = false;
+      /* 没人按下停止 / 也没命中 → 让 UI 回到可点状态 */
+      var mic = $('#mic-btn'); if (mic) mic.classList.remove('rec');
+    };
+    learnRecognizer = r;
+    return r;
+  }
+  function startLearnMic() {
+    if (learnBusy) return;
+    var r = ensureRecognizer();
+    if (!r) { toast('当前浏览器不支持语音识别'); return; }
+    learnBusy = true;
+    try { r.start(); } catch (e) { learnBusy = false; return; }
+    var mic = $('#mic-btn'); if (mic) mic.classList.add('rec');
+    /* 8 秒兜底超时：小孩可能不说话了 */
+    setTimeout(function () { stopLearnMic(); }, 8000);
+  }
+  function stopLearnMic() {
+    var r = learnRecognizer;
+    if (r) { try { r.stop(); } catch (e) {} }
+    learnBusy = false;
+    var mic = $('#mic-btn'); if (mic) mic.classList.remove('rec');
+  }
+  function onLearnHit() {
+    learnHits = Math.min(3, learnHits + 1);
+    stopLearnMic();
+    beep('ok');
+    if (learnHits >= 3) finishLearnWord();
+    else render();
+  }
+
+  /* 完成当前词：计分 + 奖励 + 队列前进 */
+  function finishLearnWord() {
+    var word = learnQueue[learnPos];
+    if (!word) return;
+    grade(word, true);                  /* 记入 SRS + newWords */
+    gainXp(3, 'food', 2);
+    toast('🎤 ' + word + ' 跟读通过！+1 🍖');
+    learnPos++;
+    learnHits = 0;
+    if (learnPos >= learnQueue.length) renderLearnDone();
+    else render();
+  }
+
+  /* 全部词库模式下的"我记住了"按钮同样走 grade，但不走跟读 */
+  function finishBrowseWord() {
+    var list = currentBookWords();
+    var word = list[learnIdx];
+    grade(word, true);
+    gainXp(3, 'food', 2);
+    beep('ok');
+    toast('👍 记住了！获得 1 个 🍖');
+    learnIdx = (learnIdx + 1) % list.length;
+    stopAudio(); render();
+  }
+
+  /* 跳过当前词：标记为已见过（避免无限循环），给一半奖励，不计新词 */
+  function skipLearnWord() {
+    var word = learnQueue[learnPos];
+    if (!word) return;
+    var st = wstate(word);
+    if (st.seen === 0) {
+      st.seen = 1; st.lastSeen = Date.now(); st.due = Date.now() + 86400000;
+      save();
+    }
+    gainXp(1, 0, 1);
+    learnPos++; learnHits = 0;
+    if (learnPos >= learnQueue.length) renderLearnDone();
+    else render();
+  }
+
+  /* 今日关卡结果卡 */
+  function renderLearnDone() {
+    var v = $('#view'); v.innerHTML = '';
+    var n = learnQueue.length;
+    var xpGained = n * 3;
+    var c = el('div', 'card');
+    c.style.textAlign = 'center';
+    c.innerHTML =
+      '<div style="font-size:64px;line-height:1;margin:8px 0 6px">🎉</div>' +
+      '<h2 class="section" style="font-size:22px;color:var(--brand-dk)">今日新词通关！</h2>' +
+      '<div class="muted" style="margin:6px 0 14px">完成 ' + n + ' 个新词 · 获得 <b>+' + xpGained + ' XP</b> · 宠物 +' + n + ' 🍖</div>' +
+      '<div class="row" style="gap:9px;margin-top:14px">' +
+        '<button class="btn ghost" id="to-browse" style="flex:1">📚 翻一翻词库</button>' +
+        '<button class="btn green" id="to-home" style="flex:1">回首页 🏠</button>' +
+      '</div>';
+    v.appendChild(c);
+    $('#to-browse').onclick = function () { enterBrowseMode(); };
+    $('#to-home').onclick = function () { go('home'); };
+  }
+
+  function enterBrowseMode() {
+    learnMode = 'browse';
+    learnIdx = 0;
+    learnQueue = []; learnPos = 0; learnHits = 0;
+    stopLearnMic();
+    render();
+  }
+  function enterTodayMode() {
+    learnMode = 'today';
+    learnQueue = buildTodayQueue();
+    learnPos = 0; learnHits = 0;
+    stopLearnMic();
+    render();
+  }
+  function buildTodayQueue() {
+    /* 优先取未学过的；不足 dailyGoal 个再从 dueWords 补；再不足用全部。每日同一批。 */
+    var goal = Math.max(1, S.settings.dailyGoal);
+    var book = S.settings.book;
+    var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
+    var pool = unseen.length ? unseen : currentBookWords();
+    return shuffle(pool).slice(0, goal);
   }
 
   function playPhoneme(word, i, btn) {

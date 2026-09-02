@@ -279,6 +279,28 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .speak-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2f8ce0; }
 .speak-btn.sm { width: 44px; height: 44px; font-size: 21px; box-shadow: 0 3px 0 #2f8ce0; }
 
+/* ---------- learn: 跟读命中条 + 录音状态 ---------- */
+.hits-row { display: flex; gap: 6px; align-items: center; }
+.hits-row .hit {
+  width: 28px; height: 12px; border-radius: 999px;
+  background: #f2e6d6; border: 1.5px solid var(--line);
+  transition: background .25s, transform .25s;
+}
+.hits-row .hit.on {
+  background: linear-gradient(90deg, var(--green), var(--brand));
+  border-color: var(--green-dk);
+  transform: scale(1.08);
+}
+.speak-btn.rec, .speak-btn.big.rec {
+  animation: mic-pulse 1s ease-in-out infinite;
+  background: var(--red) !important;
+  box-shadow: 0 5px 0 #c2362e !important;
+}
+@keyframes mic-pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 5px 0 #c2362e; }
+  50% { transform: scale(1.08); box-shadow: 0 7px 14px rgba(242,84,75,.4); }
+}
+
 /* ---------- phonics ---------- */
 .pindu { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .pindu button {
