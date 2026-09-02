@@ -1,5 +1,5 @@
 /* =========================================================================
-   Kids English — 北京版小学英语 单词 + 句子理解 游戏化学习
+   Pixel Pet English — 皮克学英语 单词 + 句子理解 游戏化学习
    Single-file app. No external dependencies. Data is inlined at build time.
    ========================================================================= */
 (function () {
@@ -24,7 +24,8 @@
   });
 
   /* ---------------- storage ---------------- */
-  var KEY = 'kids-english-v1';
+  var KEY = 'pixel-pet-english-v1';
+  var OLD_KEY = 'kids-english-v1';  // 重命名迁移：旧 key 数据一次性读出并搬过来后删除
   var DEFAULT_STATE = {
     words: {},          // word -> {box, due, seen, right, wrong}
     days: {},           // 'YYYY-MM-DD' -> {words, right, wrong, ms, lessons}
@@ -39,6 +40,15 @@
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
+      /* 一次性迁移：从旧 KEY (kids-english-v1) 读出后写到新 KEY 并删旧 key */
+      if (!raw) {
+        var oldRaw = localStorage.getItem(OLD_KEY);
+        if (oldRaw) {
+          localStorage.setItem(KEY, oldRaw);
+          localStorage.removeItem(OLD_KEY);
+          raw = oldRaw;
+        }
+      }
       if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
       var s = JSON.parse(raw);
       var m = deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)), s);
@@ -1550,7 +1560,7 @@
       var blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'kids-english-progress-' + today() + '.json';
+      a.download = 'pixel-pet-english-progress-' + today() + '.json';
       a.click();
       toast('已导出进度文件');
     };

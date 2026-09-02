@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const outFile = path.join(root, 'kids-english.html');
+const outFile = path.join(root, 'pixel-pet-english.html');
 
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const readJson = (p) => JSON.parse(read(p));
@@ -99,7 +99,7 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#fff8ef">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>小火龙学英语 · 北京版小学英语</title>
+<title>皮克学英语 · Pixel Pet English</title>
 <style>
 ${css}
 </style>
@@ -107,7 +107,7 @@ ${css}
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="brand"><span class="logo">🐲</span><span>小火龙学英语</span></div>
+    <div class="brand"><span class="logo">🐲</span><span>皮克学英语</span></div>
     <div class="spacer"></div>
     <div class="pill" id="book-pill">📗 一上</div>
     <button class="pill pill-btn" id="btn-settings" title="设置">⚙️</button>

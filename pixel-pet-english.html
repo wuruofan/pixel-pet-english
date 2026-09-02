@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no" data-page-node-id="f0GBOnYpal8qiIJEn1iAzT">
 <meta name="theme-color" content="#fff8ef" data-page-node-id="SrjjkH4RWaW7hq6DyaLHc9">
 <meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="ehQCGLojO4BYAO8EWsKfBy">
-<title>小火龙学英语 · 北京版小学英语</title>
+<title>皮克学英语 · Pixel Pet English</title>
 <style>
 :root {
   --bg: #fff8ef;
@@ -595,7 +595,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 <body data-page-node-id="fJBnXCU7oNf4qugVtWkkhs">
 <div id="app" data-page-node-id="gxAGLacHaUJeCOtrVpVmbW">
   <div class="topbar" data-page-node-id="5XOsG7O0KUov4JlFvKONqw">
-    <div class="brand" data-page-node-id="hDpRQcxveJJwJLqeyKttnp"><span class="logo" data-page-node-id="H3pGeO1eF89GjyErNZpp9h">🐲</span><span data-page-node-id="M9upcAvqRG1iQbbIRB5pug">小火龙学英语</span></div>
+    <div class="brand" data-page-node-id="hDpRQcxveJJwJLqeyKttnp"><span class="logo" data-page-node-id="H3pGeO1eF89GjyErNZpp9h">🐲</span><span data-page-node-id="M9upcAvqRG1iQbbIRB5pug">皮克学英语</span></div>
     <div class="spacer" data-page-node-id="2ITft2DnBojqi3L2ZPjAZC"></div>
     <div class="pill" id="book-pill" data-page-node-id="QYWEO5nPBPuS5OuDcLGGy5">📗 一上</div>
     <button class="pill pill-btn" id="btn-settings" title="设置" data-page-node-id="esNCQ8HhhjrSxbHEGvK2dT">⚙️</button>
@@ -612,7 +612,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
 </script>
 <script>
 /* =========================================================================
-   Kids English — 北京版小学英语 单词 + 句子理解 游戏化学习
+   Pixel Pet English — 皮克学英语 单词 + 句子理解 游戏化学习
    Single-file app. No external dependencies. Data is inlined at build time.
    ========================================================================= */
 (function () {
@@ -637,7 +637,8 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   });
 
   /* ---------------- storage ---------------- */
-  var KEY = 'kids-english-v1';
+  var KEY = 'pixel-pet-english-v1';
+  var OLD_KEY = 'kids-english-v1';  // 重命名迁移：旧 key 数据一次性读出并搬过来后删除
   var DEFAULT_STATE = {
     words: {},          // word -> {box, due, seen, right, wrong}
     days: {},           // 'YYYY-MM-DD' -> {words, right, wrong, ms, lessons}
@@ -652,6 +653,15 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
+      /* 一次性迁移：从旧 KEY (kids-english-v1) 读出后写到新 KEY 并删旧 key */
+      if (!raw) {
+        var oldRaw = localStorage.getItem(OLD_KEY);
+        if (oldRaw) {
+          localStorage.setItem(KEY, oldRaw);
+          localStorage.removeItem(OLD_KEY);
+          raw = oldRaw;
+        }
+      }
       if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
       var s = JSON.parse(raw);
       var m = deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)), s);
@@ -2163,7 +2173,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
       var blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'kids-english-progress-' + today() + '.json';
+      a.download = 'pixel-pet-english-progress-' + today() + '.json';
       a.click();
       toast('已导出进度文件');
     };

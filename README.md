@@ -1,13 +1,13 @@
-# 小火龙学英语 · 北京版小学英语
+# Pixel Pet English
 
-给孩子（二年级）做的游戏化英语学习站（单词记忆 + 自然拼读）。单文件 HTML，无外部 JS/CSS 依赖。
+给孩子（二年级）做的游戏化英语学习站（单词记忆 + 自然拼读）。像素风电子宠物作为学习伙伴，可换成多种动物。单文件 HTML，无外部 JS/CSS 依赖。
 
 > v3 起移除了「句子」tab：源站切句边界不准、重复句型多，且整句展示会把译文答案摆在题面上。课文数据在构建时剥离（只保留每册词表），体积 308KB → 224KB。
 >
 > v4 新增顶栏 ⚙️ 设置入口（底部弹层）：教材管理（切换 + 查看完整词库，点词听发音）+ 宠物图鉴（四个进化阶段预览，点一点看表情）+ 家长设置（音标开关 / 导入导出 / 清空，自统计页迁入）。
 
 ```
-kids-english.html        ← 成品，双击即可用（也可部署到任意静态服务器）
+pixel-pet-english.html  ← 成品，双击即可用（也可部署到任意静态服务器）
 data/textbooks.json      ← 三册课文：目录 / 逐句英文+中文 / 逐句音频时间轴
 data/words.json          ← 94 词：音标、英美发音、逐音素自然拼读、释义、例句
 scripts/build.js 同时从 words.json 提取 95 条字素 → data 内嵌的 __PHONICS__ 拼读数据层
@@ -21,7 +21,7 @@ scripts/fetch_textbooks.js  scripts/fetch_words.js  scripts/build.js
 ```bash
 node scripts/fetch_textbooks.js   # 抓教材 → data/textbooks.json
 node scripts/fetch_words.js       # 抓单词 → data/words.json
-node scripts/build.js             # 打包 → kids-english.html
+node scripts/build.js             # 打包 → pixel-pet-english.html
 ```
 
 ## 数据来源与口径
