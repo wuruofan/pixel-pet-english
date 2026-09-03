@@ -301,6 +301,23 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   50% { transform: scale(1.08); box-shadow: 0 7px 14px rgba(242,84,75,.4); }
 }
 
+/* ---------- learn: 跟读主卡（词卡 + 跟读区同一张） ---------- */
+/* 允许纵向滚动、横向留给滑动切词 */
+.learn-swipe { touch-action: pan-y; }
+.wc-divider { border-top: 2px dashed var(--line); margin: 12px 0 10px; }
+.learn-pass {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #eefaf1; border: 2px solid var(--green); border-radius: 14px; padding: 12px;
+}
+.learn-nav { justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+.learn-nav .btn[disabled] { opacity: .3; }
+/* 次卡：整卡可点的翻词库入口 */
+.browse-entry {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--font); font-size: 14px; font-weight: 800; color: inherit;
+}
+
 /* ---------- phonics ---------- */
 .pindu { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .pindu button {

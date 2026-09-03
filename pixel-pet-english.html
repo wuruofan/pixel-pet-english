@@ -310,6 +310,23 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   50% { transform: scale(1.08); box-shadow: 0 7px 14px rgba(242,84,75,.4); }
 }
 
+/* ---------- learn: 跟读主卡（词卡 + 跟读区同一张） ---------- */
+/* 允许纵向滚动、横向留给滑动切词 */
+.learn-swipe { touch-action: pan-y; }
+.wc-divider { border-top: 2px dashed var(--line); margin: 12px 0 10px; }
+.learn-pass {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #eefaf1; border: 2px solid var(--green); border-radius: 14px; padding: 12px;
+}
+.learn-nav { justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+.learn-nav .btn[disabled] { opacity: .3; }
+/* 次卡：整卡可点的翻词库入口 */
+.browse-entry {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--font); font-size: 14px; font-weight: 800; color: inherit;
+}
+
 /* ---------- phonics ---------- */
 .pindu { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .pindu button {
@@ -1438,7 +1455,8 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   var learnMode = 'today';      // 'today' = 今日关卡（默认），'browse' = 全部词库
   var learnQueue = [];          // 今日关卡的词序列（用户级关卡进度，不入 storage）
   var learnPos = 0;             // 今日关卡当前第几个词
-  var learnHits = 0;            // 当前词已跟读命中次数
+  var learnHits = {};           // { 队列下标: 已命中次数 }，左右滑回看时保留进度
+  var learnPassed = {};         // { 队列下标: true }，已通过并计过分的词
   var learnRecognizer = null;   // 单例 SpeechRecognition
   var learnBusy = false;        // 录音进行中，避免重复触发
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
@@ -1446,89 +1464,109 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   function renderLearn(v) {
     v = v || $('#view');
     v.innerHTML = '';
-    /* 顶部 tab 直接点学单词时若今日关卡已完成，默认进 browse 让用户自由翻 */
-    if (learnMode === 'today' && learnQueue.length && learnPos >= learnQueue.length) {
-      learnMode = 'browse';
-    }
     if (learnMode === 'today') return renderLearnToday(v);
     return renderLearnBrowse(v);
   }
-  /* 今日关卡模式：从 learnQueue 顺序展示，需要跟读 3 次命中才过关 */
+  /* 今日关卡模式：主卡 = 词卡 + 跟读区（同一张卡），左右滑切词；
+     次卡 = 翻词库入口。计分只在第 3 次命中那一刻发生，滑动是纯导航。 */
   function renderLearnToday(v) {
     if (!learnQueue.length) { learnQueue = buildTodayQueue(); learnPos = 0; }
-    if (learnPos >= learnQueue.length) { renderLearnDone(); return; }
+    if (!learnQueue.length) { v.appendChild(empty('这本课本还没有词表')); appendBrowseEntry(v); return; }
+    if (learnPos >= learnQueue.length) { renderLearnDone(v); appendBrowseEntry(v); return; }
+
     var word = learnQueue[learnPos];
     var supported = learnRecognitionSupported();
+    var hits = hitsFor(learnPos);
+    var passed = !!learnPassed[learnPos];
 
-    /* 顶部进度条：本课 N 个词 + 当前 hits/3 */
-    var header = el('div', 'card');
-    header.innerHTML =
+    var card = el('div', 'card wordcard learn-swipe');
+    card.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
         '<span class="muted">今日新词 · 第 ' + (learnPos + 1) + ' / ' + learnQueue.length + ' 个</span>' +
-        '<button class="pill pill-btn" id="learn-browse">📚 翻词库</button>' +
+        '<span class="pill">' + hits + ' / 3</span>' +
       '</div>' +
-      '<div class="muted" style="margin-top:6px;font-size:11.5px">' +
-        '跟读 3 次算通过 · 获得 🍖 喂宠物' +
+      learnWordCardHtml(word) +
+      '<div class="wc-divider"></div>' +
+      learnSpeakHtml(word, supported, hits, passed) +
+      '<div class="learn-nav row">' +
+        '<button class="btn ghost xs" id="nav-prev"' + (learnPos > 0 ? '' : ' disabled') + '>◀ 上一个</button>' +
+        '<span class="muted" style="font-size:11px">← 左滑下一个 · 右滑上一个 →</span>' +
+        '<button class="btn ghost xs" id="nav-next">' +
+          (learnPos >= learnQueue.length - 1 ? '完成 ✓' : '下一个 ▶') + '</button>' +
       '</div>';
-    v.appendChild(header);
-    $('#learn-browse').onclick = enterBrowseMode;
+    v.appendChild(card);
+    bindWordCardPlayback(card, word);
+    bindLearnSpeak(card);
+    bindLearnSwipe(card);
+    $('#nav-prev').onclick = learnGoPrev;
+    $('#nav-next').onclick = learnGoNext;
 
-    /* 单词主体：复用之前的词卡视觉（视觉 + 词形 + 中文 + 字素块 + 喇叭） */
-    var wd = el('div', 'card wordcard');
-    wd.innerHTML = learnWordCardHtml(word);
-    v.appendChild(wd);
-    bindWordCardPlayback(wd, word);
+    appendBrowseEntry(v);
+  }
 
-    /* 底部跟读区：识别按钮 + 命中计数；不支持识别时显示自评勾选 */
-    var mic = el('div', 'card');
-    if (supported) {
-      mic.innerHTML =
-        '<div class="row" style="justify-content:space-between;align-items:center">' +
-          '<div>' +
-            '<div style="font-weight:900">🎤 按住说话，读出 "' + esc(word) + '"</div>' +
-            '<div class="muted" style="font-size:11.5px;margin-top:3px">点一下开始 · 命中会自动停止 · 最多 8 秒</div>' +
-          '</div>' +
-          '<div id="hits-pill" class="pill" style="font-size:14px">' + learnHits + ' / 3</div>' +
-        '</div>' +
-        '<div class="row" style="gap:9px;margin-top:12px">' +
-          '<button class="speak-btn big" id="mic-btn" aria-label="开始跟读" style="background:var(--brand)">🎤</button>' +
-          '<div style="flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center">' +
-            '<div class="hits-row">' + hitsHtml(learnHits) + '</div>' +
-            '<div class="row" style="gap:6px">' +
-              '<button class="btn ghost xs" id="mic-skip" style="flex:1">跳过</button>' +
-              '<button class="btn xs" id="mic-self" style="flex:1;background:var(--blue);color:#fff;box-shadow:0 3px 0 #2f8ce0">我读过了（自评）</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      v.appendChild(mic);
-      $('#mic-btn').onclick = function () {
-        if (learnBusy) stopLearnMic();
-        else startLearnMic();
-      };
-      $('#mic-skip').onclick = skipLearnWord;
-      $('#mic-self').onclick = function () {
-        /* 自评等同于一次命中 */
-        if (learnBusy) stopLearnMic();
-        onLearnHit();
-      };
-    } else {
-      mic.innerHTML =
-        '<div style="background:#fff6e9;border:2px solid #ffe2b8;border-radius:14px;padding:12px;font-size:13px;font-weight:700">' +
-          '⚠️ 当前浏览器不支持语音识别（iOS Safari 等）。<br>' +
-          '请用其他按钮手动确认每次跟读。' +
-        '</div>' +
-        '<div class="row" style="gap:9px;margin-top:12px">' +
-          '<button class="speak-btn big" id="mic-btn-fb" aria-label="我读过了" style="background:var(--green);box-shadow:0 5px 0 var(--green-dk)">✅</button>' +
-          '<div style="flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center">' +
-            '<div style="font-weight:900">点 ✅ 表示读完一次 "' + esc(word) + '"</div>' +
-            '<div class="hits-row">' + hitsHtml(learnHits) + '</div>' +
-            '<button class="btn ghost xs" id="mic-skip" style="margin-top:6px">跳过这词</button>' +
-          '</div>' +
-        '</div>';
-      v.appendChild(mic);
-      $('#mic-btn-fb').onclick = function () { onLearnHit(); };
-      $('#mic-skip').onclick = skipLearnWord;
+  function hitsFor(pos) { return learnHits[pos] || 0; }
+
+  /* 跟读区：通过后换成通过态（不再显示录音按钮）；不支持识别时走自评勾选 */
+  function learnSpeakHtml(word, supported, hits, passed) {
+    if (passed) {
+      return '<div class="learn-pass">' +
+        '<div style="font-size:30px;line-height:1">✅</div>' +
+        '<div><b style="font-size:15px">' + esc(word) + ' 通过！</b>' +
+        '<div class="muted" style="font-size:11.5px;margin-top:2px">左滑或点「下一个」继续</div></div>' +
+      '</div>';
     }
+    if (!supported) {
+      return '<div style="background:#fff6e9;border:2px solid #ffe2b8;border-radius:14px;padding:10px;font-size:12px;font-weight:700;margin-bottom:9px">' +
+          '⚠️ 当前浏览器不支持语音识别，点 ✅ 手动确认每次跟读。' +
+        '</div>' +
+        '<div class="row" style="gap:10px;align-items:center">' +
+          '<button class="speak-btn big" id="mic-btn-fb" aria-label="我读过了" style="background:var(--green);box-shadow:0 5px 0 var(--green-dk)">✅</button>' +
+          '<div style="flex:1">' +
+            '<div style="font-weight:900;font-size:13px">点 ✅ 表示读完一次 “' + esc(word) + '”</div>' +
+            '<div class="hits-row" style="margin-top:6px">' + hitsHtml(hits) + '</div>' +
+          '</div>' +
+        '</div>';
+    }
+    return '<div class="row" style="gap:10px;align-items:center">' +
+        '<button class="speak-btn big" id="mic-btn" aria-label="开始跟读" style="background:var(--brand)">🎤</button>' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:900;font-size:13px">读出 “' + esc(word) + '”</div>' +
+          '<div class="muted" style="font-size:11px;margin-top:2px">点一下开始 · 命中自动停 · 最多 8 秒</div>' +
+          '<div class="hits-row" style="margin-top:6px">' + hitsHtml(hits) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="btn ghost xs" id="mic-self" style="margin-top:8px;width:100%">我读过了（自评）</button>';
+  }
+
+  function bindLearnSpeak(scope) {
+    var fb = scope.querySelector('#mic-btn-fb');
+    if (fb) fb.onclick = onLearnHit;
+    var mic = scope.querySelector('#mic-btn');
+    if (mic) mic.onclick = function () { if (learnBusy) stopLearnMic(); else startLearnMic(); };
+    var self = scope.querySelector('#mic-self');
+    if (self) self.onclick = function () { if (learnBusy) stopLearnMic(); onLearnHit(); };
+  }
+
+  /* 左右滑切词：纯导航，不影响计分。
+     起手落在按钮上 / 拖太久 / 以竖向为主 → 都不算滑动，避免误触和抢页面滚动。 */
+  var SWIPE_MIN = 44;
+  function bindLearnSwipe(node) {
+    var x0 = null, y0 = null, t0 = 0, onBtn = false;
+    node.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+      onBtn = !!(e.target.closest && e.target.closest('button'));
+    }, { passive: true });
+    node.addEventListener('touchend', function (e) {
+      if (x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0;
+      var dy = e.changedTouches[0].clientY - y0;
+      var sx = dx < 0 ? -dx : dx, sy = dy < 0 ? -dy : dy;
+      x0 = null;
+      if (onBtn || Date.now() - t0 > 800) return;
+      if (sx < SWIPE_MIN || sx < sy * 1.2) return;
+      if (dx < 0) learnGoNext(); else learnGoPrev();
+    }, { passive: true });
   }
 
   function hitsHtml(n) {
@@ -1732,25 +1770,40 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     var mic = $('#mic-btn'); if (mic) mic.classList.remove('rec');
   }
   function onLearnHit() {
-    learnHits = Math.min(3, learnHits + 1);
+    var h = Math.min(3, hitsFor(learnPos) + 1);
+    learnHits[learnPos] = h;
     stopLearnMic();
     beep('ok');
-    if (learnHits >= 3) finishLearnWord();
-    else render();
+    if (h >= 3) markLearnPassed();
+    render();
   }
 
-  /* 完成当前词：计分 + 奖励 + 队列前进 */
-  function finishLearnWord() {
+  /* 通过：只在这一刻计分一次。learnPassed 保证滑回来重读不会重复加分。 */
+  function markLearnPassed() {
+    if (learnPassed[learnPos]) return;
     var word = learnQueue[learnPos];
     if (!word) return;
+    learnPassed[learnPos] = true;
     grade(word, true);                  /* 记入 SRS + newWords */
     gainXp(3, 'food', 2);
     toast('🎤 ' + word + ' 跟读通过！+1 🍖');
-    learnPos++;
-    learnHits = 0;
-    if (learnPos >= learnQueue.length) renderLearnDone();
-    else render();
   }
+
+  /* 左右滑 / 按钮：纯导航，不记通过。滑过末尾即进入结果卡。 */
+  function learnGoNext() {
+    learnPos = learnPos >= learnQueue.length - 1 ? learnQueue.length : learnPos + 1;
+    stopLearnMic(); render();
+  }
+  function learnGoPrev() {
+    if (learnPos <= 0) return;
+    learnPos--; stopLearnMic(); render();
+  }
+  /* 桌面端没有触摸：方向键同样映射为「左=下一个 / 右=上一个」 */
+  document.addEventListener('keydown', function (e) {
+    if (tab !== 'learn' || learnMode !== 'today') return;
+    if (e.key === 'ArrowLeft') learnGoNext();
+    else if (e.key === 'ArrowRight') learnGoPrev();
+  });
 
   /* 全部词库模式下的"我记住了"按钮同样走 grade，但不走跟读 */
   function finishBrowseWord() {
@@ -1764,52 +1817,55 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     stopAudio(); render();
   }
 
-  /* 跳过当前词：标记为已见过（避免无限循环），给一半奖励，不计新词 */
-  function skipLearnWord() {
-    var word = learnQueue[learnPos];
-    if (!word) return;
-    var st = wstate(word);
-    if (st.seen === 0) {
-      st.seen = 1; st.lastSeen = Date.now(); st.due = Date.now() + 86400000;
-      save();
-    }
-    gainXp(1, 0, 1);
-    learnPos++; learnHits = 0;
-    if (learnPos >= learnQueue.length) renderLearnDone();
-    else render();
-  }
-
-  /* 今日关卡结果卡 */
-  function renderLearnDone() {
-    var v = $('#view'); v.innerHTML = '';
-    var n = learnQueue.length;
-    var xpGained = n * 3;
+  /* 今日关卡结果卡：按实际通过数统计（滑动可以跳过，故不能用队列长度） */
+  function renderLearnDone(v) {
+    var total = learnQueue.length;
+    var passed = Object.keys(learnPassed).length;
+    var all = passed >= total;
     var c = el('div', 'card');
     c.style.textAlign = 'center';
     c.innerHTML =
-      '<div style="font-size:64px;line-height:1;margin:8px 0 6px">🎉</div>' +
-      '<h2 class="section" style="font-size:22px;color:var(--brand-dk)">今日新词通关！</h2>' +
-      '<div class="muted" style="margin:6px 0 14px">完成 ' + n + ' 个新词 · 获得 <b>+' + xpGained + ' XP</b> · 宠物 +' + n + ' 🍖</div>' +
+      '<div style="font-size:56px;line-height:1;margin:8px 0 6px">' + (all ? '🎉' : '💪') + '</div>' +
+      '<h2 class="section" style="font-size:20px;color:var(--brand-dk)">' +
+        (all ? '今日新词全部通关！' : '今日跟读 ' + passed + ' / ' + total + ' 个') + '</h2>' +
+      '<div class="muted" style="margin:6px 0 14px">获得 <b>+' + (passed * 3) + ' XP</b> · 宠物 +' +
+        passed + ' 🍖' + (all ? '' : ' · 还有 ' + (total - passed) + ' 个没跟读') + '</div>' +
       '<div class="row" style="gap:9px;margin-top:14px">' +
-        '<button class="btn ghost" id="to-browse" style="flex:1">📚 翻一翻词库</button>' +
+        (all ? '' : '<button class="btn" id="to-resume" style="flex:1">← 回去补完</button>') +
         '<button class="btn green" id="to-home" style="flex:1">回首页 🏠</button>' +
       '</div>';
     v.appendChild(c);
-    $('#to-browse').onclick = function () { enterBrowseMode(); };
+    var resume = $('#to-resume');
+    if (resume) resume.onclick = function () {
+      for (var i = 0; i < learnQueue.length; i++) {
+        if (!learnPassed[i]) { learnPos = i; render(); return; }
+      }
+    };
     $('#to-home').onclick = function () { go('home'); };
   }
 
+  /* 次卡：翻词库入口。今日跟读是默认主线，浏览词库降级为下方一张入口卡。 */
+  function appendBrowseEntry(v) {
+    var b = el('div', 'card');
+    b.innerHTML =
+      '<button id="learn-browse" class="browse-entry">' +
+        '<span>📚 翻词库</span>' +
+        '<span class="muted" style="font-size:12px">全部 ' + currentBookWords().length + ' 词 ›</span>' +
+      '</button>';
+    v.appendChild(b);
+    $('#learn-browse').onclick = enterBrowseMode;
+  }
+
+  /* 切去翻词库不清空今日进度，回来接着练 */
   function enterBrowseMode() {
     learnMode = 'browse';
     learnIdx = 0;
-    learnQueue = []; learnPos = 0; learnHits = 0;
     stopLearnMic();
     render();
   }
   function enterTodayMode() {
     learnMode = 'today';
-    learnQueue = buildTodayQueue();
-    learnPos = 0; learnHits = 0;
+    if (!learnQueue.length) { learnQueue = buildTodayQueue(); learnPos = 0; }
     stopLearnMic();
     render();
   }
