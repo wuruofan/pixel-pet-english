@@ -30,6 +30,10 @@ html, body {
   color: var(--ink);
   background: var(--bg);
   overscroll-behavior-y: none;
+  /* 摇晃提示用 rotate/translate，旋转会把卡片包围盒撑大、探出视口，
+     导致临时出现横/竖向滚动条。横向裁掉即可（竖向滚动照常）；
+     竖向撑高很小、落在卡片底部留白内，不会触发竖向滚动条。 */
+  overflow-x: hidden;
 }
 
 body {
@@ -252,7 +256,26 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .bar .lbl { font-size: 11px; font-weight: 900; color: var(--ink-soft); margin-bottom: 4px; display: block; }
 
 /* ---------- word card ---------- */
-.wordcard { text-align: center; }
+.wordcard { text-align: center; position: relative; } /* 翻词箭头以整卡为定位上下文，居中在卡片中部 */
+/* 配图 + 两侧翻词箭头的定位层（箭头用整卡做定位上下文，这里不必设 relative） */
+.wc-stage { }
+.wc-nav {
+  position: absolute; top: 50%; margin-top: -21px; z-index: 3;
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 2px solid var(--line); background: rgba(255,255,255,.94);
+  color: var(--brand-dk); display: grid; place-items: center;
+  cursor: pointer; padding: 0;
+  box-shadow: 0 3px 0 rgba(58,44,34,.1);
+  transition: transform .12s, box-shadow .12s, opacity .2s, border-color .2s;
+}
+.wc-nav.prev { left: 10px; }
+.wc-nav.next { right: 10px; }
+.wc-nav svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor;
+  stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.wc-nav:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(58,44,34,.1); }
+.wc-nav.off { opacity: .3; }
 .wc-visual {
   width: 150px; height: 150px; margin: 4px auto 10px; border-radius: 30px;
   display: grid; place-items: center; position: relative;
@@ -315,10 +338,22 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 }
 .learn-status.ok { color: var(--green-dk); font-size: 15px; }
 
-/* 听（🔊🐢）和说（🎤）是同一条动作链，并排一行 */
+/* 听（🔊🐢）和说（🎤）是同一条动作链，并排一行。
+   左右两个「听」的按钮严格同尺寸，中间「说」的最大 —— 主次一眼可辨。 */
 .learn-action {
   display: flex; align-items: center; justify-content: center;
-  gap: 20px; margin-top: 10px;
+  gap: 22px; margin-top: 10px;
+}
+.learn-action .speak-btn,
+.learn-action .speak-btn.sm {
+  width: 58px; height: 58px; font-size: 26px;
+  box-shadow: 0 4px 0 #2f8ce0;
+}
+.learn-action .mic-btn { width: 88px; height: 88px; font-size: 40px; }
+/* 底部小字：只交代翻页方式，不重复状态行 */
+.learn-tip {
+  margin-top: 12px; text-align: center;
+  font-size: 11px; font-weight: 700; color: var(--ink-soft);
 }
 .mic-btn {
   width: 84px; height: 84px; border-radius: 50%; border: 0; cursor: pointer;
@@ -339,12 +374,38 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   50% { transform: scale(1.06); box-shadow: 0 7px 0 #c2362e, 0 0 0 14px rgba(242,84,75,0); }
 }
 .learn-nomic {
+  display: flex; align-items: center; gap: 9px;
   background: #fff6e9; border: 2px solid #ffe2b8; border-radius: 14px;
-  padding: 9px 11px; font-size: 12px; font-weight: 700; margin-top: 10px; text-align: center;
+  padding: 8px 10px; font-size: 12px; font-weight: 700; margin-top: 10px; text-align: left;
 }
+.learn-nomic > span { flex: 1; }
+.nomic-re {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid #e8b45c; background: #fff; cursor: pointer;
+  font-size: 14px; line-height: 1; display: inline-flex;
+  align-items: center; justify-content: center;
+}
+.nomic-re:active { transform: scale(.88); }
 
-.learn-nav { justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
-.learn-nav .btn.off { opacity: .32; }
+/* 头两次进页面：卡片轻轻左右晃一下，暗示「可以这么滑」。
+   动画里改 transform，所以一触摸就摘掉 class（见 app.js touchstart）。 */
+.learn-swipe.swipe-hint { animation: swipe-hint 1.3s ease-in-out both; }
+@keyframes swipe-hint {
+  0%   { transform: translateX(0) rotate(0deg); }
+  14%  { transform: translateX(-10px) rotate(-1.4deg); }
+  31%  { transform: translateX(9px) rotate(1.3deg); }
+  47%  { transform: translateX(-6px) rotate(-0.9deg); }
+  62%  { transform: translateX(4px) rotate(0.6deg); }
+  78%  { transform: translateX(-2px) rotate(-0.3deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+/* 晃的同时让右边那个箭头鼓一下，视线自然跟过去 */
+.learn-swipe.swipe-hint .wc-nav.next { animation: nav-nudge 1.3s ease-in-out both; }
+@keyframes nav-nudge {
+  0%, 100% { transform: scale(1); border-color: var(--line); }
+  31% { transform: scale(1.14); border-color: var(--brand); color: var(--brand); }
+  62% { transform: scale(1.06); border-color: var(--brand); color: var(--brand); }
+}
 /* 次卡：整卡可点的翻词库入口 */
 .browse-entry {
   display: flex; align-items: center; justify-content: space-between;
@@ -648,8 +709,11 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   background: linear-gradient(165deg, #d9f4ff 0%, #ffe9f3 100%);
   border: 2px solid var(--line);
   display: grid; place-items: center;
-  animation: pet-idle 2.8s ease-in-out infinite;
+  /* pet-idle 是给 home 页绝对定位精灵用的（keyframes 含 translate(-50%) 居中位移），
+     套在图鉴 grid 上会把整框平移出格子；这里用无位移的轻微上下浮动 */
+  animation: pg-bob 2.8s ease-in-out infinite;
 }
+@keyframes pg-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 .pg-cvwrap:active { transform: scale(.94); }
 .pg-cvwrap canvas { width: 54px; height: 54px; image-rendering: pixelated; display: block; }
 @media (max-width: 400px) { .pet-gallery { grid-template-columns: repeat(2, 1fr); } }
