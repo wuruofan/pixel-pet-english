@@ -291,26 +291,60 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   border-color: var(--green-dk);
   transform: scale(1.08);
 }
-.speak-btn.rec, .speak-btn.big.rec {
-  animation: mic-pulse 1s ease-in-out infinite;
-  background: var(--red) !important;
-  box-shadow: 0 5px 0 #c2362e !important;
+/* ---------- learn: 跟读主卡 ---------- */
+/* 允许纵向滚动、横向留给滑动切词 */
+.learn-swipe { touch-action: pan-y; position: relative; }
+/* 跟手期间不能有过渡，否则位移会滞后于手指 */
+.learn-swipe.dragging { transition: none !important; }
+.learn-swipe.passed { border-color: var(--green); background: linear-gradient(180deg, #f3fdf7, #fff); }
+.learn-swipe.card-in-r { animation: card-in-r .26s cubic-bezier(.22,.9,.3,1) both; }
+.learn-swipe.card-in-l { animation: card-in-l .26s cubic-bezier(.22,.9,.3,1) both; }
+@keyframes card-in-r {
+  from { transform: translateX(34px) rotate(3deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
 }
-@keyframes mic-pulse {
-  0%,100% { transform: scale(1); box-shadow: 0 5px 0 #c2362e; }
-  50% { transform: scale(1.08); box-shadow: 0 7px 14px rgba(242,84,75,.4); }
+@keyframes card-in-l {
+  from { transform: translateX(-34px) rotate(-3deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
 }
 
-/* ---------- learn: 跟读主卡（词卡 + 跟读区同一张） ---------- */
-/* 允许纵向滚动、横向留给滑动切词 */
-.learn-swipe { touch-action: pan-y; }
-.wc-divider { border-top: 2px dashed var(--line); margin: 12px 0 10px; }
-.learn-pass {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  background: #eefaf1; border: 2px solid var(--green); border-radius: 14px; padding: 12px;
+/* 状态行：随录音/进度变化的唯一一处提示，替代原来两行静态说明 */
+.learn-status {
+  margin-top: 12px; text-align: center; font-weight: 800; font-size: 13px;
+  color: var(--ink-soft); min-height: 19px;
 }
+.learn-status.ok { color: var(--green-dk); font-size: 15px; }
+
+/* 听（🔊🐢）和说（🎤）是同一条动作链，并排一行 */
+.learn-action {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20px; margin-top: 10px;
+}
+.mic-btn {
+  width: 84px; height: 84px; border-radius: 50%; border: 0; cursor: pointer;
+  font-size: 38px; color: #fff; display: grid; place-items: center;
+  background: linear-gradient(160deg, #ffb25c, var(--brand));
+  box-shadow: 0 6px 0 var(--brand-dk), 0 12px 20px rgba(242,106,18,.28);
+  transition: transform .12s, box-shadow .12s, background .2s;
+}
+.mic-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--brand-dk); }
+.mic-btn.self { background: linear-gradient(160deg, #6fd9a3, var(--green)); box-shadow: 0 6px 0 var(--green-dk); }
+.mic-btn.rec {
+  background: linear-gradient(160deg, #ff8f85, var(--red));
+  box-shadow: 0 6px 0 #c2362e;
+  animation: mic-pulse 1.1s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 6px 0 #c2362e, 0 0 0 0 rgba(242,84,75,.45); }
+  50% { transform: scale(1.06); box-shadow: 0 7px 0 #c2362e, 0 0 0 14px rgba(242,84,75,0); }
+}
+.learn-nomic {
+  background: #fff6e9; border: 2px solid #ffe2b8; border-radius: 14px;
+  padding: 9px 11px; font-size: 12px; font-weight: 700; margin-top: 10px; text-align: center;
+}
+
 .learn-nav { justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
-.learn-nav .btn[disabled] { opacity: .3; }
+.learn-nav .btn.off { opacity: .32; }
 /* 次卡：整卡可点的翻词库入口 */
 .browse-entry {
   display: flex; align-items: center; justify-content: space-between;

@@ -300,26 +300,60 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   border-color: var(--green-dk);
   transform: scale(1.08);
 }
-.speak-btn.rec, .speak-btn.big.rec {
-  animation: mic-pulse 1s ease-in-out infinite;
-  background: var(--red) !important;
-  box-shadow: 0 5px 0 #c2362e !important;
+/* ---------- learn: 跟读主卡 ---------- */
+/* 允许纵向滚动、横向留给滑动切词 */
+.learn-swipe { touch-action: pan-y; position: relative; }
+/* 跟手期间不能有过渡，否则位移会滞后于手指 */
+.learn-swipe.dragging { transition: none !important; }
+.learn-swipe.passed { border-color: var(--green); background: linear-gradient(180deg, #f3fdf7, #fff); }
+.learn-swipe.card-in-r { animation: card-in-r .26s cubic-bezier(.22,.9,.3,1) both; }
+.learn-swipe.card-in-l { animation: card-in-l .26s cubic-bezier(.22,.9,.3,1) both; }
+@keyframes card-in-r {
+  from { transform: translateX(34px) rotate(3deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
 }
-@keyframes mic-pulse {
-  0%,100% { transform: scale(1); box-shadow: 0 5px 0 #c2362e; }
-  50% { transform: scale(1.08); box-shadow: 0 7px 14px rgba(242,84,75,.4); }
+@keyframes card-in-l {
+  from { transform: translateX(-34px) rotate(-3deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
 }
 
-/* ---------- learn: 跟读主卡（词卡 + 跟读区同一张） ---------- */
-/* 允许纵向滚动、横向留给滑动切词 */
-.learn-swipe { touch-action: pan-y; }
-.wc-divider { border-top: 2px dashed var(--line); margin: 12px 0 10px; }
-.learn-pass {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  background: #eefaf1; border: 2px solid var(--green); border-radius: 14px; padding: 12px;
+/* 状态行：随录音/进度变化的唯一一处提示，替代原来两行静态说明 */
+.learn-status {
+  margin-top: 12px; text-align: center; font-weight: 800; font-size: 13px;
+  color: var(--ink-soft); min-height: 19px;
 }
+.learn-status.ok { color: var(--green-dk); font-size: 15px; }
+
+/* 听（🔊🐢）和说（🎤）是同一条动作链，并排一行 */
+.learn-action {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20px; margin-top: 10px;
+}
+.mic-btn {
+  width: 84px; height: 84px; border-radius: 50%; border: 0; cursor: pointer;
+  font-size: 38px; color: #fff; display: grid; place-items: center;
+  background: linear-gradient(160deg, #ffb25c, var(--brand));
+  box-shadow: 0 6px 0 var(--brand-dk), 0 12px 20px rgba(242,106,18,.28);
+  transition: transform .12s, box-shadow .12s, background .2s;
+}
+.mic-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--brand-dk); }
+.mic-btn.self { background: linear-gradient(160deg, #6fd9a3, var(--green)); box-shadow: 0 6px 0 var(--green-dk); }
+.mic-btn.rec {
+  background: linear-gradient(160deg, #ff8f85, var(--red));
+  box-shadow: 0 6px 0 #c2362e;
+  animation: mic-pulse 1.1s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 6px 0 #c2362e, 0 0 0 0 rgba(242,84,75,.45); }
+  50% { transform: scale(1.06); box-shadow: 0 7px 0 #c2362e, 0 0 0 14px rgba(242,84,75,0); }
+}
+.learn-nomic {
+  background: #fff6e9; border: 2px solid #ffe2b8; border-radius: 14px;
+  padding: 9px 11px; font-size: 12px; font-weight: 700; margin-top: 10px; text-align: center;
+}
+
 .learn-nav { justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
-.learn-nav .btn[disabled] { opacity: .3; }
+.learn-nav .btn.off { opacity: .32; }
 /* 次卡：整卡可点的翻词库入口 */
 .browse-entry {
   display: flex; align-items: center; justify-content: space-between;
@@ -770,6 +804,9 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   /* 统一喇叭图标（SVG，随 font-size 缩放）——emoji 在不同系统上形状不一，弃用 */
   var SPK = '<svg viewBox="0 0 24 24" width="1em" height="1em" style="display:block" aria-label="发音">' +
     '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z"/></svg>';
+  /* 录音中的「停止」图标：实心方块，比 emoji ⏹ 在各系统上更稳 */
+  var MIC_STOP = '<svg viewBox="0 0 24 24" width="1em" height="1em" style="display:block" aria-label="停止">' +
+    '<rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>';
 
   function toast(msg) {
     var t = $('#toast');
@@ -1461,14 +1498,18 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
   var learnBusy = false;        // 录音进行中，避免重复触发
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
   var learnTimer = null;        // 8s 兜底超时的句柄，必须可清除
+  var learnStopping = false;    // 本次 onend 是我们主动 stop 的（区分超时/静音自动断）
+  var learnEnterDir = 0;        // 新卡入场方向：1=从右（左滑后）、-1=从左（右滑后）
+  var HITS_GOAL = 2;            // 跟读几次算通过
   function renderLearn(v) {
     v = v || $('#view');
     v.innerHTML = '';
     if (learnMode === 'today') return renderLearnToday(v);
     return renderLearnBrowse(v);
   }
-  /* 今日关卡模式：主卡 = 词卡 + 跟读区（同一张卡），左右滑切词；
-     次卡 = 翻词库入口。计分只在第 3 次命中那一刻发生，滑动是纯导航。 */
+  /* 今日关卡模式：一张主卡走完「看词 → 听 → 跟读 → 过关 → 滑走」。
+     听（🔊🐢）和说（🎤）是同一条动作链，所以并排放在一行，不做分区拼接。
+     卡片未过关前锁定：滑动跟手但会被弹回并 toast，防止点两下就翻过去。 */
   function renderLearnToday(v) {
     if (!learnQueue.length) { learnQueue = buildTodayQueue(); learnPos = 0; }
     if (!learnQueue.length) { v.appendChild(empty('这本课本还没有词表')); appendBrowseEntry(v); return; }
@@ -1479,103 +1520,169 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     var hits = hitsFor(learnPos);
     var passed = !!learnPassed[learnPos];
 
-    var card = el('div', 'card wordcard learn-swipe');
+    var card = el('div', 'card wordcard learn-swipe' + (passed ? ' passed' : ''));
     card.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
         '<span class="muted">今日新词 · 第 ' + (learnPos + 1) + ' / ' + learnQueue.length + ' 个</span>' +
-        '<span class="pill">' + hits + ' / 3</span>' +
+        '<span class="hits-row">' + hitsHtml(hits) + '</span>' +
       '</div>' +
       learnWordCardHtml(word) +
-      '<div class="wc-divider"></div>' +
-      learnSpeakHtml(word, supported, hits, passed) +
+      '<div class="learn-status' + (passed ? ' ok' : '') + '" id="learn-status">' +
+        esc(learnStatusText(word, hits, passed, supported)) +
+      '</div>' +
+      '<div class="learn-action">' +
+        '<button class="speak-btn" id="s1" aria-label="听发音">' + SPK + '</button>' +
+        learnMicBtnHtml(supported) +
+        '<button class="speak-btn sm" id="s2" aria-label="慢速发音">🐢</button>' +
+      '</div>' +
+      (supported ? '' :
+        '<div class="learn-nomic">⚠️ 这个浏览器不能自动听读，点 ✅ 自己确认就行</div>') +
+      (passed || !supported ? '' :
+        '<button class="btn ghost xs" id="mic-self" style="margin-top:10px">我读过了（自评）</button>') +
       '<div class="learn-nav row">' +
-        '<button class="btn ghost xs" id="nav-prev"' + (learnPos > 0 ? '' : ' disabled') + '>◀ 上一个</button>' +
-        '<span class="muted" style="font-size:11px">← 左滑下一个 · 右滑上一个 →</span>' +
-        '<button class="btn ghost xs" id="nav-next">' +
+        '<button class="btn ghost xs' + (swipeBlockReason('prev') ? ' off' : '') + '" id="nav-prev">◀ 上一个</button>' +
+        '<span class="muted" style="font-size:11px;text-align:center">' +
+          (passed ? '← 左滑下一个 · 右滑上一个 →' : '读满 ' + HITS_GOAL + ' 次才能滑走') +
+        '</span>' +
+        '<button class="btn ghost xs' + (swipeBlockReason('next') ? ' off' : '') + '" id="nav-next">' +
           (learnPos >= learnQueue.length - 1 ? '完成 ✓' : '下一个 ▶') + '</button>' +
       '</div>';
     v.appendChild(card);
+    if (learnEnterDir) card.classList.add(learnEnterDir > 0 ? 'card-in-r' : 'card-in-l');
+    learnEnterDir = 0;
+
     bindWordCardPlayback(card, word);
     bindLearnSpeak(card);
     bindLearnSwipe(card);
-    $('#nav-prev').onclick = learnGoPrev;
-    $('#nav-next').onclick = learnGoNext;
+    $('#nav-prev').onclick = function () { tryGo('prev'); };
+    $('#nav-next').onclick = function () { tryGo('next'); };
 
     appendBrowseEntry(v);
   }
 
   function hitsFor(pos) { return learnHits[pos] || 0; }
 
-  /* 跟读区：通过后换成通过态（不再显示录音按钮）；不支持识别时走自评勾选 */
-  function learnSpeakHtml(word, supported, hits, passed) {
-    if (passed) {
-      return '<div class="learn-pass">' +
-        '<div style="font-size:30px;line-height:1">✅</div>' +
-        '<div><b style="font-size:15px">' + esc(word) + ' 通过！</b>' +
-        '<div class="muted" style="font-size:11.5px;margin-top:2px">左滑或点「下一个」继续</div></div>' +
-      '</div>';
-    }
-    if (!supported) {
-      return '<div style="background:#fff6e9;border:2px solid #ffe2b8;border-radius:14px;padding:10px;font-size:12px;font-weight:700;margin-bottom:9px">' +
-          '⚠️ 当前浏览器不支持语音识别，点 ✅ 手动确认每次跟读。' +
-        '</div>' +
-        '<div class="row" style="gap:10px;align-items:center">' +
-          '<button class="speak-btn big" id="mic-btn-fb" aria-label="我读过了" style="background:var(--green);box-shadow:0 5px 0 var(--green-dk)">✅</button>' +
-          '<div style="flex:1">' +
-            '<div style="font-weight:900;font-size:13px">点 ✅ 表示读完一次 “' + esc(word) + '”</div>' +
-            '<div class="hits-row" style="margin-top:6px">' + hitsHtml(hits) + '</div>' +
-          '</div>' +
-        '</div>';
-    }
-    return '<div class="row" style="gap:10px;align-items:center">' +
-        '<button class="speak-btn big" id="mic-btn" aria-label="开始跟读" style="background:var(--brand)">🎤</button>' +
-        '<div style="flex:1">' +
-          '<div style="font-weight:900;font-size:13px">读出 “' + esc(word) + '”</div>' +
-          '<div class="muted" style="font-size:11px;margin-top:2px">点一下开始 · 命中自动停 · 最多 8 秒</div>' +
-          '<div class="hits-row" style="margin-top:6px">' + hitsHtml(hits) + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<button class="btn ghost xs" id="mic-self" style="margin-top:8px;width:100%">我读过了（自评）</button>';
+  /* 跟读按钮：支持识别时是「点一下录 / 再点一下停」的开关；不支持时降级为自评 ✅ */
+  function learnMicBtnHtml(supported) {
+    if (!supported) return '<button class="mic-btn self" id="mic-btn-fb" aria-label="我读过了">✅</button>';
+    return '<button class="mic-btn' + (learnBusy ? ' rec' : '') + '" id="mic-btn" aria-label="跟读">' +
+      (learnBusy ? MIC_STOP : '🎤') + '</button>';
+  }
+
+  /* 状态行：随进度/录音状态变化，替代原来那两行静态说明 */
+  function learnStatusText(word, hits, passed, supported) {
+    if (passed) return '✅ 通过！左滑去下一个词';
+    if (learnBusy) return '正在听…说完再点 ⏹ 停';
+    if (!supported) return '读出 “' + word + '” 后点 ✅';
+    return hits > 0 ? '很棒！再读 1 次就过关' : '读出 “' + word + '” 吧';
   }
 
   function bindLearnSpeak(scope) {
+    var mic = scope.querySelector('#mic-btn');
+    if (mic) mic.onclick = toggleLearnMic;
     var fb = scope.querySelector('#mic-btn-fb');
     if (fb) fb.onclick = onLearnHit;
-    var mic = scope.querySelector('#mic-btn');
-    if (mic) mic.onclick = function () { if (learnBusy) stopLearnMic(); else startLearnMic(); };
     var self = scope.querySelector('#mic-self');
     if (self) self.onclick = function () { if (learnBusy) stopLearnMic(); onLearnHit(); };
   }
 
-  /* 左右滑切词：纯导航，不影响计分。
-     起手落在按钮上 / 拖太久 / 以竖向为主 → 都不算滑动，避免误触和抢页面滚动。 */
-  var SWIPE_MIN = 44;
+  /* ---------- 滑动：跟手位移 + 倾斜，未过关时锁住 ---------- */
+  /* 返回 null 表示这个方向可以划走；返回字符串即被拦住的原因（同时用于 toast）。
+     规则只有一条：当前词没过关就别想翻页——去下一个和回上一个都不行。 */
+  function swipeBlockReason(dir) {
+    if (!learnPassed[learnPos]) return '先读出这个词 ' + HITS_GOAL + ' 次才能过关哦 🎤';
+    if (dir === 'prev' && learnPos <= 0) return '已经是第一个词啦';
+    return null;
+  }
+
+  /* 按钮 / 键盘走的都是同一条判定，保证桌面端和触屏行为一致 */
+  function tryGo(dir) {
+    var reason = swipeBlockReason(dir);
+    if (reason) { toast(reason); return; }
+    learnEnterDir = dir === 'next' ? 1 : -1;
+    if (dir === 'next') learnGoNext(); else learnGoPrev();
+  }
+
+  var SWIPE_MIN = 54;   // 判定为「划走」的最小位移
+  var SWIPE_SOFT = 110; // 超过后进入阻尼，避免卡片被拖出屏幕
   function bindLearnSwipe(node) {
-    var x0 = null, y0 = null, t0 = 0, onBtn = false;
+    var x0 = null, y0 = null, t0 = 0, onBtn = false, dragging = false, dx = 0, dirNow = 0;
+
     node.addEventListener('touchstart', function (e) {
       if (e.touches.length !== 1) { x0 = null; return; }
       x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
       onBtn = !!(e.target.closest && e.target.closest('button'));
+      dragging = false; dx = 0;
     }, { passive: true });
-    node.addEventListener('touchend', function (e) {
+
+    node.addEventListener('touchmove', function (e) {
+      if (x0 == null || onBtn) return;
+      var tx = e.touches[0].clientX - x0, ty = e.touches[0].clientY - y0;
+      if (!dragging) {
+        if (Math.abs(tx) < 9 && Math.abs(ty) < 9) return;
+        /* 竖向为主 → 交还给页面滚动，不抢 */
+        if (Math.abs(tx) <= Math.abs(ty)) { x0 = null; return; }
+        dragging = true;
+        /* 入场动画带 fill:both，会压过后面的 transform，必须先摘掉 */
+        node.classList.remove('card-in-r', 'card-in-l');
+        node.classList.add('dragging');
+      }
+      dx = tx;
+      dirNow = dx < 0 ? 1 : -1;
+      var locked = !!swipeBlockReason(dirNow > 0 ? 'next' : 'prev');
+      var off = swipeOffset(dx, locked);
+      node.style.transform = 'translateX(' + off.toFixed(1) + 'px) rotate(' + (off * 0.035).toFixed(2) + 'deg)';
+      node.style.opacity = locked ? '1' : Math.max(0.5, 1 - Math.abs(off) / 420).toFixed(2);
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    function end(e) {
       if (x0 == null) return;
-      var dx = e.changedTouches[0].clientX - x0;
-      var dy = e.changedTouches[0].clientY - y0;
-      var sx = dx < 0 ? -dx : dx, sy = dy < 0 ? -dy : dy;
-      x0 = null;
-      if (onBtn || Date.now() - t0 > 800) return;
-      if (sx < SWIPE_MIN || sx < sy * 1.2) return;
-      if (dx < 0) learnGoNext(); else learnGoPrev();
-    }, { passive: true });
+      var wasDragging = dragging, dir = dirNow > 0 ? 'next' : 'prev';
+      /* 用松手这一刻的位置重算位移：最后一次 touchmove 可能早于手指停下的位置 */
+      var touch = e && e.changedTouches && e.changedTouches[0];
+      if (touch && wasDragging) dx = touch.clientX - x0;
+      var dist = Math.abs(dx);
+      x0 = null; dragging = false; dx = 0;
+      node.classList.remove('dragging');
+      if (!wasDragging) return;
+      var reason = swipeBlockReason(dir);
+      if (reason) { snapBack(node); toast(reason); return; }
+      if (dist < SWIPE_MIN || Date.now() - t0 > 900) { snapBack(node); return; }
+      flyOut(node, dir, function () { tryGo(dir); });
+    }
+    node.addEventListener('touchend', end, { passive: true });
+    node.addEventListener('touchcancel', function () { if (x0 == null) return; x0 = null; dragging = false; node.classList.remove('dragging'); snapBack(node); }, { passive: true });
+  }
+
+  /* 锁住时位移只有一点点，孩子能感到「推不动」而不是「没反应」 */
+  function swipeOffset(dx, locked) {
+    var a = Math.abs(dx) * (locked ? 0.18 : 0.92);
+    if (!locked && a > SWIPE_SOFT) a = SWIPE_SOFT + (a - SWIPE_SOFT) * 0.3;
+    return dx < 0 ? -a : a;
+  }
+  function snapBack(node) {
+    node.style.transition = 'transform .26s cubic-bezier(.3,1.5,.5,1), opacity .2s';
+    node.style.transform = ''; node.style.opacity = '';
+    setTimeout(function () { node.style.transition = ''; }, 280);
+  }
+  function flyOut(node, dir, done) {
+    var w = node.offsetWidth || 320;
+    var to = (dir === 'next' ? -1 : 1) * (w + 60);
+    node.style.transition = 'transform .19s ease-out, opacity .19s ease-out';
+    node.style.transform = 'translateX(' + to + 'px) rotate(' + (dir === 'next' ? -10 : 10) + 'deg)';
+    node.style.opacity = '0';
+    setTimeout(done, 170);
   }
 
   function hitsHtml(n) {
     var s = '';
-    for (var i = 0; i < 3; i++) s += '<span class="hit' + (i < n ? ' on' : '') + '"></span>';
+    for (var i = 0; i < HITS_GOAL; i++) s += '<span class="hit' + (i < n ? ' on' : '') + '"></span>';
     return s;
   }
 
-  /* 词卡的视觉 HTML（不含底部按钮），给 today / browse 共用 */
+  /* 词卡的视觉 HTML（图 / 词形 / 音标 / 字素块 / 中文）。
+     刻意不含按钮和说明文字：图标自己会说话，小朋友点两下就懂了。 */
   function learnWordCardHtml(word) {
     var pd = WORDS[word].pindu || [];
     var ipa = (WORDS[word].us && WORDS[word].us.ipa) || '';
@@ -1591,13 +1698,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
       '<div class="wc-word">' + word + '</div>' +
       (S.settings.showIpa && ipa ? '<div class="wc-ipa">/' + ipa + '/</div>' : '') +
       phoneBlock +
-      '<div class="wc-cn">' + meaningOf(word) + '</div>' +
-      '<div class="row" style="justify-content:center;gap:12px;margin-top:10px">' +
-        '<button class="speak-btn" id="s1">' + SPK + '</button>' +
-        '<button class="speak-btn sm" id="s2" title="慢速">🐢</button>' +
-      '</div>' +
-      '<div class="muted" style="margin-top:6px;font-size:11px">点 🔊 听发音 · 点 🐢 听慢速' +
-      (pd.length ? ' · 点彩色字块听每个音' : '') + '</div>';
+      '<div class="wc-cn">' + meaningOf(word) + '</div>';
   }
 
   function bindWordCardPlayback(scope, word) {
@@ -1628,9 +1729,13 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     v.appendChild(header);
     $('#learn-today').onclick = enterTodayMode;
 
-    /* 词卡（复用 today 的视觉 + 喇叭） */
+    /* 词卡（复用 today 的视觉；这里只听不跟读，所以只有 🔊 🐢 两个按钮） */
     var c = el('div', 'card wordcard');
-    c.innerHTML = learnWordCardHtml(word);
+    c.innerHTML = learnWordCardHtml(word) +
+      '<div class="learn-action">' +
+        '<button class="speak-btn" id="s1" aria-label="听发音">' + SPK + '</button>' +
+        '<button class="speak-btn sm" id="s2" aria-label="慢速发音">🐢</button>' +
+      '</div>';
     v.appendChild(c);
     bindWordCardPlayback(c, word);
 
@@ -1733,48 +1838,97 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
         var res = ev.results[i];
         for (var j = 0; j < res.length; j++) {
           if (spokenMatches(res[j].transcript, learnQueue[learnPos])) {
+            /* 停录音由 onLearnHit 统一负责：这里再 stop 一次会多触发一个 onend，
+               被误判成「静音自动断」，弹出不该有的「没听清」。 */
             onLearnHit();
-            /* 命中后立即停掉，避免后续噪音继续计分 */
-            try { r.stop(); } catch (e) {}
             return;
           }
         }
       }
     };
-    r.onerror = function () { learnBusy = false; render(); };
-    r.onend = function () {
+    r.onerror = function (ev) {
+      var err = ev && ev.error;
+      if (err === 'aborted') return;
+      /* 只挑需要孩子/家长动手的错误给出明确提示；其余（no-speech 等）交给
+         onend 的通用「没听清」分支，避免一个动作弹两次提示。 */
+      if (err === 'not-allowed' || err === 'service-not-allowed') {
+        learnStopping = true;
+        toast('麦克风没打开：请允许使用麦克风 🎤');
+      } else if (err === 'network') {
+        learnStopping = true;
+        toast('网络不通，语音识别用不了 😢');
+      }
       learnBusy = false;
-      /* 没人按下停止 / 也没命中 → 让 UI 回到可点状态 */
-      var mic = $('#mic-btn'); if (mic) mic.classList.remove('rec');
+      if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
+      syncMicVisual();
+    };
+    r.onend = function () {
+      /* 只有「不是我们主动停的」才说明是超时 / 静音自动断，需要给孩子一个反馈。
+         刻意不调 render()：命中后的重绘由 onLearnHit 负责，这里重建 DOM 会把
+         用户正点着的按钮换掉，造成连点丢失。 */
+      var auto = !learnStopping;
+      learnStopping = false;
+      learnBusy = false;
+      if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
+      syncMicVisual();
+      if (auto) toast('没听清，再试一次吧 🎤');
     };
     learnRecognizer = r;
     return r;
+  }
+
+  /* 🎤 是开关：点一下开始录，再点一下停。录音中按钮变 ⏹ 并脉冲。 */
+  function toggleLearnMic() {
+    if (learnBusy) stopLearnMic();
+    else startLearnMic();
   }
   function startLearnMic() {
     if (learnBusy) return;
     if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
     var r = ensureRecognizer();
     if (!r) { toast('当前浏览器不支持语音识别'); return; }
+    stopAudio();
     learnBusy = true;
     try { r.start(); } catch (e) { learnBusy = false; return; }
-    var mic = $('#mic-btn'); if (mic) mic.classList.add('rec');
+    syncMicVisual();
     /* 8 秒兜底超时：小孩可能不说话了。句柄存起来，切词 / 提前命中 /
        手动停止时都能清掉，避免上一词的定时器掐断下一词的录音。 */
-    learnTimer = setTimeout(function () { stopLearnMic(); }, 8000);
+    learnTimer = setTimeout(function () { stopLearnMic(false); }, 8000);
   }
-  function stopLearnMic() {
+  /* byUser=false 表示「不是用户点的停」（8 秒兜底到点）。onend 靠这个区分：
+     超时而停要弹「没听清」，用户自己点的就不必多嘴。 */
+  function stopLearnMic(byUser) {
     if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
+    learnStopping = byUser !== false;
     var r = learnRecognizer;
     if (r) { try { r.stop(); } catch (e) {} }
     learnBusy = false;
-    var mic = $('#mic-btn'); if (mic) mic.classList.remove('rec');
+    syncMicVisual();
   }
+  /* 只改按钮和状态行，不动整张卡：避免录音中重建 DOM 打断脉冲动画 */
+  function syncMicVisual() {
+    var btn = $('#mic-btn');
+    if (btn) {
+      btn.classList.toggle('rec', learnBusy);
+      btn.innerHTML = learnBusy ? MIC_STOP : '🎤';
+    }
+    var st = $('#learn-status');
+    if (st) {
+      var w = learnQueue[learnPos];
+      st.classList.toggle('ok', !!learnPassed[learnPos]);
+      st.textContent = learnStatusText(w, hitsFor(learnPos), !!learnPassed[learnPos], learnRecognitionSupported());
+    }
+  }
+
   function onLearnHit() {
-    var h = Math.min(3, hitsFor(learnPos) + 1);
+    /* 已过的词再读：停掉录音、给个方向提示，不再重复计分 */
+    if (learnPassed[learnPos]) { stopLearnMic(); beep('ok'); toast('已经过关啦，左滑去下一个词 👉'); return; }
+    var h = Math.min(HITS_GOAL, hitsFor(learnPos) + 1);
     learnHits[learnPos] = h;
     stopLearnMic();
     beep('ok');
-    if (h >= 3) markLearnPassed();
+    if (h >= HITS_GOAL) markLearnPassed();
+    else toast('👏 读得不错！再读 1 次就过关');
     render();
   }
 
@@ -1786,7 +1940,7 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     learnPassed[learnPos] = true;
     grade(word, true);                  /* 记入 SRS + newWords */
     gainXp(3, 'food', 2);
-    toast('🎤 ' + word + ' 跟读通过！+1 🍖');
+    toast('🎤 ' + word + ' 通过！+1 🍖 · 左滑下一个');
   }
 
   /* 左右滑 / 按钮：纯导航，不记通过。滑过末尾即进入结果卡。 */
@@ -1798,11 +1952,11 @@ window.__PHONICS__ = {"groups":[{"id":"cons","label":"辅音字母","tip":"一�
     if (learnPos <= 0) return;
     learnPos--; stopLearnMic(); render();
   }
-  /* 桌面端没有触摸：方向键同样映射为「左=下一个 / 右=上一个」 */
+  /* 桌面端没有触摸：方向键同样映射为「左=下一个 / 右=上一个」，判定与触屏共用 */
   document.addEventListener('keydown', function (e) {
     if (tab !== 'learn' || learnMode !== 'today') return;
-    if (e.key === 'ArrowLeft') learnGoNext();
-    else if (e.key === 'ArrowRight') learnGoPrev();
+    if (e.key === 'ArrowLeft') tryGo('next');
+    else if (e.key === 'ArrowRight') tryGo('prev');
   });
 
   /* 全部词库模式下的"我记住了"按钮同样走 grade，但不走跟读 */
