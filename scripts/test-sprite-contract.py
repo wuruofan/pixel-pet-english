@@ -45,6 +45,14 @@ def main():
         f"egg idle frames must keep the same horizontal silhouette: {base} vs {breath}"
     )
 
+    # Baby/kid eat states must use the existing real three-phase low-to-bowl
+    # action, not the placeholder files that copy their standing frames.
+    eat_frames = [SPRITES / f"cat-eat-{index}.png" for index in range(3)]
+    assert all(path.exists() for path in eat_frames), "adult eat frame set is incomplete"
+    assert len({path.read_bytes() for path in eat_frames}) == 3, "eat frames must all be unique"
+    assert "1: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2']" in APP
+    assert "2: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2']" in APP
+
     print("sprite contract: PASS")
 
 

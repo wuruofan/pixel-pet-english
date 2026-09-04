@@ -845,8 +845,9 @@
                               2: ['cat-kid-blink'],
                               3: ['cat-blink'] },
                    eat:     { 0: ['cat-egg-eat'],
-                              1: ['cat-baby-eat'],
-                              2: ['cat-kid-eat'],
+                              /* baby 本身就是侧身比例，复用真实的低头饭碗三帧；避免旧占位静止不动 */
+                              1: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'],
+                              2: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'],
                               3: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'] },
                    sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1'],
                               1: ['cat-sleep-0', 'cat-sleep-1'],
