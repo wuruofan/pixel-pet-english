@@ -148,12 +148,17 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   border: 2px solid var(--line);
   box-shadow: inset 0 -8px 0 rgba(255,255,255,.6);
 }
-/* 精灵舞台：abs 居中，闲置动画上下浮动；translate 让 canvas 不被 idle 动画位移影响横向居中 */
-.pet-canvas-wrap {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, calc(-50% - 8px));  /* 略偏上，给底部 stage-name 留空间 */
+/* 定位层（JS 驱动走路）与动画层分离：#pet-pos 只管位置/朝向（left/top + scaleX），
+   .pet-canvas-wrap 的 transform 全部留给 CSS 动画——表演类 keyframes 不必再手写居中位移。
+   此前 hop/chomp/shake 丢了 translate(-50%) 正是「宠物跳到右下角又回来」的根因 */
+#pet-pos {
+  position: absolute; left: 90px; top: 54px;
   width: 96px; height: 96px;
+  transition: left 1.2s ease-in-out, top 1.2s ease-in-out;
+}
+#pet-pos.face-left { transform: scaleX(-1); }
+.pet-canvas-wrap {
+  position: relative; width: 100%; height: 100%;
   cursor: pointer;
   animation: pet-idle 2.8s ease-in-out infinite;
 }
@@ -161,8 +166,8 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .pet-canvas-wrap.eat { animation: chomp .45s ease 2; }
 .pet-canvas-wrap.sad { animation: shake .4s ease; }
 #pet-cv { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
-/* idle 浮动需要包含居中 translate，否则会覆盖 .pet-canvas-wrap 的居中位移 */
-@keyframes pet-idle { 0%,100%{transform:translate(-50%, calc(-50% - 8px))} 50%{transform:translate(-50%, calc(-50% - 13px))} }
+/* idle 浮动：原居中位移已移入 #pet-pos 的 top（54 = 62-8，略偏上给 stage-name 留空间） */
+@keyframes pet-idle { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
 .float-ico {
   position: absolute; bottom: 60%; left: 30%; font-size: 22px; pointer-events: none;
   animation: float-up 1.05s ease-out forwards;
@@ -673,6 +678,8 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 }
 .modal-sheet {
   width: 100%; max-width: 860px; max-height: 88vh; overflow-y: auto;
+  /* 手机浏览器/WebView 里 vh 含地址栏高度，88vh 常超出可视区导致底部内容滚不到，用 dvh 兜底 */
+  max-height: 88dvh;
   background: var(--bg);
   border-radius: 26px 26px 0 0;
   padding: 14px 14px calc(26px + env(safe-area-inset-bottom));
@@ -717,3 +724,90 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .pg-cvwrap:active { transform: scale(.94); }
 .pg-cvwrap canvas { width: 54px; height: 54px; image-rendering: pixelated; display: block; }
 @media (max-width: 400px) { .pet-gallery { grid-template-columns: repeat(2, 1fr); } }
+/* 状态试验台：预览画布比图鉴格大一号；精灵一览芯片内的 canvas 保持硬边 */
+.tb-main { width: 96px; height: 96px; animation: none; }
+.tb-main canvas { width: 84px; height: 84px; image-rendering: pixelated; display: block; }
+.tb-chip { display: inline-flex; align-items: center; padding: 4px 7px; }
+.tb-chip canvas { image-rendering: pixelated; display: block; }
+
+/* ---------- pet rich animations: 常驻基调(数值驱动) + 即时表演(交互) + 特效 ---------- */
+/* 常驻基调类：infinite，覆盖默认 pet-idle；超跃/打瞌睡/低落三态互斥切换（JS 维护布尔独占） */
+.pet-canvas-wrap.base-drowsy { animation: pet-drowsy 4.8s ease-in-out infinite; }
+.pet-canvas-wrap.base-hyper  { animation: pet-wander 6.5s ease-in-out infinite; }
+.pet-canvas-wrap.base-low    { animation: pet-droop 4s ease-in-out infinite; }
+/* 即时表演类：一次性，播完被 JS 移除、回落常驻 */
+.pet-canvas-wrap.wash  { animation: pet-sway .95s ease; }
+.pet-canvas-wrap.dance { animation: pet-dance 1.4s ease; }
+.pet-canvas-wrap.prop  { animation: pet-prop .85s ease; }
+.pet-canvas-wrap.poop  { animation: pet-grunt .75s ease; }
+
+@keyframes pet-wander {
+  0%,100% { transform: translateY(0) scale(1); }
+  15%  { transform: translate(-16px, -3px) scale(.98,1.03); }
+  45%  { transform: translate(6px, 0)    scale(1); }
+  70%  { transform: translate(28px, -4px) scale(.98,1.03); }
+}
+@keyframes pet-drowsy {
+  0%,100% { transform: translateY(0); }
+  30% { transform: translateY(6px) scale(1,.97); }
+  55% { transform: translateY(-1px) scale(1,1.03); }
+  80% { transform: translateY(5px); }
+}
+@keyframes pet-droop {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+@keyframes pet-sway {
+  0%,100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-3px) rotate(-7deg); }
+  75% { transform: translateY(-3px) rotate(7deg); }
+}
+@keyframes pet-dance {
+  0%,100% { transform: translateY(0) rotate(0) scale(1); }
+  20% { transform: translateY(-18px) rotate(-8deg) scale(1.08); }
+  40% { transform: translateY(-2px) rotate(6deg) scale(.98); }
+  60% { transform: translateY(-18px) rotate(8deg) scale(1.08); }
+  80% { transform: translateY(-1px) rotate(-5deg) scale(1); }
+}
+@keyframes pet-prop {
+  0%,100% { transform: translateY(0) scale(1) rotate(0); }
+  30% { transform: translateY(-12px) scale(1.12) rotate(-6deg); }
+  60% { transform: translateY(-2px) scale(.94) rotate(5deg); }
+}
+@keyframes pet-grunt {
+  0%,100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(4px) rotate(-5deg); }
+  50% { transform: translateY(-4px) rotate(4deg); }
+  75% { transform: translateY(4px) rotate(-5deg); }
+}
+/* 行走步态：走路期间由 JS 加 .walking（会覆盖常驻基调），到位后移除回落 */
+.pet-canvas-wrap.walking { animation: pet-step .42s ease-in-out infinite; }
+@keyframes pet-step {
+  0%,100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-5px) scale(1.02,.96); }
+  60% { transform: translateY(0) scale(1); }
+  80% { transform: translateY(-4px) scale(.99,1.02); }
+}
+
+/* 通用浮动特效（音符/泡泡/爱心/道具/梦境泡）；饭盆用 food-drop 从天而降。
+   特效本体是像素精灵 canvas（原生尺寸绘制、CSS 3x 放大），pixelated 保持硬边 */
+.fx {
+  position: absolute; bottom: 60%; font-size: 20px; z-index: 2;
+  pointer-events: none; animation: float-up 1.05s ease-out forwards;
+}
+canvas.fx, .pet-poop canvas { display: block; image-rendering: pixelated; }
+.fx.food-drop { top: 26%; bottom: auto; font-size: 26px; animation: food-fall 1.55s ease forwards; }
+@keyframes food-fall {
+  0% { opacity: 0; transform: translateY(-24px) scale(.7); }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(58px) scale(1); }
+}
+
+/* 便便：落在舞台下部，可点击清理（清理得 clean+mood；不清会用 petDecay 加速掉清洁） */
+.pet-poop {
+  position: absolute; bottom: 34px; padding: 0; border: 0; background: none;
+  font-size: 17px; line-height: 1; cursor: pointer; z-index: 2;
+  animation: poop-bounce 1.3s ease-in-out infinite;
+}
+@keyframes poop-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }

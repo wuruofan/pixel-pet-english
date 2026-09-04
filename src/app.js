@@ -29,7 +29,7 @@
   var DEFAULT_STATE = {
     words: {},          // word -> {box, due, seen, right, wrong}
     days: {},           // 'YYYY-MM-DD' -> {words, right, wrong, ms, lessons}
-    pet: { name: '小火龙', level: 1, xp: 0, sati: 70, mood: 80, clean: 80, food: 0, toy: 0, soap: 0, fedTotal: 0, lastTick: 0, lastPlay: 0, petsDate: '', petsToday: 0 },
+    pet: { name: '小火龙', species: 'dragon', level: 1, xp: 0, sati: 70, mood: 80, clean: 80, food: 0, toy: 0, soap: 0, fedTotal: 0, lastTick: 0, lastPlay: 0, petsDate: '', petsToday: 0, poop: { t: 0, n: 0 } },
     settings: { dailyGoal: 8, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
     hints: { swipe: 0 },   // 用过一次就记一笔：卡片可滑动这件事，提示两次就够了
     lastActive: null,
@@ -57,6 +57,9 @@
       if (m.pet && m.pet.energy != null) { m.pet.sati = m.pet.energy; delete m.pet.energy; }
       if (m.pet && m.pet.mood == null) m.pet.mood = 80;
       if (m.pet && !m.pet.lastTick) m.pet.lastTick = Date.now();
+      if (m.pet && !m.pet.poop) m.pet.poop = { t: 0, n: 0 };
+      /* v3: 小熊猫改名小狐狸 */
+      if (m.pet && m.pet.species === 'panda') m.pet.species = 'fox';
       return m;
     } catch (e) {
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -303,13 +306,17 @@
     if (hrs > 0.05) {
       S.pet.sati = clamp(S.pet.sati - hrs * 4, 0, 100);
       S.pet.mood = clamp(S.pet.mood - hrs * 3, 0, 100);
-      S.pet.clean = clamp(S.pet.clean - hrs * 1.5, 0, 100);
+      var poopN = (S.pet.poop && S.pet.poop.n) || 0;
+      S.pet.clean = clamp(S.pet.clean - hrs * (1.5 + poopN * 1.2), 0, 100);  // 有便便不清会掉得更快
     }
     S.pet.lastTick = now;
   }
 
   function petStageIdx() { return Math.min(3, Math.floor((S.pet.level - 1) / 4)); }
-  function petStageName() { return ['蛋宝宝', '小绒球', '小龙崽', '小火龙'][petStageIdx()]; }
+  function petStageName() {
+    var st = petStageIdx();
+    return st === 0 ? '蛋宝宝' : curSpecies().stages[st - 1];
+  }
   function xpNeed(level) { return 40 + (level - 1) * 30; }
   /* drop：获得宠物素材 'food' 🍖（学单词）/ 'toy' 🎾（拼读）/ 'soap' 🧼（闯关） */
   function gainXp(n, drop, mood) {
@@ -332,7 +339,7 @@
     S.pet.sati = clamp(S.pet.sati + 28, 0, 100);
     gainXp(2, 0, 6);
     beep('tap');
-    petExpr('eat', 1100); floatHearts('🍖');
+    playAction('eat', 'eat', 1500); addFoodBowl(); spawnFx('meat', 1);
     renderHome();
   }
 
@@ -340,7 +347,7 @@
     petDecay();
     var now = Date.now();
     if (S.pet.toy <= 0) { toast('没有玩具了，去拼读练习赚 🎾 吧！'); return; }
-    if (S.pet.sati < 15) { toast('饿得没力气玩了，先喂点吃的吧 🍖'); petExpr('sad', 900); return; }
+    if (S.pet.sati < 15) { toast('饿得没力气玩了，先喂点吃的吧 🍖'); playAction('sad', 'sad', 900); return; }
     if (S.pet.lastPlay && now - S.pet.lastPlay < 90000) {
       toast('玩累啦，休息 ' + Math.ceil((90000 - (now - S.pet.lastPlay)) / 1000) + ' 秒再来～');
       return;
@@ -350,7 +357,7 @@
     S.pet.sati = clamp(S.pet.sati - 4, 0, 100);
     gainXp(3, 0, 18);
     beep('ok');
-    petExpr('happy', 1300); floatHearts('💗');
+    playFunRandom();
     renderHome();
   }
 
@@ -361,7 +368,7 @@
     S.pet.clean = clamp(S.pet.clean + 35, 0, 100);
     gainXp(2, 0, 4);
     beep('tap');
-    petExpr('happy', 1200); floatHearts('🛁');
+    playAction('wash', 'wash', 1600); spawnFx('bubble', 5);
     renderHome();
   }
 
@@ -372,7 +379,7 @@
     S.pet.petsToday++;
     gainXp(0, 0, 4);
     beep('tap');
-    petExpr('happy', 700); floatHearts('💖');
+    playAction('happy', 'happy', 700); spawnFx('heart', 1);
   }
 
   function petMood() {
@@ -387,7 +394,8 @@
     return { face: '\u{1F642}', say: '状态不错，继续加油！' };
   }
 
-  /* ---- 像素精灵：16x16，字符画。O描边 B主体 S暗部 A点缀 P腮红 W白 ---- */
+  /* ---- 像素精灵：16x16 字符画。O描边 B主体 S暗部 A点缀 W白 P粉（脸由表情系统叠加，图内不画眼嘴）
+         阶段 0=蛋（共通+物种色斑点）；1=奶宝宝（头+身子+短腿，共通+物种耳饰）；2/3=各物种独立剪影 ---- */
   var PET_PIXELS = {
     egg: [
       '................',
@@ -407,137 +415,851 @@
       '....OOBBBBOO....',
       '......OOOO......'
     ],
-    blob: [
+    /* 奶宝宝：大头(12宽)明显宽于小身子(8宽)，脖子收窄、圆肚微鼓——经典 chibi 头身比（物种耳饰由 always 叠加） */
+    baby: [
       '................',
-      '......OOOO......',
-      '....OOBBBBOO....',
+      '....OOOOOOOO....',
       '...OBBBBBBBBO...',
       '..OBBBBBBBBBBO..',
       '..OBBBBBBBBBBO..',
       '..OBBBBBBBBBBO..',
       '..OBBBBBBBBBBO..',
-      '..OBSBBBBBBSBO..',
-      '..OBSBBBBBBSBO..',
       '..OBBBBBBBBBBO..',
       '...OBBBBBBBBO...',
-      '..S.OBBBBBBO.S..',
-      '..SS.OOOOOO.SS..',
-      '...AAO....OAA...',
-      '....AA....AA....'
+      '....OBBBBBBO....',
+      '....OBBBBBBO....',
+      '...OBAAAAAABO...',
+      '....OBBBBBBO....',
+      '...OBBO..OBBO...',
+      '...OOO....OOO...',
+      '................'
+    ],
+    /* 小龙崽：圆头+白口鼻+翼芽+尾尖（无角，避免牛感） */
+    'dragon-2': [
+      '................',
+      '.....OOOOOO.....',
+      '....OBBBBBBO....',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBWWWWWWWWBO..',
+      '...OBWWWWWWBO...',
+      '..OBBBBBBBBBBO..',
+      'SSOBAAAAAAAABOSS',
+      'SSOBAAAAAAAABOSS',
+      '.SOBAAAAAAAABOS.',
+      '..OBBBBBBBBBBO..',
+      '...OBBBBBBBBOSS.',
+      '...OBBO..OBBO...',
+      '...OOO....OOO...'
+    ],
+    /* 小火龙：后掠角+白口鼻+大翼+尾刺，身形壮 */
+    'dragon-3': [
+      '.OA..........AO.',
+      '..OAO......OAO..',
+      '..OOBBBBBBBBBOO.',
+      '.OBBBBBBBBBBBBO.',
+      'OBBBBBBBBBBBBBBO',
+      'OBBBBBBBBBBBBBBO',
+      'OBBWWWWWWWWWBBBO',
+      '.OBWWWWWWWWWBBO.',
+      '.OBBAAAAAAAABBO.',
+      'SSOBAAAAAAAABOSS',
+      'SSOBAAAAAAAABOSS',
+      '.SOBAAAAAAAABOS.',
+      '..OBBBBBBBBBOSS.',
+      '...OBBBBBBBBOSS.',
+      '...OBBO..OBBO...',
+      '...OOO....OOO...'
+    ],
+    /* 猫崽：尖耳+胡须点+环纹尾，坐姿 */
+    'cat-2': [
+      '..O..........O..',
+      '.OBO........OBO.',
+      '.OBBOOOOOOOOBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '..OABBBBBBBBAO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '...OBBBBBBBBO...',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBOSS',
+      '...OBBBBBBBBOSS.',
+      '...OAAO..OAAO...',
+      '....OOO..OOO....'
+    ],
+    /* 大猫：满宽脸+腮须+胸斑+环纹尾，体格最大 */
+    'cat-3': [
+      '..O..........O..',
+      '.OBO........OBO.',
+      '.OBBOOOOOOOOBBO.',
+      'OBBBBBBBBBBBBBBO',
+      'OBBBBBBBBBBBBBBO',
+      'OBBBBBBBBBBBBBBO',
+      'OAABBBBBBBBBBAAO',
+      '.OBBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '..OBBAAAAAABBO..',
+      '..OBBAAAAAABBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBOSS',
+      '..OBBBBBBBBBBOBB',
+      '..OSBBBBBBBSBOSS',
+      '...OAAO.OAAO....'
+    ],
+    /* 狗崽：垂耳+口鼻+上翘尾 */
+    'dog-2': [
+      '....OOOOOOOO....',
+      '..OOBBBBBBBBOO..',
+      '.SSOBBBBBBBBBOSS',
+      'SSOBBBBBBBBBBOSS',
+      'SSOBBBBBBBBBBOSS',
+      'SSOBBBBBBBBBBOSS',
+      '.SOBBAAAAAABBO.S',
+      '..OBBAAAAAABBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBOSS',
+      '..OBBBBBBBBBBOSS',
+      '...OBBBBBBBBO.S.',
+      '...OBBBBBBBBO...',
+      '....OOOOOOOO....',
+      '...OAAO..OAAO...',
+      '....OOO..OOO....'
+    ],
+    /* 大狗：长垂耳+大口鼻+壮硕身形 */
+    'dog-3': [
+      '.....OOOOOO.....',
+      '...OOBBBBBBOO...',
+      '.SSOBBBBBBBBBOSS',
+      'SSOBBBBBBBBBBOSS',
+      'SSOBBBBBBBBBBOSS',
+      'SSOBBAAAAAABBOSS',
+      '.SOBBAAAAAABBO.S',
+      '..OBBAAAAAABBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBOSS',
+      '..OBBBBBBBBBBOSS',
+      '...OBBBBBBBBO...',
+      '....OOOOOOOO....',
+      '...OAAO..OAAO...',
+      '....OOO..OOO....'
+    ],
+    /* 小狐狸：尖耳（深色耳尖）+白口鼻+白胸+粗尾 */
+    'fox-2': [
+      '....S......S....',
+      '...OSSO..OSSO...',
+      '..OBBBBBBBBBBO..',
+      '.OBBBBBBBBBBBBO.',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBWWWWWWWWBO..',
+      '..OBWWWWWWWWBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBWWWWWWBBO..',
+      '..OBBWWWWWWBBOSS',
+      '..OBBWWWWWWBBOSS',
+      '..OBBBBBBBBBBOSS',
+      '...OBBBBBBBOSSS.',
+      '...OBBO..OBBO...',
+      '...OOO....OOO...'
+    ],
+    /* 大尾巴狐：满宽脸+尖耳+白口鼻+白胸+缠身环纹粗尾 */
+    'fox-3': [
+      '...S........S...',
+      '..OSSO....OSSO..',
+      '.OBBBBBBBBBBBBO.',
+      'OBBBBBBBBBBBBBBO',
+      'OSSSBBBBBBBBSSSO',
+      'OSSSBBBBBBBBSSSO',
+      'OBWWWWWWWWWWWWBO',
+      'OBWWWWWWWWWWWWBO',
+      '.OBBAAAAAAAABBO.',
+      '.OBBAAAAAAAABBO.',
+      '..OBBAAAAAABBO..',
+      '..OBBBBBBBBBBOSS',
+      '..OBBBBBBBBBOSSS',
+      '..OBBBBBBBBBOBBS',
+      '...OBBBBBBBOSSS.',
+      '...OAAO.OAAO....'
+    ],
+    /* ---- 侧面剪影（朝右，向左走时由 face-left 整体翻转）：脸右尾左，
+          图内自带单点侧眼，走路时不再叠正面表情。仅 1 阶以上有 ---- */
+    'baby-side': [
+      '................',
+      '.....OOOOOO.....',
+      '...OOBBBBBBOO...',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBOOBBO..',
+      '..OBBBBBBOOBBO..',
+      '..OBBBBBBBBBBO..',
+      '..OBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBBBBBBBBBBO..',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'dragon-2-side': [
+      '................',
+      '.....OOOOOO.....',
+      '...OOBBBBBBOO...',
+      '..OBBBBBBBBBBO..',
+      '.SOBBBBBBBBBBO..',
+      '.SOBBBBBBOOBBO..',
+      '.SOBBBBBBOOBBO..',
+      '..OBBBBBBWWWBO..',
+      '..OBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      'SOBBAAAAAAAABO..',
+      'SOBBAAAAAAAABO..',
+      '.OBBBBBBBBBBBO..',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'dragon-3-side': [
+      '................',
+      '.....OOOOOO.....',
+      'S..OOBBBBBBOO...',
+      'SS.OBBBBBBBBBBO.',
+      'SSOBBBBBBBBBBO..',
+      'SSOBBBBBBOOBBO..',
+      'SSOBBBBBBOOBBO..',
+      '.SOBBBBBBWWWBO..',
+      'SSOBBBBBBBBBBBO.',
+      'SSOBBBBBBBBBBBO.',
+      '.OBBAAAAAAAABBO.',
+      '.OBBAAAAAAAABBO.',
+      '.OBBBBBBBBBBBBO.',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'cat-2-side': [
+      '................',
+      '......O...O.....',
+      '.....OBO.OBO....',
+      '....OBBBOBBBO...',
+      '....OBBBBBBBBO..',
+      'S.OBBBBBBOOBBO..',
+      'SSOBBBBBBOOBBO..',
+      'SSOBBBBBBBBBBO..',
+      '.SOBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBBBBBBBBBBO..',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'cat-3-side': [
+      '................',
+      '.....O....O.....',
+      '....OBO..OBO....',
+      '...OBBBOOBBO....',
+      'SS.OBBBBBBBBBBO.',
+      'SSOBBBBBBBBOBBO.',
+      'SSOBBBBBBBBOBBO.',
+      '.SOBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '.OBBAAAAAAAAABO.',
+      '.OBBAAAAAAAAABO.',
+      '..OBBBBBBBBBBO..',
+      '..OBBO....OBBO..',
+      '..OBBO....OBBO..',
+      '..OOO......OOO..'
+    ],
+    'dog-2-side': [
+      '................',
+      '.....OOOOOO.....',
+      '...OOBBBBBSSO...',
+      '..OBBBBBBBSSBO..',
+      '..OBBBBBBBSSBO..',
+      'SSOBBBBBBOOSSO..',
+      'SSOBBBBBBOOSSO..',
+      'SSOBBBBBBBBSSO..',
+      '.SOBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBBBBBBBBBBO..',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'dog-3-side': [
+      '................',
+      '.....OOOOOO.....',
+      '...OOBBBBBSSO...',
+      '..OBBBBBBBSSBO..',
+      '.OBBBBBBBBSSBO..',
+      'SSOBBBBBBBOSSO..',
+      'SSOBBBBBBBOSSO..',
+      '.SOBBBBBBBBSSO..',
+      '.SOBBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBBO.',
+      '.OBBAAAAAAAABO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBBBBBBBBBBO..',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'fox-2-side': [
+      '................',
+      '......O...O.....',
+      '.....OSS.OSS....',
+      '....OBBBOBBSO...',
+      '....OBBBBBBBBO..',
+      'SSOBBBBBBOOBBO..',
+      'WSOBBBBBBOOBBO..',
+      'SSOBBBBBBWWWBO..',
+      '.SSOBBBBBBBBBBO.',
+      '.OBBBBBBBBBBBO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBAAAAAAAABO..',
+      '.OBBBBBBBBBBBO..',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
+    ],
+    'fox-3-side': [
+      '................',
+      '.....O....O.....',
+      '....OSS..OSS....',
+      '...OBBBSOBBSO...',
+      '..OBBBBBBBBBBO..',
+      'SSOBBBBBBOOBBO..',
+      'WSOBBBBBBOOBBO..',
+      'SSOBBBBBBWWWBO..',
+      '.SSOBBBBBBBBBBO.',
+      'SSOBBBBBBBBBBBO.',
+      '.OBBAAAAAAAABBO.',
+      '.OBBAAAAAAAABBO.',
+      '.OBBBBBBBBBBBBO.',
+      '..OBBO...OBBO...',
+      '..OBBO...OBBO...',
+      '..OOO.....OOO...'
     ]
-  };
-  /* 进化装饰：drake=blob+角，dragon=blob+角+翅膀（坐标画，不重复整图） */
-  var PET_DECOR = {
-    horns: { A: [[4, 1], [4, 2], [11, 1], [11, 2]] },
-    wings: { S: [[1, 5], [0, 6], [1, 6], [0, 7], [1, 7], [0, 8],
-                 [14, 5], [14, 6], [15, 6], [14, 7], [15, 7], [15, 8]] }
   };
   var PET_PALETTES = {
     egg: { B: '#fff6e6', S: '#f0dfbd', A: '#f6c445' },
-    blob: { B: '#ffe066', S: '#f2bd3a', A: '#ff9f43' },
+    baby: { B: '#ffe066', S: '#f2bd3a', A: '#ff9f43' },
     drake: { B: '#9ada9f', S: '#63b96f', A: '#ff8c69' },
-    dragon: { B: '#ff9b73', S: '#e8653f', A: '#ffd166' }
+    dragon: { B: '#ff9b73', S: '#e8653f', A: '#ffd166' },
+    'cat-cream': { B: '#fdf3e3', S: '#e9d5b5', A: '#ffb3c1' },
+    'cat-orange': { B: '#ffb066', S: '#e08a3e', A: '#fff1d6' },
+    'cat-gray': { B: '#bfc9d4', S: '#93a1b0', A: '#ffd9e2' },
+    'dog-cream': { B: '#f2ddb0', S: '#d9bc82', A: '#b0793f' },
+    'dog-brown': { B: '#c9955e', S: '#a8743e', A: '#8a5a2b' },
+    'dog-gold': { B: '#ecc06c', S: '#cc9c46', A: '#d96a6a' },
+    'fox-rust': { B: '#d97e4c', S: '#b25a30', A: '#fdf0e0' },
+    'fox-deep': { B: '#c66a3c', S: '#9c4e28', A: '#ffe9d6' },
+    'fox-bright': { B: '#e88f5c', S: '#c26a3c', A: '#fff6ea' }
   };
   var PET_INK = '#33303a';
-  /* 表情锚点：眼睛左上角 / 嘴巴左上角 */
+  var PET_WHITE = '#fffdf7', PET_PINK = '#e07a9a', PET_TEAR = '#6ec3ff';
+  /* 表情锚点：每张画各自的眼睛左上角×2 / 嘴巴左上角（脸由 drawFace 叠加） */
   var PET_FACE = {
     egg: { eyes: [[4, 5], [10, 5]], mouth: [7, 8] },
-    blob: { eyes: [[4, 5], [10, 5]], mouth: [7, 8] }
+    baby: { eyes: [[4, 4], [10, 4]], mouth: [7, 6] },
+    'dragon-2': { eyes: [[4, 3], [10, 3]], mouth: [7, 6] },
+    'dragon-3': { eyes: [[3, 4], [11, 4]], mouth: [7, 6] },
+    'cat-2': { eyes: [[4, 4], [10, 4]], mouth: [7, 6] },
+    'cat-3': { eyes: [[4, 4], [10, 4]], mouth: [7, 6] },
+    'dog-2': { eyes: [[3, 4], [11, 4]], mouth: [7, 7] },
+    'dog-3': { eyes: [[3, 4], [11, 4]], mouth: [7, 7] },
+    'fox-2': { eyes: [[4, 4], [10, 4]], mouth: [7, 7] },
+    'fox-3': { eyes: [[4, 4], [10, 4]], mouth: [7, 7] }
   };
+  /* 表情几何：eye 形状 + 附加特征。各表情眼睛的形状/位置/大小都不同，差距拉满 */
+  var PET_FACES = {
+    idle:    { eye: 'open' },
+    blink:   { eye: 'line' },
+    sleep:   { eye: 'sleep', mouth: 'o' },
+    droopy:  { eye: 'lid', mouth: 'frown' },
+    happy:   { eye: 'arc', mouth: 'smile', blush: true },
+    excited: { eye: 'big', mouth: 'open' },
+    sad:     { eye: 'sad', mouth: 'frown', tear: true },
+    eat:     { eye: 'squeeze', mouth: 'chew' },
+    wash:    { eye: 'squeeze', mouth: 'flat', blush: true },
+    grunt:   { eye: 'squeeze', mouth: 'grunt' }
+  };
+  /* 物种：阶段 0 蛋、1 奶宝宝（共通身体+always 物种耳饰/尾巴）；2/3 各自独立剪影 art[k]。
+     always 只在第 1 阶叠加（2/3 剪影已含特征）。 */
+  var PET_SPECIES = {
+    dragon: { label: '小龙', emoji: '🐉', stages: ['小绒球', '小龙崽', '小火龙'],
+      pals: ['baby', 'drake', 'dragon'], art: ['dragon-2', 'dragon-3'],
+      always: { A: [[5, 0], [10, 0]],                     /* 角尖 */
+                S: [[3, 9], [12, 9]],                     /* 翼芽（贴住收窄后的脖颈） */
+                B: [[13, 11], [14, 12], [13, 12]] } },    /* 尾巴（贴住圆肚右缘） */
+    cat: { label: '小猫', emoji: '🐱', stages: ['小奶猫', '猫崽', '大猫'],
+      pals: ['cat-cream', 'cat-orange', 'cat-gray'], art: ['cat-2', 'cat-3'],
+      always: { B: [[3, 0], [4, 1], [12, 0], [11, 1],     /* 尖耳 */
+                    [13, 11], [14, 10], [15, 10], [15, 11], [15, 12], [14, 12]],
+                A: [[3, 1], [12, 1]] } },                 /* 耳内粉 */
+    dog: { label: '小狗', emoji: '🐶', stages: ['小奶狗', '狗崽', '大狗'],
+      pals: ['dog-cream', 'dog-brown', 'dog-gold'], art: ['dog-2', 'dog-3'],
+      always: { S: [[2, 3], [2, 4], [2, 5], [3, 4], [13, 3], [13, 4], [13, 5], [12, 4]] } },
+    fox: { label: '小狐狸', emoji: '🦊', stages: ['小奶狐', '小狐狸', '大尾巴狐'],
+      pals: ['fox-rust', 'fox-deep', 'fox-bright'], art: ['fox-2', 'fox-3'],
+      always: { B: [[3, 0], [4, 1], [12, 0], [11, 1],
+                    [13, 11], [14, 10], [15, 10], [15, 11], [15, 12], [14, 12]],
+                A: [[3, 1], [12, 1], [14, 11]] } }        /* 耳内+白尾尖 */
+  };
+  function petSpeciesKey() { return (S.pet && S.pet.species) || 'dragon'; }
+  function curSpecies() { return PET_SPECIES[petSpeciesKey()] || PET_SPECIES.dragon; }
 
-  var petAnim = { blinkTimer: null, exprTimer: null, expr: 'idle' };
-  /* stageOverride: 0蛋 1绒球 2龙崽 3火龙；缺省画当前宠物阶段（图鉴预览用） */
-  function drawPet(cv, expr, stageOverride) {
+  var petAnim = { blinkTimer: null, dreamTimer: null, actionTimer: null, baseExpr: 'idle', actionExpr: null };
+  /* stageOverride: 0蛋 1宝宝 2/3 物种剪影；缺省画当前宠物阶段（图鉴/试验台预览用）
+     walking: 走路中 → 换用 *-side 侧面剪影（朝右画，向左走由 face-left 翻转），不叠正面表情 */
+  function drawPet(cv, expr, stageOverride, walking) {
     if (!cv || !cv.getContext) return;
     var ctx = cv.getContext('2d');
     if (!ctx) return;   // jsdom 等无 canvas 实现下静默跳过
     var px = cv.width / 16;
     ctx.clearRect(0, 0, cv.width, cv.height);
     var stage = stageOverride == null ? petStageIdx() : stageOverride;
-    var shape = stage === 0 ? 'egg' : 'blob';
-    var pal = PET_PALETTES[stage === 0 ? 'egg' : ['blob', 'drake', 'dragon'][stage - 1]];
+    var sp = curSpecies();
+    var key = stage === 0 ? 'egg' : (stage === 1 ? 'baby' : (sp.art[stage - 2] || 'baby'));
+    var useSide = false;
+    if (walking && stage >= 1) {
+      var sk = key + '-side';
+      if (PET_PIXELS[sk]) { key = sk; useSide = true; }
+    }
+    var art = PET_PIXELS[key] || PET_PIXELS.baby;
+    var pal = stage === 0 ? PET_PALETTES.egg : PET_PALETTES[sp.pals[stage - 1]];
 
     function put(x, y, c) {
       ctx.fillStyle = c;
       ctx.fillRect(x * px, y * px, px, px);
     }
+    function col(c) {
+      if (c === 'O') return PET_INK;
+      if (c === 'W') return PET_WHITE;
+      if (c === 'P') return PET_PINK;
+      return pal[c] || PET_INK;
+    }
     /* base body */
-    (PET_PIXELS[shape] || PET_PIXELS.blob).forEach(function (row, y) {
+    art.forEach(function (row, y) {
       for (var x = 0; x < row.length; x++) {
         var c = row[x];
         if (c === '.' || c === undefined) continue;
-        put(x, y, c === 'O' ? PET_INK : (pal[c] || PET_INK));
+        put(x, y, col(c));
       }
     });
-    /* decor */
-    if (stage >= 2) PET_DECOR.horns.A.forEach(function (p) { put(p[0], p[1], pal.A); });
-    if (stage >= 3) PET_DECOR.wings.S.forEach(function (p) { put(p[0], p[1], pal.S); });
-    /* face（表情参数化，不另画整帧） */
-    var f = PET_FACE[shape] || PET_FACE.blob;
-    function eye(ax, ay, style) {
-      if (style === 'line') { put(ax, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK); return; }
-      if (style === 'squint') { put(ax, ay, PET_INK); put(ax + 1, ay, PET_INK); return; }
-      put(ax, ay, PET_INK); put(ax + 1, ay, PET_INK);
-      put(ax, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK);
+    /* 阶段 1 奶宝宝：叠物种耳/尾饰（阶段 2/3 剪影已含特征，不再叠加；侧影图自带特征） */
+    if (stage === 1 && sp.always && !useSide) Object.keys(sp.always).forEach(function (k) {
+      sp.always[k].forEach(function (p) { put(p[0], p[1], pal[k] || PET_INK); });
+    });
+    /* 蛋：叠物种斑点（用阶段 2 进化体主体色，蛋色暗示长大后的模样） */
+    if (stage === 0) {
+      var spot = (PET_PALETTES[sp.pals[1]] || PET_PALETTES.egg).B;
+      [[4, 9], [11, 9], [6, 10], [9, 11], [5, 12]].forEach(function (p) { put(p[0], p[1], spot); });
     }
-    var eyeStyle = (expr === 'blink' || expr === 'sleep') ? 'line'
-      : (expr === 'happy' || expr === 'eat') ? 'squint' : 'open';
-    f.eyes.forEach(function (e) { eye(e[0], e[1], eyeStyle); });
-    if (expr === 'sad') { /* 泪滴 */ put(f.eyes[0][0], f.eyes[0][1] + 2, '#6ec3ff'); }
+    /* face：每表情独立几何（眼睛形状/位置/大小 + 眉毛/腮红/泪滴/嘴型都不同）；侧影自带单眼不叠 */
+    if (useSide) return;
+    var f = PET_FACE[key] || PET_FACE.baby;
+    var fc = PET_FACES[expr] || PET_FACES.idle;
+    f.eyes.forEach(function (e, i) {
+      var ax = e[0], ay = e[1];
+      switch (fc.eye) {
+        case 'line':                                   // 眨眼：下移一线
+          put(ax, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK); break;
+        case 'sleep':                                  // 睡着：上移闭眼线（与眨眼错位）
+          put(ax, ay, PET_INK); put(ax + 1, ay, PET_INK); break;
+        case 'arc':                                    // 开心 ^：拱起三像素
+          put(ax, ay, PET_INK); put(ax - 1, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK); break;
+        case 'lid':                                    // 没劲：整眼下移 + 浅色眼皮压顶
+          put(ax, ay + 1, pal.S); put(ax + 1, ay + 1, pal.S);
+          put(ax, ay + 2, PET_INK); put(ax + 1, ay + 2, PET_INK); break;
+        case 'big':                                    // 兴奋：3x2 大眼 + 白高光
+          put(ax - 1, ay, PET_INK); put(ax, ay, PET_INK); put(ax + 1, ay, PET_INK);
+          put(ax - 1, ay + 1, PET_INK); put(ax, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK);
+          put(ax + 1, ay, PET_WHITE); break;
+        case 'sad':                                    // 难过：垂眼 + 内高八字眉
+          put(ax, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK);
+          put(i === 0 ? ax + 1 : ax, ay - 1, PET_INK); break;
+        case 'squeeze':                                // 吃饭/搓澡/用力：眯起
+          put(ax, ay, PET_INK); put(ax + 1, ay, PET_INK); break;
+        default:                                       // open：普通圆眼
+          put(ax, ay, PET_INK); put(ax + 1, ay, PET_INK);
+          put(ax, ay + 1, PET_INK); put(ax + 1, ay + 1, PET_INK);
+      }
+    });
+    if (fc.blush) {   // 腮红：两眼外下侧
+      put(f.eyes[0][0] - 1, f.eyes[0][1] + 2, PET_PINK);
+      put(f.eyes[1][0] + 2, f.eyes[1][1] + 2, PET_PINK);
+    }
+    if (fc.tear) {    // 泪滴：左眼下两像素
+      put(f.eyes[0][0], f.eyes[0][1] + 2, PET_TEAR);
+      put(f.eyes[0][0], f.eyes[0][1] + 3, PET_TEAR);
+    }
+    /* 开心到眯眼：^ 眼的内眼角顺弧垂到嘴角（只补桥接点，不再与眼翅平行描线） */
+    if (fc.eye === 'arc' && fc.mouth === 'smile') {
+      function smileLine(sx, sy, tx, ty) {   // 短距直线插值描点
+        var n = Math.max(Math.abs(tx - sx), Math.abs(ty - sy));
+        for (var i = 1; i <= n; i++) {
+          var t = i / n;
+          put(Math.round(sx + (tx - sx) * t), Math.round(sy + (ty - sy) * t), PET_INK);
+        }
+      }
+      smileLine(f.eyes[0][0] + 1, f.eyes[0][1] + 1, f.mouth[0] - 1, f.mouth[1]);
+      smileLine(f.eyes[1][0] - 1, f.eyes[1][1] + 1, f.mouth[0] + 2, f.mouth[1]);
+    }
     var mx = f.mouth[0], my = f.mouth[1];
-    if (expr === 'eat') {
-      put(mx, my, PET_INK); put(mx + 1, my, PET_INK);
-      put(mx, my + 1, PET_INK); put(mx + 1, my + 1, '#e07a9a');
-    } else if (expr === 'happy') {
-      put(mx, my, PET_INK); put(mx + 1, my, PET_INK);
-      put(mx - 1, my, PET_INK); put(mx + 2, my, PET_INK);
-    } else if (expr === 'sad') {
-      put(mx, my + 1, PET_INK); put(mx + 1, my + 1, PET_INK);
-    } else {
-      put(mx, my, PET_INK); put(mx + 1, my, PET_INK);
+    switch (fc.mouth) {
+      case 'smile':    // 开心：宽笑弧
+        put(mx - 1, my, PET_INK); put(mx + 2, my, PET_INK);
+        put(mx, my + 1, PET_INK); put(mx + 1, my + 1, PET_INK); break;
+      case 'open':     // 兴奋：咧嘴笑 + 舌头
+        put(mx - 1, my, PET_INK); put(mx, my, PET_INK); put(mx + 1, my, PET_INK); put(mx + 2, my, PET_INK);
+        put(mx, my + 1, PET_PINK); put(mx + 1, my + 1, PET_PINK); break;
+      case 'frown':    // 难过：倒弧
+        put(mx, my, PET_INK); put(mx + 1, my, PET_INK);
+        put(mx - 1, my + 1, PET_INK); put(mx + 2, my + 1, PET_INK); break;
+      case 'o':        // 睡着：小圆嘴
+        put(mx, my + 1, PET_PINK); put(mx + 1, my + 1, PET_PINK); break;
+      case 'chew':     // 吃饭：嚼动嘴
+        put(mx, my, PET_INK); put(mx + 1, my, PET_INK);
+        put(mx, my + 1, PET_INK); put(mx + 1, my + 1, PET_PINK); break;
+      case 'grunt':    // 用力：大张口
+        put(mx - 1, my + 1, PET_INK); put(mx, my + 1, PET_INK); put(mx + 1, my + 1, PET_INK); put(mx + 2, my + 1, PET_INK);
+        put(mx, my + 2, PET_PINK); put(mx + 1, my + 2, PET_PINK); break;
+      default:         // idle/flat：平线
+        put(mx, my, PET_INK); put(mx + 1, my, PET_INK);
     }
   }
-  function petExpr(expr, ms) {
-    petAnim.expr = expr;
-    var cv = $('#pet-cv');
-    if (cv) drawPet(cv, expr);
-    var wrap = $('#pet-touch');
-    if (wrap) {
-      wrap.classList.remove('happy', 'eat', 'sad');
-      if (expr === 'happy' || expr === 'eat' || expr === 'sad') {
-        void wrap.offsetWidth;
-        wrap.classList.add(expr);
+  /* 双层动画调度：常驻基调（数值驱动）+ 即时表演（交互触发）。两层共用 drawPet。
+     applyPetLayer 每次只保留一个动作类，类互斥，避免 CSS animation 叠加冲突。 */
+  var PET_CLASSES = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop',
+    'base-drowsy', 'base-hyper', 'base-low'];
+  function petDraw() {
+    var c = $('#pet-cv');
+    if (!c) return;
+    var t = $('#pet-touch');
+    var walking = !!(t && t.classList.contains('walking'));
+    drawPet(c, petAnim.actionExpr || petAnim.baseExpr, null, walking);
+  }
+  function applyPetLayer(cls, expr, transient) {
+    var w = $('#pet-touch');
+    if (w) PET_CLASSES.forEach(function (k) { w.classList.remove(k); });
+    if (cls && w) w.classList.add(cls);
+    if (w) w.classList.remove('walking');   // 表演优先，停止步态（位移过渡自然走完）
+    petAnim.actionExpr = transient ? expr : null;
+    if (!transient) petAnim.baseExpr = expr;
+    petDraw();
+  }
+  /* 常驻基调：按 sati/mood/clean 推导待机外观与动作循环 */
+  function petMoodState() {
+    var sa = S.pet.sati, cl = S.pet.clean, m = S.pet.mood;
+    if (m < 45) return 'drowsy';                        // 无聊 → 打瞌睡
+    if (sa < 40 || cl < 40) return 'low';               // 饿/脏 → 没精打采
+    if (sa >= 75 && cl >= 75 && m >= 75) return 'hyper';// 三值都高 → 亢奋走动
+    return 'content';
+  }
+  var PET_BASE = {
+    drowsy: { cls: 'base-drowsy', expr: 'sleep' },
+    low:    { cls: 'base-low',    expr: 'droopy' },
+    hyper:  { cls: 'base-hyper',  expr: 'excited' },
+    content:{ cls: null,          expr: 'idle' }
+  };
+  function setFromMood() {
+    var b = PET_BASE[petMoodState()];
+    applyPetLayer(b.cls, b.expr, false);
+  }
+  /* 即时表演：播完自动回落到当前常驻基调 */
+  function playAction(cls, expr, ms) {
+    applyPetLayer(cls, expr, true);
+    clearTimeout(petAnim.actionTimer);
+    petAnim.actionTimer = setTimeout(setFromMood, ms || 1200);
+  }
+  /* ---- 像素风特效精灵：与宠物同一套字符画（. 透明），canvas 原生尺寸绘制、CSS 放大 ---- */
+  var FX_SPRITES = {
+    poop: { pal: { B: '#8a562b', D: '#6e4321' }, rows: [
+      '...BB...',
+      '..BBBB..',
+      '..BDDB..',
+      '.BBBBBB.',
+      '.BDBDDB.',
+      'BBBBBBBB',
+      'BBDBDDBB',
+      'BBBBBBBB'
+    ] },
+    meat: { pal: { M: '#ef8a76', W: '#fff6ea' }, rows: [
+      '..MMMM..',
+      '.MMMMMM.',
+      '.MMMMMM.',
+      '..MMMM..',
+      '....WW..',
+      '....WW..'
+    ] },
+    bowl: { pal: { W: '#fffdf6', B: '#4a7fc1', b: '#35619c' }, rows: [
+      '..WWWWWW..',
+      '.WWWWWWWW.',
+      'WWWWWWWWWW',
+      '.BBBBBBBB.',
+      '.BBbBBbBB.',
+      '..BBBBBB..',
+      '...BBBB...'
+    ] },
+    bubble: { pal: { B: '#8fd3ff', W: '#eaf8ff' }, rows: [
+      '.BBB.',
+      'BW..B',
+      'B...B',
+      'B...B',
+      '.BBB.'
+    ] },
+    heart: { pal: { R: '#ff7ba9', W: '#ffd3e2' }, rows: [
+      '.RR.RR.',
+      'RRWRRRR',
+      'RRRRRRR',
+      '.RRRRR.',
+      '..RRR..',
+      '...R...'
+    ] },
+    zzz: { pal: { Z: '#9fb7ff', S: '#c3d3ff' }, rows: [
+      'ZZZZ....',
+      '...Z....',
+      '..Z.....',
+      'ZZZZ.SSS',
+      '.......S',
+      '.....SSS'
+    ] },
+    note: { pal: { N: '#8a6bff' }, rows: [
+      '...NN.',
+      '...N.N',
+      '...N..',
+      '...N..',
+      '..NN..',
+      '..NN..'
+    ] },
+    teddy: { pal: { B: '#b98a5a', E: '#33303a', W: '#e8cba8' }, rows: [
+      '.B...B.',
+      'BBB.BBB',
+      '.BBBBB.',
+      '.BEBEB.',
+      '.BWWWB.',
+      '..BBB..'
+    ] },
+    balloon: { pal: { R: '#ff5c5c', W: '#ffb3b3', T: '#8a6d4a' }, rows: [
+      '..RRR..',
+      '.RWRRR.',
+      '.RRRRR.',
+      '.RRRRR.',
+      '..RRR..',
+      '...T...',
+      '...T...'
+    ] },
+    drum: { pal: { A: '#f6c445', R: '#e2574c', D: '#7a3b35' }, rows: [
+      '.AAAAA.',
+      'RRRRRRR',
+      'RDRDRDR',
+      'RRRRRRR',
+      '.AAAAA.'
+    ] },
+    yarn: { pal: { P: '#7ec4e8', d: '#4a90b8' }, rows: [
+      '..PPP..',
+      '.PdPPP.',
+      'PPPdPPP',
+      '.PPdPP.',
+      '..PPP..',
+      '...d...'
+    ] },
+    horn: { pal: { G: '#f2b13c' }, rows: [
+      '..G....',
+      '..GG...',
+      'GGGGGGG',
+      '..GG...',
+      '..G....'
+    ] },
+    kite: { pal: { K: '#4aa8ff', W: '#ffe066', T: '#c98a3d' }, rows: [
+      '...K...',
+      '..KWK..',
+      '.KKKKK.',
+      '..KKK..',
+      '...K...',
+      '...T...',
+      '....T..'
+    ] }
+  };
+  /* 画一个精灵到独立 canvas（原生像素尺寸），CSS 尺寸 = scale 倍 + pixelated 保持硬边 */
+  function fxSpriteCanvas(name, scale) {
+    var spr = FX_SPRITES[name]; if (!spr) return null;
+    var cv = document.createElement('canvas');
+    cv.width = spr.rows[0].length; cv.height = spr.rows.length;
+    var ctx = cv.getContext('2d'); if (!ctx) return null;   // 无 canvas 实现下静默跳过
+    for (var y = 0; y < spr.rows.length; y++) {
+      for (var x = 0; x < spr.rows[y].length; x++) {
+        var c = spr.rows[y][x];
+        if (c === '.' || c === undefined) continue;
+        ctx.fillStyle = spr.pal[c] || PET_INK;
+        ctx.fillRect(x, y, 1, 1);
       }
     }
-    clearTimeout(petAnim.exprTimer);
-    petAnim.exprTimer = setTimeout(function () {
-      petAnim.expr = 'idle';
-      var c = $('#pet-cv'); if (c) drawPet(c, 'idle');
-      var w = $('#pet-touch'); if (w) w.classList.remove('happy', 'eat', 'sad');
-    }, ms || 900);
+    cv.style.width = (cv.width * scale) + 'px';
+    cv.style.height = (cv.height * scale) + 'px';
+    return cv;
+  }
+  /* 通用浮动特效：间隔上浮多个像素精灵（音符/泡泡/爱心/道具…）。
+     wrapSel 缺省挂在首页宠物上；试验台传 '#tb-cvwrap' 就地播放 */
+  function spawnFx(name, times, wrapSel) {
+    var wrap = $(wrapSel || '#pet-touch'); if (!wrap) return;
+    for (var i = 0; i < times; i++) (function (nm) {
+      setTimeout(function () {
+        var cv = fxSpriteCanvas(nm, 3);
+        if (!cv) return;
+        cv.className = 'fx';
+        cv.style.left = (14 + Math.random() * 60) + 'px';
+        wrap.appendChild(cv);
+        setTimeout(function () { cv.remove(); }, 1250);
+      }, i * 130);
+    })(name);
+  }
+  /* 喂食：像素饭盆从天而降，宠物低头进食（配合 eat 表情 + chomp 吞咽） */
+  function addFoodBowl(wrapSel) {
+    var wrap = $(wrapSel || '#pet-touch'); if (!wrap) return;
+    var cv = fxSpriteCanvas('bowl', 3);
+    if (!cv) return;
+    cv.className = 'fx food-drop';
+    cv.style.left = '36%';
+    wrap.appendChild(cv);
+    setTimeout(function () { cv.remove(); }, 1650);
+  }
+  /* ---- 行走系统：定位层 #pet-pos 由 JS 驱动在舞台内散步，朝向自动翻转；
+          走着走着随机停下掏道具/开心跳，拉屎也先走到角落再蹲下 ---- */
+  var petWalk = { x: 90, y: 54, moving: false, timer: null };
+  function petWalkTo(x, y, dur, cb) {
+    var pos = $('#pet-pos');
+    if (!pos) { if (cb) cb(); return; }
+    var goLeft = x < petWalk.x;
+    petWalk.x = x; petWalk.y = y;
+    petWalk.moving = true;
+    pos.classList.toggle('face-left', goLeft);
+    pos.style.transition = 'left ' + dur + 'ms ease-in-out, top ' + dur + 'ms ease-in-out';
+    pos.style.left = x + 'px'; pos.style.top = y + 'px';
+    var t = $('#pet-touch');
+    if (t) t.classList.add('walking');
+    petWalk.frameIdx = 0;
+    clearInterval(petWalk.frameTimer);
+    petWalk.frameTimer = setInterval(function () {       // 7 帧走路循环（PNG 物种；字符画物种重复绘制同图无副作用）
+      petWalk.frameIdx = ((petWalk.frameIdx || 0) + 1) % 7;
+      petDraw();
+    }, 110);
+    petDraw();                                           // 立刻换走路帧
+    setTimeout(function () {
+      clearInterval(petWalk.frameTimer);
+      petWalk.moving = false;
+      var w2 = $('#pet-touch');
+      if (w2) { w2.classList.remove('walking'); petDraw(); }   // 回正面
+      if (cb) cb();
+    }, dur + 40);
+  }
+  /* 走到位后的随机小事件：掏道具（含饭盆） / 开心跳 */
+  function petWalkArrive() {
+    var r = Math.random();
+    if (r < 0.24) { playAction('prop', 'happy', 1200); spawnFx(pick(['teddy', 'balloon', 'drum', 'yarn', 'horn', 'kite', 'bowl']), 1); }
+    else if (r < 0.36) { playAction('happy', 'happy', 900); spawnFx('heart', 1); }
+  }
+  function petRoamTick() {
+    if (petWalk.moving || petAnim.actionExpr || document.hidden) return;
+    var m = petMoodState();
+    if (m !== 'content' && m !== 'hyper') return;   // 睡着/没劲不溜达
+    if (Math.random() < 0.45) return;               // 有时就想站着发呆
+    var x = 12 + Math.round(Math.random() * 156);   // 舞台活动范围
+    var y = 32 + Math.round(Math.random() * 56);
+    petWalkTo(x, y, 900 + Math.round(Math.random() * 900), petWalkArrive);
+  }
+  function startPetRoam() {
+    clearInterval(petWalk.timer);
+    petWalk.timer = setInterval(petRoamTick, 3800);
+  }
+  /* 打瞌睡常驻态下周期性飘出 💤 梦境泡 */
+  function startPetDream() {
+    clearInterval(petAnim.dreamTimer);
+    petAnim.dreamTimer = setInterval(function () {
+      if (petAnim.baseExpr !== 'sleep' || petAnim.actionExpr) return;
+      spawnFx('zzz', 1);
+    }, 4200);
+  }
+  /* ---- 玩耍随机分支：偶尔跳舞 / 掏出奇怪道具 ---- */
+  function playFunRandom() {
+    var r = Math.random();
+    if (r < 0.3) { playAction('dance', 'excited', 1500); spawnFx('note', 3); }
+    else if (r < 0.5) { playAction('prop', 'happy', 1200); spawnFx(pick(['teddy', 'balloon', 'drum', 'yarn', 'horn', 'kite']), 1); }
+    else { playAction('happy', 'happy', 1300); spawnFx('heart', 1); }
+  }
+  /* ---- 拉屎（完整数值版）：饱了才拉、先蹲下预告；滞留便会使清洁掉得更快 ---- */
+  function petPoopRoll() {
+    if (!S.pet.poop) S.pet.poop = { t: 0, n: 0 };
+    if (S.pet.poop.n >= 3) return;
+    if (S.pet.sati < 50) return;
+    var now = Date.now();
+    if (now - (S.pet.poop.t || 0) < 45 * 60000) return;
+    if (Math.random() > 0.55) return;
+    S.pet.poop.t = now;
+    /* 先溜达到舞台一角，再蹲下用力 */
+    petWalkTo(30 + Math.round(Math.random() * 110), 88, 1600, function () {
+      playAction('poop', 'grunt', 1200);            // 预告：蹲 + 用力表情
+      setTimeout(function () { dropPoop(); }, 1100);
+    });
+  }
+  function dropPoop() {
+    S.pet.poop.n = Math.min(3, (S.pet.poop.n || 0) + 1);
+    toast(S.pet.name + ' 悄悄拉了粑粑，点它或洗澡清理吧');
+    renderHome();
+    save();
+  }
+  function renderPoops() {
+    if (!S.pet.poop) S.pet.poop = { t: 0, n: 0 };
+    var stage = $('.pet-stage'); if (!stage) return;
+    $$('.pet-poop', stage).forEach(function (n) { n.remove(); });
+    for (var i = 0; i < S.pet.poop.n; i++) {
+      var p = document.createElement('button');
+      p.className = 'pet-poop';
+      var cv = fxSpriteCanvas('poop', 3);
+      if (cv) p.appendChild(cv);
+      p.style.right = (16 + i * 34) + 'px';
+      p.onclick = cleanPoop;
+      stage.appendChild(p);
+    }
+  }
+  function cleanPoop() {
+    var n = S.pet.poop.n || 0;
+    if (!n) return;
+    S.pet.poop.n = 0; S.pet.poop.t = Date.now();
+    S.pet.clean = clamp(S.pet.clean + 4 * n, 0, 100);
+    gainMood(3 * n);
+    beep('ok');
+    toast('帮你清理干净啦，' + S.pet.name + ' 舒坦多了！');
+    renderHome();
+    save();
   }
   function startPetBlink() {
     clearInterval(petAnim.blinkTimer);
     petAnim.blinkTimer = setInterval(function () {
       var cv = $('#pet-cv');
       if (!cv) return;
-      if (petAnim.expr !== 'idle') return;
+      if (petAnim.actionExpr) return;               // 即时表演中不插
+      if (petAnim.baseExpr !== 'idle' && petAnim.baseExpr !== 'excited') return; // 常驻闭眼/低落不插
+      var tw = $('#pet-touch');
+      if (tw && tw.classList.contains('walking')) return;   // 走路侧影不叠眨眼
+      var cur = petAnim.baseExpr;
       drawPet(cv, 'blink');
       setTimeout(function () {
         var c = $('#pet-cv');
-        if (c && petAnim.expr === 'idle') drawPet(c, 'idle');
+        if (c && !petAnim.actionExpr && petAnim.baseExpr === cur) drawPet(c, cur);
       }, 170);
     }, 3400 + Math.floor(Math.random() * 1600));
-  }
-  function floatHearts(icon) {
-    var wrap = $('#pet-touch');
-    if (!wrap) return;
-    var sp = document.createElement('span');
-    sp.className = 'float-ico';
-    sp.textContent = icon;
-    sp.style.left = (18 + Math.random() * 44) + 'px';
-    wrap.appendChild(sp);
-    setTimeout(function () { sp.remove(); }, 1100);
   }
   /* ---------------- streak ---------------- */
   function updateStreak() {
@@ -718,7 +1440,9 @@
           '<span class="lvl-mini">Lv.' + S.pet.level + '</span>' +
           '<span class="bar xp"><i style="width:' + Math.round(S.pet.xp / xpNeed(S.pet.level) * 100) + '%"></i></span>' +
         '</div>' +
+        '<div id="pet-pos" style="left:' + petWalk.x + 'px;top:' + petWalk.y + 'px">' +
         '<div class="pet-canvas-wrap" id="pet-touch" title="点一点它"><canvas id="pet-cv" width="16" height="16"></canvas></div>' +
+        '</div>' +
         '<div class="pet-stage-name">' + petStageName() + '</div>' +
       '</div>' +
       '<div class="pet-meta">' +
@@ -736,9 +1460,13 @@
       '</div>' +
       '</div></div>';
     v.appendChild(c1);
-    drawPet($('#pet-cv'), 'idle');
+    setFromMood();
     startPetBlink();
+    startPetDream();
+    startPetRoam();
+    renderPoops();
     $('#pet-touch').onclick = touchPet;
+    petPoopRoll();
     $('#btn-feed').onclick = feedPet;
     $('#btn-fun').onclick = playPet;
     $('#btn-wash').onclick = washPet;
@@ -813,21 +1541,14 @@
   var learnPos = 0;             // 今日关卡当前第几个词
   var learnHits = {};           // { 队列下标: 已命中次数 }，左右滑回看时保留进度
   var learnPassed = {};         // { 队列下标: true }，已通过并计过分的词
-  var learnRecognizer = null;   // 单例 SpeechRecognition
   var learnBusy = false;        // 录音进行中，避免重复触发
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
   var learnTimer = null;        // 8s 兜底超时的句柄，必须可清除
-  var learnStopping = false;    // 本次 onend 是我们主动 stop 的（区分超时/静音自动断）
-  var learnHeard = '';          // 最近一次识别到的文本（手动停止时用来给孩子反馈）
   var learnHitScored = false;   // 本次录音是否已判定命中（避免 onend 重复弹提示）
-  var learnErrored = false;     // 本次是否已有明确错误提示（避免和通用反馈重复）
   var learnSession = 0;         // 每次 start 自增；过期的 onend 直接作废，避免翻词后串台
   var learnEnded = true;        // 本次录音是否已真正结束（onend 触发）；用于兜底检测「卡死」
-  var learnEndWatch = null;     // 手动/超时停止后的看门狗：onend 不来就手动收尾并给反馈
   var learnStartTs = 0;         // 本次录音开始时间（诊断：区分「几乎没录上」vs「听了没声音」）
-  var learnErrCode = '';        // 本次录音最后一次 onerror 的 error code（诊断留痕）
-  var learnInstalling = false;  // 是否正在下载 Chrome 本地离线语音包（防止重复触发）
-  var learnEngine = 'sr';       // 当前一轮录音走的引擎：'sr' 浏览器识别 | 'sf' 硅基云端 ASR
+  var learnEngine = 'sf';       // 当前一轮录音走的引擎：仅硅基流动云端 ASR（'sf'）
   var learnEnterDir = 0;        // 新卡入场方向：1=从右（左滑后）、-1=从左（右滑后）
   var HITS_GOAL = 2;            // 跟读几次算通过
   var SWIPE_HINT_MAX = 2;       // 「卡片能滑」这件事最多提示两次
@@ -969,7 +1690,7 @@
     var fb = scope.querySelector('#mic-btn-fb');
     if (fb) fb.onclick = onLearnHit;
     var self = scope.querySelector('#mic-self');
-    if (self) self.onclick = function () { if (learnBusy) stopLearnMic(); onLearnHit(); };
+    if (self) self.onclick = function () { if (learnBusy) abandonLearnMic(); onLearnHit(); };
   }
 
   /* ---------- 滑动：跟手位移 + 倾斜，未过关时锁住 ---------- */
@@ -1218,23 +1939,23 @@
   function learnRecognitionSupported() {
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
-  /* 当前可用的「听」引擎：'sf' = 硅基流动云端 ASR（设置里配了 API Key 就走它，
-     任何浏览器行为一致、不挑内核）；'sr' = 浏览器自带识别（仅没配 Key 时回落，
-     Chrome 139+ 可本地离线）；'off' = 没有识别能力，只能自评。 */
+  /* 当前可用的「听」引擎：'sf' = 硅基流动云端 ASR（配了 Key 就走它，
+     任何浏览器行为一致、不挑内核）；没配 Key 则回落到 'off'（UI 把 🎤 降级为
+     ✅ 自评并提示去 ⚙️ 配 Key），不再走浏览器本地下载语音包的老路。 */
   function micEngine() {
     if (S.settings.asrKey && window.isSecureContext) return 'sf';
-    if (learnRecognitionSupported()) return 'sr';
     return 'off';
   }
-  function asrEngineOnline() {
-    return !!(S.settings.asrKey && window.isSecureContext);
-  }
+  
   /* 「不能自动听读」不弹笼统提示：直接告诉家长卡在哪一层、出路是什么。
      判断顺序：非安全上下文（file:// 或局域网 IP 拿不到麦克风）→ 没配 Key
      （Firefox/Safari 无浏览器自带识别，配了硅基 Key 任何浏览器都能跟读）。 */
   function learnNomicText() {
     if (!window.isSecureContext) {
       return '⚠️ 页面不是安全环境，麦克风被浏览器禁了：请用 http://127.0.0.1 或 https 打开本页，再进 ⚙️ 配 Key';
+    }
+    if (!S.settings.asrKey) {
+      return '⚠️ 还没配置硅基流动 API Key：去 ⚙️ 设置粘贴 sk-… 并点保存，就能跟读（不挑浏览器）';
     }
     if (!learnRecognitionSupported()) {
       return '⚠️ 这台浏览器没带语音识别：去 ⚙️ 设置粘贴硅基 API Key（sk-…）并点保存，就能跟读了';
@@ -1252,222 +1973,33 @@
     if (a + 's' === b || a === b + 's') return true;
     return false;
   }
-  /* 每次 start 新建一个识别器实例（而非单例复用）。
-     Chrome 里 stop() 后立刻 start() 同一个实例常报 already-started 而静默失败，
-     重建实例可彻底避开这个坑；旧实例的 onend 用 learnSession 作废，不会串台。
-     local=true 时（Chrome 139+ 已装离线语言包）走设备本地识别，音频不出本机、
-     不依赖网络；false 则走浏览器默认的在线识别服务。 */
-  function buildRecognizer(local) {
-    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Ctor) return null;
-    var r = new Ctor();
-    var mySession = learnSession;
-    r.lang = 'en-US';
-    r.continuous = true;
-    r.interimResults = true;
-    r.maxAlternatives = 5;
-    if (local) { try { r.processLocally = true; } catch (e) {} }
-    r.onresult = function (ev) {
-      for (var i = ev.resultIndex; i < ev.results.length; i++) {
-        var res = ev.results[i];
-        var txt = res[0] && res[0].transcript;
-        if (txt) {
-          learnHeard = normalizeSpoken(txt);
-          /* 实时回显：录音中把识别到的词实时打在状态行，让孩子/家长立刻知道
-             麦克风有没有听到。已命中或已通过时不再刷新，避免盖掉结果文案。 */
-          if (!learnHitScored && mySession === learnSession && learnBusy) {
-            var st = $('#learn-status');
-            if (st && !st.classList.contains('ok')) {
-              var shown = (txt || '').trim().slice(0, 18);
-              st.textContent = shown ? '正在听…「' + shown + '」' : '正在听…';
-            }
-          }
-        }
-        if (learnHitScored) return;
-        for (var j = 0; j < res.length; j++) {
-          if (spokenMatches(res[j].transcript, learnQueue[learnPos])) { onLearnHit(); return; }
-        }
-      }
-    };
-    r.onerror = function (ev) {
-      var err = ev && ev.error;
-      learnErrCode = err || '';
-      if (err === 'aborted') return;   // 我们主动 stop，忽略
-      if (err === 'not-allowed' || err === 'service-not-allowed') {
-        learnErrored = true; learnStopping = true; learnBusy = false;
-        if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-        syncMicVisual();
-        toast('麦克风没打开：请允许使用麦克风 🎤');
-      } else if (err === 'network') {
-        learnErrored = true; learnStopping = true; learnBusy = false;
-        if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-        syncMicVisual();
-        /* Edge 的在线识别服务常年不稳定（官方论坛从 134 版起大量 network 报错），
-           且其服务器在海外、国内直连基本不通。给家长可执行的出路而不是干提示。 */
-        toast('语音服务连不上（Edge 老毛病）→ 去 ⚙️ 设置配个硅基 Key，任意浏览器都能跟读，或用"我读过了" ✅');
-      }
-      /* 其余错误码（audio-capture / bad-grammar / language-not-supported 等）
-         已落入 learnErrCode，由 micDoneFeedback 转成家长可懂的反馈 */
-      /* no-speech 等不在这里弹，交给 onend 的通用反馈 */
-    };
-    r.onend = function () {
-      if (mySession !== learnSession) return;   // 已开新的一轮（翻页/切模式），旧回调作废
-      if (learnEndWatch) { clearTimeout(learnEndWatch); learnEndWatch = null; }
-      learnEnded = true;
-      if (learnRecognizer === r) learnRecognizer = null;
-      learnBusy = false;
-      if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-      micDoneFeedback();
-    };
-    return r;
-  }
-
-  /* 录音收尾后的统一反馈：区分「几乎没录上 / 听了没声音 / 听到了但不对」。
-     三种情况都给出路——试读或直接用下方自评 ✅，不让关卡卡死。 */
-  function micDoneFeedback() {
-    syncMicVisual();
-    if (learnHitScored || learnErrored) return;  // 命中 / 明确错误都已给过反馈
-    var dur = learnStartTs ? Date.now() - learnStartTs : 0;
-    var target = learnQueue[learnPos] || '';
-    if (learnHeard) {
-      toast('听到“' + learnHeard + '”，再试试读 “' + target + '” 🎤');
-    } else if (dur > 0 && dur < 1500) {
-      toast('录音刚开就停了，试试点下方“我读过了” ✅');
-    } else {
-      toast('没听到声音…大声读 “' + target + '” 试试');
-    }
-  }
 
   /* 🎤 是开关：点一下开始录，再点一下停。录音中按钮变 ⏹ 并脉冲。
      判定「真的在录」用 learnBusy && !learnEnded：避免上一轮 onend 没来、
      learnBusy 卡在 true 时，再点只会去 stop 一个已死的识别器而再也起不来。 */
   function toggleLearnMic() {
-    if (learnBusy && !learnEnded) {
-      /* 真的在录：按当前引擎停。浏览器识别直接停；硅基模式停录音并上传评分 */
-      if (learnEngine === 'sf') sfStop(true);
-      else stopLearnMic();
-    } else {
-      startLearnMic();
-    }
+    if (learnBusy && !learnEnded) sfStop(true);   // 跟读只走硅基云端，停就是停云端录音
+    else startLearnMic();
   }
   function startLearnMic() {
     /* 若上一轮 onend 没来、learnBusy 卡在 true，先彻底清掉那个死会话，
        否则新建的识别器会和它抢麦克风、start 直接失败。 */
     if (learnBusy) abandonLearnMic();
-    if (learnInstalling) { toast('正在下载离线语音包，稍等一下 ⏳'); return; }
     if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-    if (learnEndWatch) { clearTimeout(learnEndWatch); learnEndWatch = null; }
-    learnHeard = ''; learnHitScored = false; learnErrored = false; learnEnded = false;
-    learnErrCode = ''; learnStartTs = 0;
+    learnHitScored = false; learnEnded = false; learnStartTs = 0;
     learnSession++;                 // 新的一轮，作废上一轮可能迟到的 onend
     var mySession = learnSession;
     stopAudio();
     syncMicVisual();
-    /* 配了硅基 Key：任何浏览器都直接走云端 ASR（不探测、不装包、不碰浏览器自带
-       识别），保证 Edge / Firefox / Chrome 行为完全一致、可预期。 */
-    if (asrEngineOnline()) {
-      learnEngine = 'sf';
-      sfStart(mySession);
-      return;
-    }
-    /* 没配 Key 才看浏览器自身能力：本地离线（Chrome 139+ 装了语言包）/
-       正在装包 / 在线兜底（Edge 在线服务常 network，会引导去配 Key） */
-    learnEngine = 'sr';
-    probeRecognitionMode(function (mode) {
-      if (mySession !== learnSession) return;   // 等待期间翻页 / 切走，作废
-      if (mode === 'installing') return;        // 装包完成后会自动再走一轮
-      startRecognizer(mode === 'local');
-    });
+    /* 走到这里必然已配硅基 Key（没配时按钮降级为 ✅，不会触发 🎤）。
+       直接走云端 ASR：不探测、不装包、不碰浏览器自带识别，行为在所有浏览器一致。 */
+    learnEngine = 'sf';
+    sfStart(mySession);
   }
 
-  /* 真正拉起识别器。local=true：Chrome 本地离线识别（音频不出设备、不依赖网络）。 */
-  function startRecognizer(local) {
-    var r = buildRecognizer(local);
-    if (!r) { toast('当前浏览器不支持语音识别'); learnEnded = true; return; }
-    learnRecognizer = r;
-    learnBusy = true;
-    try { r.start(); learnStartTs = Date.now(); }
-    catch (e) { learnBusy = false; learnRecognizer = null; learnEnded = true; toast('麦克风启动失败，请重试 🎤'); return; }
-    syncMicVisual();
-    /* 8 秒兜底超时：小孩可能不说话了。句柄存起来，切词 / 提前命中 /
-       手动停止时都能清掉，避免上一词的定时器掐断下一词的录音。 */
-    learnTimer = setTimeout(function () { stopLearnMic(false); }, 8000);
-  }
-
-  /* 决定识别模式。回调 mode：'local'（本地语言包就绪）/ 'installing'（已触发下载，
-     完成后自动重试）/ 'online'（无本地能力或语言包不可用，走在线服务兜底）。 */
-  function probeRecognitionMode(cb) {
-    var C = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var localApi = C && typeof C.available === 'function' && typeof C.install === 'function';
-    if (!localApi) { cb('online'); return; }    // Edge / Safari / 旧版 Chrome 无本地能力
-    var settled = false;
-    function settle(m) { if (!settled) { settled = true; cb(m); } }
-    try {
-      C.available({ langs: ['en-US'], processLocally: true }).then(
-        function (st) {
-          if (st === 'available') settle('local');
-          else if (st === 'downloadable' || st === 'downloading') ensureLocalPack(settle);
-          else settle('online');                // 'unavailable'：语言包拿不到，在线兜底
-        },
-        function () { settle('online'); }
-      );
-    } catch (e) { settle('online'); }
-  }
-
-  /* 首次使用 Chrome 本地识别：下载 en-US 离线语音包（几十 MB，一次性）。
-     装完自动重新走 startLearnMic → 探测到 'available' → 本地识别真正拉起。 */
-  function ensureLocalPack(settle) {
-    var C = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (learnInstalling) { settle('installing'); return; }
-    learnInstalling = true;
-    toast('第一次跟读要下载离线语音包（几十 MB），下载完自动开始 🎤');
-    try {
-      C.install({ langs: ['en-US'], processLocally: true }).then(function (ok) {
-        learnInstalling = false;
-        syncMicVisual();
-        if (ok) {
-          if (tab === 'learn') startLearnMic();          // 就绪：自动进入本地录音
-          else toast('离线语音包已就绪 ✅');
-        } else {
-          toast('语音包下载失败：可稍后再试，或用下方"我读过了" ✅');
-        }
-        settle('installing');
-      }, function () {
-        learnInstalling = false;
-        syncMicVisual();
-        toast('语音包下载失败：可稍后再试，或用下方"我读过了" ✅');
-        settle('installing');
-      });
-    } catch (e) {
-      learnInstalling = false;
-      syncMicVisual();
-      settle('online');        // install 同步抛错（如权限策略拦截）→ 在线兜底
-    }
-  }
-  /* byUser=false 表示「不是用户点的停」（8 秒兜底到点）。onend 靠这个区分：
-     超时而停要弹「没听清」，用户自己点的就不必多嘴。 */
-  function stopLearnMic(byUser) {
-    if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-    learnStopping = byUser !== false;
-    var r = learnRecognizer;
-    if (r) { try { r.stop(); } catch (e) {} }
-    /* 兜底看门狗：部分浏览器（尤其 Chrome 的 continuous 模式）手动 stop() 后
-       onend 不会触发，导致 learnBusy 一直挂着 → 之后再点都「以为在录」而失败、
-       且全程不弹任何提示。600ms 内 onend 没来就手动收尾并给反馈。 */
-    if (learnEndWatch) clearTimeout(learnEndWatch);
-    learnEndWatch = setTimeout(function () {
-      learnEndWatch = null;
-      if (learnEnded) return;          // onend 已经来过了，不必重复
-      learnEnded = true;
-      learnBusy = false;
-      learnRecognizer = null;
-      micDoneFeedback();
-    }, 600);
-  }
   /* 停录音（按引擎分发）：浏览器识别直接停；硅基模式停录音并上传评分 */
   function stopCurrentMic() {
-    if (learnEngine === 'sf') sfStop(true);
-    else stopLearnMic();
+    sfStop(true);   // 跟读只走硅基流动云端 ASR
   }
 
   /* ============ 硅基流动云端 ASR（浏览器识别走不通时的备胎） ============
@@ -1491,9 +2023,7 @@
   function sfStart(mySession) {
     sfAbort();
     if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-    if (learnEndWatch) { clearTimeout(learnEndWatch); learnEndWatch = null; }
-    learnHeard = ''; learnHitScored = false; learnErrored = false; learnEnded = false;
-    learnErrCode = ''; learnStartTs = Date.now();
+    learnHitScored = false; learnEnded = false; learnStartTs = Date.now();
     learnBusy = true;
     syncMicVisual();   // 按钮先亮起来，等麦克风授权
     try {
@@ -1575,7 +2105,6 @@
     learnEnded = true;
     syncMicVisual();
     var heard = normalizeSpoken(text);
-    learnHeard = heard;
     var target = learnQueue[learnPos] || '';
     if (heard && spokenMatches(text, target)) { onLearnHit(); return; }
     if (heard) toast('听到“' + heard + '”，再试试读 “' + target + '” 🎤');
@@ -1626,14 +2155,9 @@
   function abandonLearnMic() {
     learnSession++;
     if (learnTimer) { clearTimeout(learnTimer); learnTimer = null; }
-    if (learnEndWatch) { clearTimeout(learnEndWatch); learnEndWatch = null; }
-    if (learnEngine === 'sf') { sfAbort(); learnEngine = 'sr'; }
-    var r = learnRecognizer;
-    if (r) { try { r.stop(); } catch (e) {} }
-    learnRecognizer = null;
+    sfAbort();                 // 跟读只走硅基云端：翻页 / 切走直接作废上传，不残留识别器
     learnBusy = false;
-    learnHeard = ''; learnHitScored = false; learnErrored = false; learnEnded = true;
-    learnErrCode = ''; learnStartTs = 0;
+    learnHitScored = false; learnEnded = true; learnStartTs = 0;
     syncMicVisual();
   }
   /* 只改按钮和状态行，不动整张卡：避免录音中重建 DOM 打断脉冲动画 */
@@ -2355,12 +2879,13 @@
       b.onclick = function () { speakWord(b.dataset.bw); };
     });
 
-    /* --- 宠物图鉴（各阶段预览）--- */
+    /* --- 宠物图鉴（各阶段预览，名称跟物种走）--- */
+    var spCur = curSpecies();
     var stages = [
       { i: 0, name: '蛋宝宝', lv: 'Lv.1 ~ 4' },
-      { i: 1, name: '小绒球', lv: 'Lv.5 ~ 8' },
-      { i: 2, name: '小龙崽', lv: 'Lv.9 ~ 12' },
-      { i: 3, name: '小火龙', lv: 'Lv.13+' }
+      { i: 1, name: spCur.stages[0], lv: 'Lv.5 ~ 8' },
+      { i: 2, name: spCur.stages[1], lv: 'Lv.9 ~ 12' },
+      { i: 3, name: spCur.stages[2], lv: 'Lv.13+' }
     ];
     var curStage = petStageIdx();
     var c2 = el('div', 'card');
@@ -2384,6 +2909,113 @@
         beep('tap');
         setTimeout(function () { drawPet(cv, 'idle', st); }, 900);
       };
+    });
+
+    /* --- 宠物物种（换着养，数值与等级保留）--- */
+    var cSp = el('div', 'card');
+    cSp.innerHTML = '<h2 class="section">宠物物种 · 换着养</h2>' +
+      '<div class="muted" style="margin-bottom:10px">换物种保留等级、经验和数值；进化阶段名称跟着新物种走</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      Object.keys(PET_SPECIES).map(function (k) {
+        var on = k === petSpeciesKey();
+        return '<button class="chip' + (on ? ' on' : '') + '" data-species="' + k + '">' +
+          PET_SPECIES[k].emoji + ' ' + PET_SPECIES[k].label + (on ? ' · 现在' : '') + '</button>';
+      }).join('') + '</div>';
+    v.appendChild(cSp);
+    $$('#set-body [data-species]').forEach(function (b) {
+      b.onclick = function () {
+        S.pet.species = b.dataset.species;
+        save();
+        renderHome();
+        renderSettings();
+        toast('换成了' + PET_SPECIES[b.dataset.species].label + '！等级经验都还在');
+      };
+    });
+
+    /* --- 状态试验台（表情预览 + 像素特效一览 + 实景演示）--- */
+    var TB_EXPRS = [
+      ['idle', '待机'], ['blink', '眨眼'], ['happy', '开心'], ['sad', '难过'],
+      ['sleep', '睡着'], ['droopy', '没劲'], ['excited', '兴奋'],
+      ['eat', '吃饭'], ['wash', '搓澡'], ['grunt', '用力']
+    ];
+    var TB_DEMOS = {
+      feed: function () { tbPlay('eat', 'eat', 1500); addFoodBowl('#tb-cvwrap'); spawnFx('meat', 1, '#tb-cvwrap'); },
+      wash: function () { tbPlay('wash', 'wash', 1600); spawnFx('bubble', 5, '#tb-cvwrap'); },
+      dance: function () { tbPlay('dance', 'excited', 1500); spawnFx('note', 3, '#tb-cvwrap'); },
+      prop: function () { tbPlay('prop', 'happy', 1200); spawnFx(pick(['teddy', 'balloon', 'drum', 'yarn', 'horn', 'kite']), 1, '#tb-cvwrap'); },
+      sad: function () { tbPlay('sad', 'sad', 900); },
+      poop: function () {
+        tbPlay('poop', 'grunt', 1200);
+        setTimeout(function () { spawnFx('poop', 1, '#tb-cvwrap'); }, 1050);
+        S.pet.poop.n = Math.min(3, (S.pet.poop.n || 0) + 1); save();
+      }
+    };
+    /* 试验台就地表演：与首页 playAction 同一套动作类 + 表情，播完回落 idle。
+       目标是预览画布自身，不碰首页宠物状态（petAnim / 常驻基调完全独立）。
+       tbStage：形态选择（0蛋 1宝宝 2/3 物种成长期），默认跟随当前等级；点形态 chip 切换预览 */
+    var tbTimer = null, TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
+    var tbExpr = 'idle', tbStage = petStageIdx();
+    function tbRedraw() { drawPet($('#tb-cv'), tbExpr, tbStage); }
+    function tbPlay(cls, expr, ms) {
+      var w = $('#tb-cvwrap'); if (!w) return;
+      TB_ACT_CLS.forEach(function (k) { w.classList.remove(k); });
+      if (cls) w.classList.add(cls);
+      tbExpr = expr; tbRedraw();
+      clearTimeout(tbTimer);
+      tbTimer = setTimeout(function () {
+        var w2 = $('#tb-cvwrap');
+        if (w2) TB_ACT_CLS.forEach(function (k) { w2.classList.remove(k); });
+        tbExpr = 'idle'; tbRedraw();
+      }, ms || 1200);
+    }
+    var c2b = el('div', 'card');
+    var TB_STAGES = [[0, '蛋'], [1, '宝宝'], [2, curSpecies().stages[0]], [3, curSpecies().stages[1]]];
+    c2b.innerHTML = '<h2 class="section">状态试验台 · 点了就看</h2>' +
+      '<div class="pg-cvwrap pet-canvas-wrap tb-main" id="tb-cvwrap"><canvas id="tb-cv" width="16" height="16"></canvas></div>' +
+      '<div class="row wrap" style="gap:6px;margin-top:8px" id="tb-stages">' +
+      TB_STAGES.map(function (s) {
+        return '<button class="chip" data-tbs="' + s[0] + '">' + s[1] + '</button>';
+      }).join('') + '</div>' +
+      '<div class="muted" style="margin:10px 0 6px">表情（跟着上面选的形态走）</div>' +
+      '<div class="row wrap" style="gap:6px" id="tb-exprs">' +
+      TB_EXPRS.map(function (e) {
+        return '<button class="chip" data-tbe="' + e[0] + '">' + e[1] + '</button>';
+      }).join('') + '</div>' +
+      '<div class="muted" style="margin:10px 0 6px">像素特效精灵一览（跟首页飘的是同一套）</div>' +
+      '<div class="row wrap" style="gap:6px" id="tb-fx"></div>' +
+      '<div class="muted" style="margin:10px 0 6px">实景演示（点了就在这里播，不跳回首页）</div>' +
+      '<div class="row wrap" style="gap:6px">' +
+      '<button class="chip" data-demo="feed">喂食</button>' +
+      '<button class="chip" data-demo="wash">洗澡</button>' +
+      '<button class="chip" data-demo="dance">跳舞</button>' +
+      '<button class="chip" data-demo="prop">掏道具</button>' +
+      '<button class="chip" data-demo="sad">难过</button>' +
+      '<button class="chip" data-demo="poop">放颗粑粑</button>' +
+      '</div>' +
+      '<div class="muted" style="margin-top:9px">粑粑演示会顺带在首页放一颗（最多 3 颗，回首页点它清理）。</div>';
+    v.appendChild(c2b);
+    function tbMarkStage() {
+      $$('#tb-stages .chip').forEach(function (b) {
+        b.classList.toggle('on', +b.dataset.tbs === tbStage);
+      });
+    }
+    tbMarkStage();
+    tbRedraw();
+    $$('#set-body [data-tbs]').forEach(function (b) {
+      b.onclick = function () { tbStage = +b.dataset.tbs; tbMarkStage(); tbRedraw(); beep('tap'); };
+    });
+    $$('#set-body [data-tbe]').forEach(function (b) {
+      b.onclick = function () { tbExpr = b.dataset.tbe; tbRedraw(); beep('tap'); };
+    });
+    Object.keys(FX_SPRITES).forEach(function (n) {
+      var s = document.createElement('span');
+      s.className = 'chip tb-chip';
+      s.title = n;
+      s.appendChild(fxSpriteCanvas(n, 2));
+      $('#tb-fx').appendChild(s);
+    });
+    $$('#set-body [data-demo]').forEach(function (b) {
+      b.onclick = function () { TB_DEMOS[b.dataset.demo](); beep('tap'); };
     });
 
     /* --- 家长设置 --- */
