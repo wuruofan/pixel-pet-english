@@ -857,18 +857,29 @@
                               1: ['cat-baby-happy-0', 'cat-baby-happy-1', 'cat-baby-happy-2'],
                               2: ['cat-kid-happy-0', 'cat-kid-happy-1', 'cat-kid-happy-2'],
                               3: ['cat-happy-0', 'cat-happy-1', 'cat-happy-2'] },
+                   /* P1/P2 状态按成长阶段保留原轮廓，只在脸部做差分；避免 cat-big 占位导致尺寸跳变 */
                    excited: { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
-                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                              1: ['cat-baby-excited-0', 'cat-baby-excited-1', 'cat-baby-excited-2'],
+                              2: ['cat-kid-excited-0', 'cat-kid-excited-1', 'cat-kid-excited-2'],
+                              3: ['cat-adult-excited-0', 'cat-adult-excited-1', 'cat-adult-excited-2'] },
                    big:     { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
-                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                              1: ['cat-baby-excited-0', 'cat-baby-excited-1', 'cat-baby-excited-2'],
+                              2: ['cat-kid-excited-0', 'cat-kid-excited-1', 'cat-kid-excited-2'],
+                              3: ['cat-adult-excited-0', 'cat-adult-excited-1', 'cat-adult-excited-2'] },
                    droopy:  { 0: ['cat-egg-droopy'],
-                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                              1: ['cat-baby-droopy'], 2: ['cat-kid-droopy'], 3: ['cat-adult-droopy'] },
                    sad:     { 0: ['cat-egg-sad-0', 'cat-egg-sad-1'],
-                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                              1: ['cat-baby-sad-0', 'cat-baby-sad-1'],
+                              2: ['cat-kid-sad-0', 'cat-kid-sad-1'],
+                              3: ['cat-adult-sad-0', 'cat-adult-sad-1'] },
                    wash:    { 0: ['cat-egg-wash-0', 'cat-egg-wash-1'],
-                              1: ['cat-baby'], 2: ['cat-kid'], 3: ['cat-adult'] },
+                              1: ['cat-baby-wash-0', 'cat-baby-wash-1'],
+                              2: ['cat-kid-wash-0', 'cat-kid-wash-1'],
+                              3: ['cat-adult-wash-0', 'cat-adult-wash-1'] },
                    grunt:   { 0: ['cat-egg-grunt-0', 'cat-egg-grunt-1'],
-                              1: ['cat-baby'], 2: ['cat-kid'], 3: ['cat-adult'] } },
+                              1: ['cat-baby-grunt-0', 'cat-baby-grunt-1'],
+                              2: ['cat-kid-grunt-0', 'cat-kid-grunt-1'],
+                              3: ['cat-adult-grunt-0', 'cat-adult-grunt-1'] } },
            walk: 'cat-walk-' }
   };
   /* 蛋斑点坐标（相对于 29×36 蛋帧内容）。斑点不在 PNG 里，drawPet 按当前宠物主色
@@ -884,7 +895,7 @@
   /* 各表情/动作的多帧切换间隔（ms）。单帧数组不需要切换。 */
   var PET_EXPR_INTERVAL = {
     idle: 800, blink: 170, eat: 280, sleep: 700,
-    happy: 180, excited: 220, droopy: 800, sad: 380
+    happy: 180, excited: 220, droopy: 800, sad: 380, wash: 220, grunt: 240
   };
 
   var petAnim = { blinkTimer: null, dreamTimer: null, actionTimer: null,

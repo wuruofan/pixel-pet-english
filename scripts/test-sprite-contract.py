@@ -66,6 +66,25 @@ def main():
     assert "1: ['cat-baby-happy-0', 'cat-baby-happy-1', 'cat-baby-happy-2']" in APP
     assert "2: ['cat-kid-happy-0', 'cat-kid-happy-1', 'cat-kid-happy-2']" in APP
 
+    # P1/P2 cat states must be stage-aware. Reusing cat-big or the standing
+    # frame makes an interaction look frozen and can visibly resize the pet.
+    for expr, count in (("excited", 3), ("sad", 2), ("wash", 2), ("grunt", 2)):
+        for stage in ("baby", "kid", "adult"):
+            frames = []
+            for index in range(count):
+                path = SPRITES / f"cat-{stage}-{expr}-{index}.png"
+                assert path.exists(), f"missing {stage} {expr} frame: {path.name}"
+                frames.append(path.read_bytes())
+            assert len(set(frames)) == count, f"{stage} {expr} frames must be unique"
+        assert f"1: ['cat-baby-{expr}-" in APP
+        assert f"2: ['cat-kid-{expr}-" in APP
+        assert f"3: ['cat-adult-{expr}-" in APP
+
+    for stage in ("baby", "kid", "adult"):
+        path = SPRITES / f"cat-{stage}-droopy.png"
+        assert path.exists(), f"missing {stage} droopy frame: {path.name}"
+        assert f"cat-{stage}-droopy" in APP
+
     print("sprite contract: PASS")
 
 
