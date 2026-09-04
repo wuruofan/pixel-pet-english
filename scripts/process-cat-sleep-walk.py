@@ -21,7 +21,21 @@ def fit_scale(image, scale):
     )
 
 
+def fit_size(image, size):
+    return image.resize(size, Image.Resampling.NEAREST)
+
+
 def main():
+    eat_sizes = {"baby": (28, 23), "kid": (36, 30), "adult": (43, 36)}
+    for stage, size in eat_sizes.items():
+        for index in range(3):
+            source = Image.open(SPRITES / f"cat-eat-{index}.png").convert("RGBA")
+            fit_size(source, size).save(SPRITES / f"cat-{stage}-eat-{index}.png")
+
+    for index in range(3):
+        source = Image.open(SPRITES / f"cat-happy-{index}.png").convert("RGBA")
+        fit_size(source, (43, 48)).save(SPRITES / f"cat-adult-happy-{index}.png")
+
     sleep_heights = {"baby": 24, "kid": 31, "adult": 46}
     for stage, height in sleep_heights.items():
         for index in range(2):

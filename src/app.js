@@ -845,10 +845,10 @@
                               2: ['cat-kid-blink'],
                               3: ['cat-blink'] },
                    eat:     { 0: ['cat-egg-eat'],
-                              /* baby 本身就是侧身比例，复用真实的低头饭碗三帧；避免旧占位静止不动 */
-                              1: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'],
-                              2: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'],
-                              3: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'] },
+                              /* 同一套真实低头饭碗动作，按成长阶段拟合尺寸 */
+                              1: ['cat-baby-eat-0', 'cat-baby-eat-1', 'cat-baby-eat-2'],
+                              2: ['cat-kid-eat-0', 'cat-kid-eat-1', 'cat-kid-eat-2'],
+                              3: ['cat-adult-eat-0', 'cat-adult-eat-1', 'cat-adult-eat-2'] },
                    sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1'],
                               1: ['cat-baby-sleep-0', 'cat-baby-sleep-1'],
                               2: ['cat-kid-sleep-0', 'cat-kid-sleep-1'],
@@ -856,7 +856,7 @@
                    happy:   { 0: ['cat-egg-happy'],
                               1: ['cat-baby-happy-0', 'cat-baby-happy-1', 'cat-baby-happy-2'],
                               2: ['cat-kid-happy-0', 'cat-kid-happy-1', 'cat-kid-happy-2'],
-                              3: ['cat-happy-0', 'cat-happy-1', 'cat-happy-2'] },
+                              3: ['cat-adult-happy-0', 'cat-adult-happy-1', 'cat-adult-happy-2'] },
                    /* P1/P2 状态按成长阶段保留原轮廓，只在脸部做差分；避免 cat-big 占位导致尺寸跳变 */
                    excited: { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
                               1: ['cat-baby-excited-0', 'cat-baby-excited-1', 'cat-baby-excited-2'],

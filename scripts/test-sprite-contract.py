@@ -50,8 +50,30 @@ def main():
     eat_frames = [SPRITES / f"cat-eat-{index}.png" for index in range(3)]
     assert all(path.exists() for path in eat_frames), "adult eat frame set is incomplete"
     assert len({path.read_bytes() for path in eat_frames}) == 3, "eat frames must all be unique"
-    assert "1: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2']" in APP
-    assert "2: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2']" in APP
+    assert "1: ['cat-baby-eat-0', 'cat-baby-eat-1', 'cat-baby-eat-2']" in APP
+    assert "2: ['cat-kid-eat-0', 'cat-kid-eat-1', 'cat-kid-eat-2']" in APP
+
+    # The real bowl action is fitted per stage so it does not shrink a kid or
+    # adult down to the 29x24 source-art scale.
+    expected_eat_sizes = {"baby": (28, 23), "kid": (36, 30), "adult": (43, 36)}
+    for stage in ("baby", "kid", "adult"):
+        frames = []
+        for index in range(3):
+            path = SPRITES / f"cat-{stage}-eat-{index}.png"
+            assert path.exists(), f"missing {stage} eat frame: {path.name}"
+            assert Image.open(path).size == expected_eat_sizes[stage]
+            frames.append(path.read_bytes())
+        assert len(set(frames)) == 3, f"{stage} eat frames must be unique"
+    assert "1: ['cat-baby-eat-0', 'cat-baby-eat-1', 'cat-baby-eat-2']" in APP
+    assert "2: ['cat-kid-eat-0', 'cat-kid-eat-1', 'cat-kid-eat-2']" in APP
+    assert "3: ['cat-adult-eat-0', 'cat-adult-eat-1', 'cat-adult-eat-2']" in APP
+
+    # Adult happy uses the same approved jump cycle, fitted to adult scale.
+    for index in range(3):
+        path = SPRITES / f"cat-adult-happy-{index}.png"
+        assert path.exists(), f"missing adult happy frame: {path.name}"
+        assert Image.open(path).size == (43, 48)
+    assert "3: ['cat-adult-happy-0', 'cat-adult-happy-1', 'cat-adult-happy-2']" in APP
 
     # Baby/kid happy states should have an actual three-phase jump, not only a
     # CSS animation around one static face frame.
