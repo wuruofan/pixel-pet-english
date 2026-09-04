@@ -12,7 +12,8 @@ SPRITES = ROOT / "assets" / "sprites"
 
 
 def alpha_bbox(name):
-    return Image.open(SPRITES / name).convert("RGBA").getchannel("A").getbbox()
+    alpha = Image.open(SPRITES / name).convert("RGBA").getchannel("A")
+    return alpha.point(lambda value: 255 if value > 100 else 0).getbbox()
 
 
 def main():
@@ -44,6 +45,16 @@ def main():
     assert base and breath and base[0] == breath[0] and base[2] == breath[2], (
         f"egg idle frames must keep the same horizontal silhouette: {base} vs {breath}"
     )
+    for stage in ("baby", "kid", "adult"):
+        base = alpha_bbox(f"cat-{stage}-idle-0.png")
+        breath = alpha_bbox(f"cat-{stage}-idle-1.png")
+        assert base and breath and base[0] == breath[0] and base[2] == breath[2], (
+            f"{stage} idle frames must keep the same horizontal silhouette: {base} vs {breath}"
+        )
+        assert (
+            SPRITES.joinpath(f"cat-{stage}-idle-0.png").read_bytes()
+            != SPRITES.joinpath(f"cat-{stage}-idle-1.png").read_bytes()
+        ), f"{stage} idle frames must be a real difference"
 
     # Baby/kid eat states must use the existing real three-phase low-to-bowl
     # action, not the placeholder files that copy their standing frames.
