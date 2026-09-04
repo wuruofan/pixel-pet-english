@@ -829,14 +829,55 @@
     im.onload = function () { PET_IMG_EL[k] = im; petDraw(); };   // 加载完刷新首页宠物
     im.src = PET_IMGS[k];
   });
-  /* 每物种帧映射：stage=成长阶段主帧，expr=表情/动作→状态帧，walk=走路循环帧前缀 */
+  /* 每物种帧映射：stage=成长阶段主帧（含 0=蛋），expr=表情/动作→帧数组（多帧循环）或单 key（静态），
+     walk=走路循环帧前缀。idle 按阶段分级，每级自带呼吸 A/B，避免 baby 阶段切换到 idle 时
+     突然放大成 adult 尺寸。egg 是 PNG 蛋（替代原字符画），idle-0/1 做微 wobble。 */
   var PET_FRAMES = {
-    cat: { stage: { 1: 'cat-baby', 2: 'cat-kid', 3: 'cat-adult' },
-           expr: { eat: 'cat-eat', sleep: 'cat-sleep', happy: 'cat-happy', excited: 'cat-big', big: 'cat-big' },
+    cat: { stage: { 0: 'cat-egg', 1: 'cat-baby', 2: 'cat-kid', 3: 'cat-adult' },
+           expr: { idle:    { 0: ['cat-egg-idle-0', 'cat-egg-idle-1'],
+                               1: ['cat-baby-idle-0', 'cat-baby-idle-1'],
+                               2: ['cat-kid-idle-0',  'cat-kid-idle-1'],
+                               3: ['cat-adult-idle-0','cat-adult-idle-1'] },
+                   /* blink/eat/happy 按阶段分级，避免 baby 阶段点眨眼显示大猫。
+                      蛋阶段有独立帧（v6 水汪汪大眼版） */
+                   blink:   { 0: ['cat-egg-blink'],
+                              1: ['cat-baby-blink'],
+                              2: ['cat-kid-blink'],
+                              3: ['cat-blink'] },
+                   eat:     { 0: ['cat-egg-eat'],
+                              1: ['cat-baby-eat'],
+                              2: ['cat-kid-eat'],
+                              3: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'] },
+                   sleep:   ['cat-sleep-0', 'cat-sleep-1'],
+                   happy:   { 0: ['cat-egg-happy'],
+                              1: ['cat-baby-happy'],
+                              2: ['cat-kid-happy'],
+                              3: ['cat-happy-0', 'cat-happy-1', 'cat-happy-2'] },
+                   excited: ['cat-big'],
+                   big:     ['cat-big'],
+                   droopy:  ['cat-big'],   // P1 占位（用 cat-big 当静态表情帧）
+                   sad:     ['cat-big'] }, // P1 占位
            walk: 'cat-walk-' }
   };
+  /* 蛋斑点坐标（相对于 29×36 蛋帧内容）。斑点不在 PNG 里，drawPet 按当前宠物主色
+     运行时叠加，这样一套蛋帧通用、斑点颜色可随宠物类型替换。位置避开脸部（眼/腮红/嘴）。 */
+  var EGG_SPOTS = [
+    [5,4],[6,4],[7,4], [5,5],[6,5],[7,5],[8,5], [6,6],[7,6],
+    [20,4],[21,4],[22,4], [19,5],[20,5],[21,5],[22,5], [20,6],[21,6],
+    [3,24],[4,24],[5,24], [3,25],[4,25],[5,25],[6,25], [4,26],[5,26],
+    [19,24],[20,24],[21,24],[22,24], [18,25],[19,25],[20,25],[21,25],[22,25],
+    [19,26],[20,26],[21,26], [20,27],[21,27],
+    [13,31],[14,31],[15,31]
+  ];
+  /* 各表情/动作的多帧切换间隔（ms）。单帧数组不需要切换。 */
+  var PET_EXPR_INTERVAL = {
+    idle: 800, blink: 170, eat: 280, sleep: 700,
+    happy: 180, excited: 220, droopy: 800, sad: 380
+  };
 
-  var petAnim = { blinkTimer: null, dreamTimer: null, actionTimer: null, baseExpr: 'idle', actionExpr: null };
+  var petAnim = { blinkTimer: null, dreamTimer: null, actionTimer: null,
+                  exprTimer: null, exprIdx: {},
+                  baseExpr: 'idle', actionExpr: null };
   /* stageOverride: 0蛋 1宝宝 2/3 物种剪影；缺省画当前宠物阶段（图鉴/试验台预览用）
      walking: 走路中 → 换用 *-side 侧面剪影（朝右画，向左走由 face-left 翻转），不叠正面表情 */
   function drawPet(cv, expr, stageOverride, walking) {
@@ -850,15 +891,41 @@
     var key = stage === 0 ? 'egg' : (stage === 1 ? 'baby' : (sp.art[stage - 2] || 'baby'));
     /* PNG 帧分支（试点物种）：统一 48×48 画布，底边对齐保持站地面一致 */
     var fr = PET_FRAMES[petSpeciesKey()];
-    if (fr && stage >= 1) {
+    if (fr && stage >= 0) {
       var fk = null;
       if (walking && fr.walk && !petAnim.actionExpr) fk = fr.walk + (petWalk.frameIdx || 0);
-      else fk = fr.expr[expr] || fr.stage[stage];
+      else {
+        var ev = fr.expr[expr];
+        if (Array.isArray(ev)) {
+          if (ev.length === 1) fk = ev[0];
+          else if (ev.length > 1) fk = ev[petAnim.exprIdx[expr] || 0];
+        } else if (ev && typeof ev === 'object') {
+          // 按阶段分级的 expr（如 idle → {1:[...],2:[...],3:[...]}），避免 baby 切 idle 突然变大成 adult
+          var stageArr = ev[stage];
+          if (Array.isArray(stageArr)) {
+            if (stageArr.length === 1) fk = stageArr[0];
+            else if (stageArr.length > 1) fk = stageArr[petAnim.exprIdx[expr] || 0];
+          }
+        } else if (typeof ev === 'string') {
+          fk = ev;
+        }
+        if (!fk) fk = fr.stage[stage];
+      }
       var el = fk ? PET_IMG_EL[fk] : null;
       if (el) {
         if (cv.width !== 48) { cv.width = 48; cv.height = 48; }   // 设宽即清屏
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(el, Math.round((48 - el.width) / 2), 48 - el.height);
+        var eggX = Math.round((48 - el.width) / 2);
+        var eggY = 48 - el.height;
+        ctx.drawImage(el, eggX, eggY);
+        /* 蛋阶段：斑点按当前宠物主色运行时叠加（PNG 蛋身无斑点，便于多宠物定制） */
+        if (stage === 0) {
+          var spotColor = (PET_PALETTES[sp.pals[1]] || PET_PALETTES.egg).B;
+          ctx.fillStyle = spotColor;
+          for (var si = 0; si < EGG_SPOTS.length; si++) {
+            ctx.fillRect(eggX + EGG_SPOTS[si][0], eggY + EGG_SPOTS[si][1], 1, 1);
+          }
+        }
         return;
       }
     }
@@ -981,13 +1048,43 @@
     var walking = !!(t && t.classList.contains('walking'));
     drawPet(c, petAnim.actionExpr || petAnim.baseExpr, null, walking);
   }
+  /* 多帧动画驱动：每 ~180ms 检查当前 expr 并推进其帧下标，重绘画布。
+     各 expr 用自己的 PET_EXPR_INTERVAL 节奏——这里用最小间隔做轮询，避免开多定时器。 */
+  function startExprAnim() {
+    if (petAnim.exprTimer) return;
+    petAnim.exprTimer = setInterval(function () {
+      var cur = petAnim.actionExpr || petAnim.baseExpr;
+      if (!cur) return;
+      var fr = PET_FRAMES[petSpeciesKey()];
+      if (!fr) return;
+      var ev = fr.expr[cur];
+      if (!Array.isArray(ev) || ev.length <= 1) return;
+      var interval = PET_EXPR_INTERVAL[cur] || 400;
+      // 累加累计时间，到点就翻帧
+      petAnim._lastTick = petAnim._lastTick || Date.now();
+      var now = Date.now();
+      var elapsed = now - petAnim._lastTick;
+      if (elapsed < 180) return;   // 轮询节流
+      petAnim._lastTick = now;
+      // 用 elapsed / interval 估算应该翻几帧（兜底：翻 1 帧）
+      var advance = Math.max(1, Math.floor(elapsed / interval));
+      petAnim.exprIdx[cur] = ((petAnim.exprIdx[cur] || 0) + advance) % ev.length;
+      petDraw();
+    }, 180);
+  }
   function applyPetLayer(cls, expr, transient) {
     var w = $('#pet-touch');
     if (w) PET_CLASSES.forEach(function (k) { w.classList.remove(k); });
     if (cls && w) w.classList.add(cls);
     if (w) w.classList.remove('walking');   // 表演优先，停止步态（位移过渡自然走完）
     petAnim.actionExpr = transient ? expr : null;
-    if (!transient) petAnim.baseExpr = expr;
+    if (!transient) {
+      // 切到新的常驻 expr 时，把它的帧下标归零，让动画从头开始
+      if (petAnim.baseExpr !== expr) petAnim.exprIdx[expr] = 0;
+      petAnim.baseExpr = expr;
+    } else {
+      petAnim.exprIdx[expr] = 0;
+    }
     petDraw();
   }
   /* 常驻基调：按 sati/mood/clean 推导待机外观与动作循环 */
@@ -1495,6 +1592,7 @@
     startPetBlink();
     startPetDream();
     startPetRoam();
+    startExprAnim();
     renderPoops();
     $('#pet-touch').onclick = touchPet;
     petPoopRoll();
@@ -2930,15 +3028,20 @@
       '<div class="muted" style="margin-top:10px">学单词得 🍖、拼读得 🎾、闯关得 🧼；照顾它都会涨经验，每 4 级进化一次，进化后长得不一样哦。</div>';
     v.appendChild(c2);
     $$('#set-body [data-pgst]').forEach(function (cv) {
+      petAnim.exprIdx['idle'] = 0;
       drawPet(cv, 'idle', +cv.dataset.pgst);
     });
     $$('#set-body .pg-cvwrap').forEach(function (w) {
       var st = +w.dataset.st;
       w.onclick = function () {
         var cv = w.querySelector('canvas');
+        petAnim.exprIdx['happy'] = 0;
         drawPet(cv, 'happy', st);
         beep('tap');
-        setTimeout(function () { drawPet(cv, 'idle', st); }, 900);
+        setTimeout(function () {
+          petAnim.exprIdx['idle'] = 0;
+          drawPet(cv, 'idle', st);
+        }, 900);
       };
     });
 
@@ -2986,7 +3089,7 @@
        tbStage：形态选择（0蛋 1宝宝 2/3 物种成长期），默认跟随当前等级；点形态 chip 切换预览 */
     var tbTimer = null, TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
     var tbExpr = 'idle', tbStage = petStageIdx();
-    function tbRedraw() { drawPet($('#tb-cv'), tbExpr, tbStage); }
+    function tbRedraw() { petAnim.exprIdx[tbExpr] = 0; drawPet($('#tb-cv'), tbExpr, tbStage); }
     function tbPlay(cls, expr, ms) {
       var w = $('#tb-cvwrap'); if (!w) return;
       TB_ACT_CLS.forEach(function (k) { w.classList.remove(k); });
@@ -3032,11 +3135,43 @@
     }
     tbMarkStage();
     tbRedraw();
+    /* 试验台本地动画定时器：点 chip → 持续循环该 expr 的多帧。
+       单帧 expr（blink / excited / big / droopy / sad）保持静态显示。
+       expr 值可能是数组（eat/sleep/happy…）也可能是 {stage:array} 映射（idle 按阶段分级）。 */
+    var tbAnimTimer = null;
+    function tbStopAnim() {
+      if (tbAnimTimer) { clearInterval(tbAnimTimer); tbAnimTimer = null; }
+    }
+    function tbResolveFrames() {
+      var exprMap = PET_FRAMES[petSpeciesKey()].expr[tbExpr];
+      if (Array.isArray(exprMap)) return exprMap;
+      if (exprMap && typeof exprMap === 'object') return exprMap[tbStage] || null;
+      return null;
+    }
+    function tbStartAnim() {
+      tbStopAnim();
+      var ev = tbResolveFrames();
+      if (!Array.isArray(ev) || ev.length <= 1) return;   // 单帧不循环
+      var interval = PET_EXPR_INTERVAL[tbExpr] || 400;
+      tbAnimTimer = setInterval(function () {
+        var ev2 = tbResolveFrames();
+        if (!Array.isArray(ev2) || ev2.length <= 1) { tbStopAnim(); return; }
+        petAnim.exprIdx[tbExpr] = ((petAnim.exprIdx[tbExpr] || 0) + 1) % ev2.length;
+        tbRedraw();
+      }, interval);
+    }
+    function tbSetExpr(expr) {
+      tbStopAnim();
+      tbExpr = expr;
+      petAnim.exprIdx[tbExpr] = 0;
+      tbRedraw();
+      tbStartAnim();
+    }
     $$('#set-body [data-tbs]').forEach(function (b) {
       b.onclick = function () { tbStage = +b.dataset.tbs; tbMarkStage(); tbRedraw(); beep('tap'); };
     });
     $$('#set-body [data-tbe]').forEach(function (b) {
-      b.onclick = function () { tbExpr = b.dataset.tbe; tbRedraw(); beep('tap'); };
+      b.onclick = function () { tbSetExpr(b.dataset.tbe); beep('tap'); };
     });
     Object.keys(FX_SPRITES).forEach(function (n) {
       var s = document.createElement('span');
