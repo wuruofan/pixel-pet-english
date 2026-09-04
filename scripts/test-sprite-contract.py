@@ -85,6 +85,39 @@ def main():
         assert path.exists(), f"missing {stage} droopy frame: {path.name}"
         assert f"cat-{stage}-droopy" in APP
 
+    # Walking should keep the growth-stage scale too. The original adult side
+    # loop remains the source of truth, while baby/kid get fitted copies.
+    assert "walk: { 1: 'cat-baby-walk-', 2: 'cat-kid-walk-', 3: 'cat-walk-' }" in APP
+    for stage in ("baby", "kid"):
+        frames = []
+        for index in range(6):
+            path = SPRITES / f"cat-{stage}-walk-{index}.png"
+            assert path.exists(), f"missing {stage} walk frame: {path.name}"
+            frames.append(path.read_bytes())
+        assert len(set(frames)) == 6, f"{stage} walk frames must be unique"
+
+    # Sleep is a curled side pose, but each stage still needs its own fitted
+    # dimensions so a baby does not grow taller merely by closing its eyes.
+    assert "sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1']," in APP
+    expected_sleep_sizes = {"baby": (23, 24), "kid": (29, 31), "adult": (43, 46)}
+    for stage in ("baby", "kid", "adult"):
+        frames = []
+        for index in range(2):
+            path = SPRITES / f"cat-{stage}-sleep-{index}.png"
+            assert path.exists(), f"missing {stage} sleep frame: {path.name}"
+            assert Image.open(path).size == expected_sleep_sizes[stage], (
+                f"{stage} sleep frame has the wrong fitted size: {Image.open(path).size}"
+            )
+            frames.append(path.read_bytes())
+        assert len(set(frames)) == 2, f"{stage} sleep frames must be unique"
+
+    # The main-page timer must resolve stage-aware expression maps before
+    # checking array length, otherwise sleep/excited/happy never advance.
+    assert "if (ev && typeof ev === 'object') ev = ev[petStageIdx()];" in APP
+
+    # The bench must expose all four growth stages, including adult.
+    assert "var TB_STAGES = [[0, '蛋'], [1, curSpecies().stages[0]], [2, curSpecies().stages[1]], [3, curSpecies().stages[2]]];" in APP
+
     print("sprite contract: PASS")
 
 

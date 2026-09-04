@@ -850,9 +850,9 @@
                               2: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'],
                               3: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'] },
                    sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1'],
-                              1: ['cat-sleep-0', 'cat-sleep-1'],
-                              2: ['cat-sleep-0', 'cat-sleep-1'],
-                              3: ['cat-sleep-0', 'cat-sleep-1'] },
+                              1: ['cat-baby-sleep-0', 'cat-baby-sleep-1'],
+                              2: ['cat-kid-sleep-0', 'cat-kid-sleep-1'],
+                              3: ['cat-adult-sleep-0', 'cat-adult-sleep-1'] },
                    happy:   { 0: ['cat-egg-happy'],
                               1: ['cat-baby-happy-0', 'cat-baby-happy-1', 'cat-baby-happy-2'],
                               2: ['cat-kid-happy-0', 'cat-kid-happy-1', 'cat-kid-happy-2'],
@@ -880,7 +880,7 @@
                               1: ['cat-baby-grunt-0', 'cat-baby-grunt-1'],
                               2: ['cat-kid-grunt-0', 'cat-kid-grunt-1'],
                               3: ['cat-adult-grunt-0', 'cat-adult-grunt-1'] } },
-           walk: 'cat-walk-' }
+           walk: { 1: 'cat-baby-walk-', 2: 'cat-kid-walk-', 3: 'cat-walk-' } }
   };
   /* 蛋斑点坐标（相对于 29×36 蛋帧内容）。斑点不在 PNG 里，drawPet 按当前宠物主色
      运行时叠加，这样一套蛋帧通用、斑点颜色可随宠物类型替换。位置避开脸部（眼/腮红/嘴）。 */
@@ -916,7 +916,10 @@
     var fr = PET_FRAMES[petSpeciesKey()];
     if (fr && stage >= 0) {
       var fk = null;
-      if (walking && stage >= 1 && fr.walk && !petAnim.actionExpr) fk = fr.walk + (petWalk.frameIdx || 0);
+      if (walking && stage >= 1 && fr.walk && !petAnim.actionExpr) {
+        var walkPrefix = typeof fr.walk === 'string' ? fr.walk : fr.walk[stage];
+        if (walkPrefix) fk = walkPrefix + (petWalk.frameIdx || 0);
+      }
       else {
         var ev = fr.expr[expr];
         if (Array.isArray(ev)) {
@@ -1081,6 +1084,7 @@
       var fr = PET_FRAMES[petSpeciesKey()];
       if (!fr) return;
       var ev = fr.expr[cur];
+      if (ev && typeof ev === 'object') ev = ev[petStageIdx()];
       if (!Array.isArray(ev) || ev.length <= 1) return;
       var interval = PET_EXPR_INTERVAL[cur] || 400;
       // 累加累计时间，到点就翻帧
@@ -3126,7 +3130,7 @@
       }, ms || 1200);
     }
     var c2b = el('div', 'card');
-    var TB_STAGES = [[0, '蛋'], [1, '宝宝'], [2, curSpecies().stages[0]], [3, curSpecies().stages[1]]];
+    var TB_STAGES = [[0, '蛋'], [1, curSpecies().stages[0]], [2, curSpecies().stages[1]], [3, curSpecies().stages[2]]];
     c2b.innerHTML = '<h2 class="section">状态试验台 · 点了就看</h2>' +
       '<div class="pg-cvwrap pet-canvas-wrap tb-main" id="tb-cvwrap"><canvas id="tb-cv" width="16" height="16"></canvas></div>' +
       '<div class="row wrap" style="gap:6px;margin-top:8px" id="tb-stages">' +
