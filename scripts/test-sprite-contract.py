@@ -53,6 +53,19 @@ def main():
     assert "1: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2']" in APP
     assert "2: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2']" in APP
 
+    # Baby/kid happy states should have an actual three-phase jump, not only a
+    # CSS animation around one static face frame.
+    for stage in ("baby", "kid"):
+        frames = []
+        for index in range(3):
+            path = SPRITES / f"cat-{stage}-happy-{index}.png"
+            assert path.exists(), f"missing {stage} happy frame: {path.name}"
+            frames.append(path.read_bytes())
+        assert len(set(frames)) == 3, f"{stage} happy frames must all be unique"
+
+    assert "1: ['cat-baby-happy-0', 'cat-baby-happy-1', 'cat-baby-happy-2']" in APP
+    assert "2: ['cat-kid-happy-0', 'cat-kid-happy-1', 'cat-kid-happy-2']" in APP
+
     print("sprite contract: PASS")
 
 
