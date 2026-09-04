@@ -112,11 +112,11 @@ def main():
     assert "walk: { 1: 'cat-baby-walk-', 2: 'cat-kid-walk-', 3: 'cat-walk-' }" in APP
     for stage in ("baby", "kid"):
         frames = []
-        for index in range(6):
+        for index in range(7):
             path = SPRITES / f"cat-{stage}-walk-{index}.png"
             assert path.exists(), f"missing {stage} walk frame: {path.name}"
             frames.append(path.read_bytes())
-        assert len(set(frames)) == 6, f"{stage} walk frames must be unique"
+        assert len(set(frames)) == 7, f"{stage} walk frames must be unique"
 
     # Sleep is a curled side pose, but each stage still needs its own fitted
     # dimensions so a baby does not grow taller merely by closing its eyes.

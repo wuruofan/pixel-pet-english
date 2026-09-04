@@ -45,7 +45,7 @@ def main():
     # The adult side loop is the only approved walk cycle. Fitting it down
     # keeps its silhouette and timing while matching baby/kid display scale.
     for stage, scale in (("baby", 0.76), ("kid", 0.9)):
-        for index in range(6):
+        for index in range(7):
             source = Image.open(SPRITES / f"cat-walk-{index}.png").convert("RGBA")
             fit_scale(source, scale).save(SPRITES / f"cat-{stage}-walk-{index}.png")
     print("generated stage-fitted cat sleep and walk frames")
