@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Egg sprite pipeline: AI original -> clean 29x36 egg -> 6 animation frames.
+"""Egg sprite pipeline: AI original -> clean 29x36 egg -> animation frames.
 
 Design notes (v2, 2026-09-04):
 - The egg PNG carries NO spots. Spots are overlaid at runtime by drawPet
@@ -9,10 +9,11 @@ Design notes (v2, 2026-09-04):
   3x2, matching the earlier white-egg reference the user liked).
 - Frames are real differential frames (not same-image copies):
     cat-egg / cat-egg-idle-0   stage frame, open eyes + smile
-    cat-egg-idle-1              shifted 1px right (wobble)
+    cat-egg-idle-1              bottom-anchored squash + right glance
     cat-egg-blink               closed-eye arc
     cat-egg-eat                 squint + open mouth + food below mouth
     cat-egg-happy               ^ ^ happy eyes + open laughing mouth
+    cat-egg-sleep/excited/droopy/sad/wash/grunt
 
 Run:
     python3 scripts/process-egg.py
@@ -31,9 +32,10 @@ CREAM = (253, 247, 236, 255)     # cream shell
 PINK  = (250, 135, 120, 255)     # blush / tongue
 WHITE = (255, 255, 255, 255)     # eye highlight
 YELLOW = (251, 180, 69, 255)     # food treat
+TEAR   = (116, 192, 255, 255)    # sad-state tear
 SPOT  = {(252, 171, 52), (253, 177, 57), (251, 180, 69), (247, 153, 42),
          (236, 122, 21), (242, 133, 25), (241, 138, 36), (163, 88, 24)}
-MAIN  = [INK, CREAM, PINK, WHITE, YELLOW] + list(SPOT)
+MAIN  = [INK, CREAM, PINK, WHITE, YELLOW, TEAR] + list(SPOT)
 
 # 3x3 eye regions (left / right)
 EYE_L = [(7, 14), (8, 14), (9, 14), (7, 15), (8, 15), (9, 15), (7, 16), (8, 16), (9, 16)]
@@ -158,41 +160,74 @@ def refine(base):
     return out
 
 
-def copy_shift(base, dx):
+def squash_vertical(base, factor):
+    """Squash around the bottom edge so idle breathing never clips sideways."""
+    w, h = base.size
+    nh = max(1, round(h * factor))
+    scaled = base.resize((w, nh), Image.NEAREST)
+    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    out.paste(scaled, (0, h - nh))
+    return out
+
+
+def shift_vertical(base, dy):
+    """Move the whole egg up by dy pixels, preserving the frame canvas."""
     w, h = base.size
     out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    if dy >= 0:
+        out.paste(base.crop((0, 0, w, h - dy)), (0, dy))
+    else:
+        out.paste(base.crop((0, -dy, w, h)), (0, 0))
+    return out
+
+
+def clear_face(out):
     op = out.load()
-    bp = base.load()
-    for y in range(h):
-        for x in range(w):
-            c = bp[x, y]
-            if c[3] > 128 and 0 <= x + dx < w:
-                op[x + dx, y] = c
+    for (x, y) in EYE_L + EYE_R:
+        op[x, y] = CREAM
+    for (x, y) in MOUTH_CLEAR:
+        op[x, y] = CREAM
+    return op
+
+
+def draw_eye(op, x0, y0, width=3, height=3, highlight=True):
+    for y in range(y0, y0 + height):
+        for x in range(x0, x0 + width):
+            op[x, y] = INK
+    if highlight:
+        op[x0, y0] = WHITE
+        if width > 2:
+            op[x0 + 1, y0] = WHITE
+
+
+def make_glance(base, dx):
+    out = base.copy()
+    op = clear_face(out)
+    draw_eye(op, 7 + dx, 14, 3, 3)
+    draw_eye(op, 18 + dx, 14, 3, 3)
+    for (x, y) in [(12, 19), (16, 19), (13, 20), (14, 20), (15, 20)]:
+        op[x, y] = INK
     return out
 
 
 def make_blink(base):
     out = base.copy()
-    op = out.load()
-    for (x, y) in EYE_L + EYE_R:
-        op[x, y] = CREAM
+    op = clear_face(out)
     # closed-eye downward arc
     for (x, y) in [(7, 15), (8, 16), (9, 15), (18, 15), (19, 16), (20, 15)]:
+        op[x, y] = INK
+    for (x, y) in [(12, 19), (16, 19), (13, 20), (14, 20), (15, 20)]:
         op[x, y] = INK
     return out
 
 
 def make_eat(base):
     out = base.copy()
-    op = out.load()
+    op = clear_face(out)
     # squint eyes (horizontal lines)
-    for (x, y) in EYE_L + EYE_R:
-        op[x, y] = CREAM
     for (x, y) in [(7, 15), (8, 15), (9, 15), (18, 15), (19, 15), (20, 15)]:
         op[x, y] = INK
     # clear old smile, draw open mouth 2x2 (ink lip + pink tongue)
-    for (x, y) in MOUTH_CLEAR:
-        op[x, y] = CREAM
     for (x, y) in [(13, 19), (14, 19)]:
         op[x, y] = INK
     for (x, y) in [(13, 20), (14, 20)]:
@@ -207,19 +242,90 @@ def make_eat(base):
 
 def make_happy(base):
     out = base.copy()
-    op = out.load()
+    op = clear_face(out)
     # ^ ^ happy eyes
-    for (x, y) in EYE_L + EYE_R:
-        op[x, y] = CREAM
     for (x, y) in [(7, 15), (8, 14), (9, 15), (18, 15), (19, 14), (20, 15)]:
         op[x, y] = INK
     # clear old smile, draw open laughing mouth (ink lip + pink tongue)
-    for (x, y) in MOUTH_CLEAR:
-        op[x, y] = CREAM
     for (x, y) in [(12, 20), (13, 20), (14, 20), (15, 20), (16, 20)]:
         op[x, y] = INK
     for (x, y) in [(13, 21), (14, 21)]:
         op[x, y] = PINK
+    return out
+
+
+def make_sleep(base, phase):
+    out = make_blink(base)
+    op = out.load()
+    # A tiny yawn gives sleep a different read from an ordinary blink.
+    for (x, y) in [(13, 19), (14, 19), (13, 20), (14, 20)]:
+        op[x, y] = INK if phase == 0 else PINK
+    return out
+
+
+def make_excited(base):
+    out = base.copy()
+    op = clear_face(out)
+    # Taller sparkling eyes + an open laugh, visibly distinct at 3x scale.
+    draw_eye(op, 7, 13, 3, 4)
+    draw_eye(op, 18, 13, 3, 4)
+    for (x, y) in [(12, 19), (13, 19), (14, 19), (15, 19), (16, 19),
+                   (12, 20), (16, 20), (13, 21), (14, 21), (15, 21)]:
+        op[x, y] = INK
+    for (x, y) in [(13, 20), (14, 20), (15, 20)]:
+        op[x, y] = PINK
+    return out
+
+
+def make_droopy(base):
+    out = base.copy()
+    op = clear_face(out)
+    # Heavy lids and a small downturned mouth: tired, not blank.
+    for (x, y) in [(7, 15), (8, 15), (9, 15), (18, 15), (19, 15), (20, 15)]:
+        op[x, y] = INK
+    for (x, y) in [(12, 20), (13, 19), (14, 19), (15, 19), (16, 20)]:
+        op[x, y] = INK
+    return out
+
+
+def make_sad(base, phase):
+    out = base.copy()
+    op = clear_face(out)
+    # Lower outer corners plus alternating tear position makes two real frames.
+    for (x, y) in [(7, 14), (8, 15), (9, 15), (18, 15), (19, 15), (20, 14)]:
+        op[x, y] = INK
+    tear_x = 6 if phase == 0 else 21
+    op[tear_x, 17] = TEAR
+    op[tear_x, 18] = TEAR
+    for (x, y) in [(13, 20), (14, 19), (15, 20)]:
+        op[x, y] = INK
+    return out
+
+
+def make_wash(base, dx):
+    out = base.copy()
+    op = clear_face(out)
+    for (x, y) in [(7, 15), (8, 15), (9, 15), (18, 15), (19, 15), (20, 15)]:
+        op[x, y] = INK
+    for (x, y) in [(4, 17), (5, 17), (4, 18), (5, 18),
+                   (21, 17), (22, 17), (21, 18), (22, 18)]:
+        if 0 <= x + dx < base.width:
+            op[x + dx, y] = PINK
+    for (x, y) in [(12, 19), (13, 20), (14, 20), (15, 20), (16, 19)]:
+        op[x, y] = INK
+    return out
+
+
+def make_grunt(base, phase):
+    out = base.copy()
+    op = clear_face(out)
+    for (x, y) in [(7, 15), (8, 15), (9, 15), (18, 15), (19, 15), (20, 15)]:
+        op[x, y] = INK
+    for (x, y) in [(4, 17), (5, 17), (21, 17), (22, 17)]:
+        op[x, y] = PINK
+    mouth = [(13, 20), (14, 20)] if phase == 0 else [(12, 20), (13, 19), (14, 19), (15, 19), (16, 20)]
+    for x, y in mouth:
+        op[x, y] = INK
     return out
 
 
@@ -229,10 +335,22 @@ def main():
     frames = {
         'cat-egg':          base,
         'cat-egg-idle-0':   base,
-        'cat-egg-idle-1':   copy_shift(base, 1),
+        'cat-egg-idle-1':   make_glance(squash_vertical(base, 0.97), 1),
         'cat-egg-blink':    make_blink(base),
         'cat-egg-eat':      make_eat(base),
         'cat-egg-happy':    make_happy(base),
+        'cat-egg-sleep-0':  make_sleep(base, 0),
+        'cat-egg-sleep-1':  make_sleep(base, 1),
+        'cat-egg-excited-0': make_excited(base),
+        'cat-egg-excited-1': shift_vertical(make_excited(base), 1),
+        'cat-egg-excited-2': shift_vertical(make_excited(base), 2),
+        'cat-egg-droopy':   make_droopy(base),
+        'cat-egg-sad-0':    make_sad(base, 0),
+        'cat-egg-sad-1':    make_sad(base, 1),
+        'cat-egg-wash-0':   make_wash(base, 0),
+        'cat-egg-wash-1':   make_wash(base, -1),
+        'cat-egg-grunt-0':  make_grunt(base, 0),
+        'cat-egg-grunt-1':  make_grunt(base, 1),
     }
     for name, im in frames.items():
         p = os.path.join(OUT, name + '.png')

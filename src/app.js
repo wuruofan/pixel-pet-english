@@ -848,15 +848,26 @@
                               1: ['cat-baby-eat'],
                               2: ['cat-kid-eat'],
                               3: ['cat-eat-0', 'cat-eat-1', 'cat-eat-2'] },
-                   sleep:   ['cat-sleep-0', 'cat-sleep-1'],
+                   sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1'],
+                              1: ['cat-sleep-0', 'cat-sleep-1'],
+                              2: ['cat-sleep-0', 'cat-sleep-1'],
+                              3: ['cat-sleep-0', 'cat-sleep-1'] },
                    happy:   { 0: ['cat-egg-happy'],
                               1: ['cat-baby-happy'],
                               2: ['cat-kid-happy'],
                               3: ['cat-happy-0', 'cat-happy-1', 'cat-happy-2'] },
-                   excited: ['cat-big'],
-                   big:     ['cat-big'],
-                   droopy:  ['cat-big'],   // P1 占位（用 cat-big 当静态表情帧）
-                   sad:     ['cat-big'] }, // P1 占位
+                   excited: { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
+                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                   big:     { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
+                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                   droopy:  { 0: ['cat-egg-droopy'],
+                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                   sad:     { 0: ['cat-egg-sad-0', 'cat-egg-sad-1'],
+                              1: ['cat-big'], 2: ['cat-big'], 3: ['cat-big'] },
+                   wash:    { 0: ['cat-egg-wash-0', 'cat-egg-wash-1'],
+                              1: ['cat-baby'], 2: ['cat-kid'], 3: ['cat-adult'] },
+                   grunt:   { 0: ['cat-egg-grunt-0', 'cat-egg-grunt-1'],
+                              1: ['cat-baby'], 2: ['cat-kid'], 3: ['cat-adult'] } },
            walk: 'cat-walk-' }
   };
   /* 蛋斑点坐标（相对于 29×36 蛋帧内容）。斑点不在 PNG 里，drawPet 按当前宠物主色
@@ -893,7 +904,7 @@
     var fr = PET_FRAMES[petSpeciesKey()];
     if (fr && stage >= 0) {
       var fk = null;
-      if (walking && fr.walk && !petAnim.actionExpr) fk = fr.walk + (petWalk.frameIdx || 0);
+      if (walking && stage >= 1 && fr.walk && !petAnim.actionExpr) fk = fr.walk + (petWalk.frameIdx || 0);
       else {
         var ev = fr.expr[expr];
         if (Array.isArray(ev)) {
