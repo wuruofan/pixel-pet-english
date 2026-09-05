@@ -16,6 +16,18 @@ def alpha_bbox(name):
     return alpha.point(lambda value: 255 if value > 100 else 0).getbbox()
 
 
+def face_similarity(source_name, target_name, box):
+    source = Image.open(SPRITES / source_name).convert("RGBA")
+    target = Image.open(SPRITES / target_name).convert("RGBA")
+    left, top, right, bottom = box
+    same = sum(
+        source.getpixel((x, y)) == target.getpixel((x, y))
+        for y in range(top, bottom)
+        for x in range(left, right)
+    )
+    return same / ((right - left) * (bottom - top))
+
+
 def main():
     # Stage 0 is an egg and must never borrow the adult cat's side-walk loop.
     assert re.search(r"walking\s*&&\s*stage\s*>=\s*1\s*&&\s*fr\.walk", APP), (
@@ -112,6 +124,28 @@ def main():
         assert f"1: ['cat-baby-{expr}-" in APP
         assert f"2: ['cat-kid-{expr}-" in APP
         assert f"3: ['cat-adult-{expr}-" in APP
+
+    # Cat faces are deliberately more detailed than the egg face. Generated
+    # action frames must preserve most of the stage's original eye/cheek art;
+    # erasing the whole box and redrawing 2px geometry is a regression.
+    face_boxes = {
+        "baby": (7, 10, 21, 19),
+        "kid": (7, 12, 23, 21),
+        "adult": (11, 16, 33, 27),
+    }
+    for stage, box in face_boxes.items():
+        source = f"cat-{stage}.png"
+        for expr in ("excited", "droopy", "sad"):
+            target = f"cat-{stage}-{expr}-0.png" if expr != "droopy" else f"cat-{stage}-droopy.png"
+            assert face_similarity(source, target, box) >= 0.55, (
+                f"{stage} {expr} erased too much of the original cat face"
+            )
+        blink_source = "cat-blink.png" if stage == "adult" else f"cat-{stage}-blink.png"
+        for expr in ("wash", "grunt"):
+            target = f"cat-{stage}-{expr}-0.png"
+            assert face_similarity(blink_source, target, box) >= 0.55, (
+                f"{stage} {expr} erased too much of the detailed blink face"
+            )
 
     for stage in ("baby", "kid", "adult"):
         path = SPRITES / f"cat-{stage}-droopy.png"
