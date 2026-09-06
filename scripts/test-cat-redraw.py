@@ -24,6 +24,13 @@ LIGHT = (255, 190, 70, 255)
 FUR = (244, 157, 55, 255)
 PINK = (244, 132, 145, 255)
 NOSE = (207, 82, 105, 255)
+# tail region exempted from shift-equality (it wags); tail tip at
+# tail_lift=0 with its color; droop tip; excited paw-lift regions
+TAIL_BOX = {"baby": (18, 18, 28, 32), "kid": (26, 17, 34, 38), "adult": (30, 22, 44, 48)}
+TAIL_TIP0 = {"baby": ((23, 22), LIGHT), "kid": ((29, 20), INK), "adult": ((36, 28), LIGHT)}
+DROOP_TIP = {"baby": ((21, 31), INK), "kid": ((24, 37), INK), "adult": ((31, 47), INK)}
+PAW_BOX = {"baby": (13, 26, 20, 32), "kid": (17, 32, 25, 38), "adult": (26, 42, 35, 48)}
+PAW_PAD = {"baby": (16, 28), "kid": (20, 34), "adult": (30, 44)}
 
 EXPECTED_SIZES = {
     "baby": (30, 32),
@@ -214,18 +221,25 @@ def main():
             f"{idle0_path.name} must stay identical to the approved base stance"
         )
 
-        # idle-1 is a one-pixel downward breath: feet stay on the canvas
-        # floor and the horizontal silhouette is unchanged.
+        # idle-1 dips one pixel and sways the tail tip; everything outside
+        # the tail region follows the dip exactly.
         idle1_path = SPRITES / f"cat-{stage}-v2-idle-1.png"
         assert idle1_path.exists(), f"missing v2 idle frame: {idle1_path.name}"
         idle1 = Image.open(idle1_path).convert("RGBA")
         assert idle1.size == size, f"{idle1_path.name} has size {idle1.size}, expected {size}"
+        tb0, tb1 = TAIL_BOX[stage][:2], TAIL_BOX[stage][2:]
         for y in range(size[1]):
             for x in range(size[0]):
+                if tb0[0] <= x < tb1[0] and tb0[1] <= y < tb1[1]:
+                    continue
                 expected = base.getpixel((x, y - 1)) if y > 0 else (0, 0, 0, 0)
                 assert idle1.getpixel((x, y)) == expected, (
                     f"{idle1_path.name} is not a clean one-pixel breath at ({x}, {y})"
                 )
+        idle1_tip = TAIL_TIP0[stage]
+        assert idle1.getpixel((idle1_tip[0][0], idle1_tip[0][1] + 1)) == idle1_tip[1], (
+            f"{stage} idle breath must sway the tail"
+        )
 
         # blink may only replace the two eye sockets with symmetric closed
         # lids; nose, mouth, cheeks and outline stay exactly on the base.
@@ -261,27 +275,55 @@ def main():
         sockets = eye_sockets[stage]
         nx, ny = base_nose[stage]
 
-        # happy/excited hops are whole-body vertical offsets of the base.
-        for pose, dy in (("happy-0", 1), ("happy-1", -2), ("happy-2", 0),
-                         ("excited-0", -1), ("excited-1", -2)):
+        # happy/excited hops shift the whole body while the tail wags;
+        # excited-1 also lifts a paw. Pixels outside the tail/paw regions
+        # must be exact shifted copies of the base.
+        hop_spec = (("happy-0", 1, 1), ("happy-1", -2, -1), ("happy-2", 0, -1),
+                    ("excited-0", -1, 1), ("excited-1", -2, -1))
+        for pose, dy, lift in hop_spec:
             img = load(f"cat-{stage}-v2-{pose}.png")
             assert img.size == size, f"{stage} {pose} wrong canvas"
+            tb0, tb1 = TAIL_BOX[stage][:2], TAIL_BOX[stage][2:]
+            paw_up_pose = pose == "excited-1"
+            pb0, pb1 = PAW_BOX[stage][:2], PAW_BOX[stage][2:]
             for y in range(size[1]):
                 sy = y - dy
                 for x in range(size[0]):
+                    if tb0[0] <= x < tb1[0] and tb0[1] <= y < tb1[1]:
+                        continue
+                    if paw_up_pose and pb0[0] <= x < pb1[0] and pb0[1] <= y < pb1[1]:
+                        continue
                     expected = base.getpixel((x, sy)) if 0 <= sy < size[1] else (0, 0, 0, 0)
                     assert img.getpixel((x, y)) == expected, (
-                        f"{stage} {pose} must be a clean {dy:+d}px body shift at ({x},{y})"
+                        f"{stage} {pose} must be a clean {dy:+d}px body shift at ({x}, {y})"
                     )
+            (tx, ty0), tcol = TAIL_TIP0[stage]
+            assert img.getpixel((tx, ty0 - lift + dy)) == tcol, (
+                f"{stage} {pose} tail must wag"
+            )
+            if paw_up_pose:
+                px_, py_ = PAW_PAD[stage]
+                assert img.getpixel((px_, py_ - 2)) == LIGHT, (
+                    f"{stage} {pose} lifted paw pad must rise with the hop"
+                )
+                assert img.getpixel((px_, py_ + 2)) == (0, 0, 0, 0), (
+                    f"{stage} {pose} paws must leave the floor clear"
+                )
 
-        # excited-2 swaps the sockets for glowing star eyes, nothing else.
+        # excited-2 swaps the sockets for star eyes, lifts a paw and wags
+        # the tail; pixels outside those regions stay on the base.
         star = load(f"cat-{stage}-v2-excited-2.png")
+        tb0, tb1 = TAIL_BOX[stage][:2], TAIL_BOX[stage][2:]
+        pb0, pb1 = PAW_BOX[stage][:2], PAW_BOX[stage][2:]
         for y in range(size[1]):
             for x in range(size[0]):
-                if any(sx0 <= x <= sx1 and sy0 <= y <= sy1 for sx0, sy0, sx1, sy1 in sockets):
+                in_socket = any(sx0 <= x <= sx1 and sy0 <= y <= sy1 for sx0, sy0, sx1, sy1 in sockets)
+                in_tail = tb0[0] <= x < tb1[0] and tb0[1] <= y < tb1[1]
+                in_paw = pb0[0] <= x < pb1[0] and pb0[1] <= y < pb1[1]
+                if in_socket or in_tail or in_paw:
                     continue
                 assert star.getpixel((x, y)) == base.getpixel((x, y)), (
-                    f"{stage} excited-2 changed pixels outside the eye sockets at ({x},{y})"
+                    f"{stage} excited-2 changed pixels outside sockets/tail/paw at ({x},{y})"
                 )
         for sx0, sy0, sx1, sy1 in sockets:
             assert star.getpixel((sx0 + 1, sy1 - 1)) == LIGHT, (
@@ -289,6 +331,17 @@ def main():
             )
             if sx1 - sx0 >= 4 and sy1 - sy0 >= 4:
                 assert star.getpixel(((sx0 + sx1) // 2, (sy0 + sy1) // 2)) == WHITE
+        px_, py_ = PAW_PAD[stage]
+        assert star.getpixel((px_, py_)) == LIGHT, (
+            f"{stage} excited-2 lifted paw must show its light pad"
+        )
+        assert star.getpixel((px_, py_ + 2)) == INK, (
+            f"{stage} excited-2 pad must hover right above the grounded rim"
+        )
+        (tx, ty0), tcol = TAIL_TIP0[stage]
+        assert star.getpixel((tx, ty0 - 1)) == tcol, (
+            f"{stage} excited-2 tail must wag up"
+        )
 
         # eating: the whole face pitches while a trapezoid dish with a
         # domed kibble heap sits in front — ~2/3 of the body width so the
@@ -325,6 +378,14 @@ def main():
                     assert img.getpixel((sx0, sy1 + dy)) == INK, (
                         f"{stage} eat-1 must close both eyes while chewing"
                     )
+            lift = 1 if pose == "eat-0" else (-1 if pose == "eat-1" else 0)
+            # the adult's pitched head covers its tail tip, so its wag is
+            # asserted on the visible lower curl instead
+            (tx, ty0), tcol = {"baby": ((23, 22), LIGHT), "kid": ((29, 20), INK),
+                               "adult": ((42, 31), INK)}[stage]
+            assert img.getpixel((tx, ty0 - lift)) == tcol, (
+                f"{stage} {pose} tail must sway while eating"
+            )
 
         # sleep is its own lying silhouette: grounded, closed eye, crisp Z.
         for phase in (0, 1):
@@ -359,8 +420,9 @@ def main():
             f"{stage} sleeping face lost its muzzle nose"
         )
 
-        # sad/droopy drop heavy lids over the sockets; sad adds a blue tear
-        # hanging from the left eye, one pixel further down on sad-1.
+        # sad/droopy drop heavy lids over the sockets, let the tail sag to
+        # the floor; sad adds a blue tear hanging from the left eye, one
+        # pixel further down on sad-1.
         tear_xy = {"baby": (7, 14), "kid": (8, 16), "adult": (12, 20)}[stage]
         for pose, roll in (("sad-0", 0), ("sad-1", 1), ("droopy", None)):
             img = load(f"cat-{stage}-v2-{pose}.png")
@@ -368,6 +430,10 @@ def main():
                 assert img.getpixel((sx0, sy0)) == FUR and img.getpixel((sx0, sy1)) == INK, (
                     f"{stage} {pose} must shade heavy lids over the eyes"
                 )
+            dtip, dcol = DROOP_TIP[stage]
+            assert img.getpixel(dtip) == dcol, (
+                f"{stage} {pose} tail must droop to the floor"
+            )
             if roll is not None:
                 for dy in (0, 1):
                     assert img.getpixel((tear_xy[0], tear_xy[1] + roll + dy)) == TEAR, (

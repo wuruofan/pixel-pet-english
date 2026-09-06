@@ -80,12 +80,15 @@ class Canvas:
         self.d.point((x + self.ox, y + self.oy), fill=c)
 
 
-def feet(c, rects):
+def feet(c, rects, paw_up=False):
     """Outlined paw stubs: INK rim, LIGHT pad, bottom row stays INK so the
-    paws rest exactly on the canvas floor without reading as black blocks."""
-    for x0, y0, x1, y1 in rects:
-        c.r(x0, y0, x1, y1, INK)
-        c.r(x0 + 1, y0, x1 - 1, y1 - 1, LIGHT)
+    paws rest exactly on the canvas floor without reading as black blocks.
+    paw_up lifts the second paw one pixel, leaving a visible gap below —
+    a raised paw for the excited frames."""
+    for i, (x0, y0, x1, y1) in enumerate(rects):
+        up = 1 if (paw_up and i == 1) else 0
+        c.r(x0, y0 - up, x1, y1 - up, INK)
+        c.r(x0 + 1, y0 - up, x1 - 1, y1 - 1 - up, LIGHT)
 
 
 def draw_eyes(c, stage, style):
@@ -138,16 +141,19 @@ def face_anchors(c, stage, eyes="open"):
 
 # ---------------------------------------------------------------- bodies
 
-def baby_body(c):
-    # pom-pom tail, tucked against the body's right flank
-    c.p([(19, 22), (25, 20), (27, 24), (25, 28), (21, 29), (19, 26)], INK)
-    c.p([(20, 23), (24, 22), (25, 24), (24, 26), (22, 26), (20, 25)], FUR)
-    c.r(23, 22, 24, 23, LIGHT)
+def baby_body(c, tail_lift=0, tail_droop=False, paw_up=False):
+    # pom-pom tail, tucked against the body's right flank. It wags with
+    # tail_lift and sags to the floor when droopy/sad.
+    dy = 2 if tail_droop else -tail_lift
+    pom = [(x, y + dy) for x, y in ((19, 22), (25, 20), (27, 24), (25, 28), (21, 29), (19, 26))]
+    c.p(pom, INK)
+    c.p([(x, y + dy) for x, y in ((20, 23), (24, 22), (25, 24), (24, 26), (22, 26), (20, 25))], FUR)
+    c.r(23, 22 + dy, 24, 23 + dy, LIGHT)
     # compact chubby body
     c.p([(7, 20), (18, 20), (21, 24), (21, 29), (18, 31), (7, 31), (4, 29), (4, 24)], INK)
     c.p([(8, 21), (17, 21), (19, 25), (19, 28), (17, 30), (8, 30), (6, 28), (6, 25)], FUR)
     c.p([(11, 22), (15, 22), (17, 26), (15, 30), (11, 30), (9, 26)], CREAM)
-    feet(c, ((6, 29, 12, 31), (14, 29, 19, 31)))
+    feet(c, ((6, 29, 12, 31), (14, 29, 19, 31)), paw_up=paw_up)
 
 
 def baby_head(c, eyes="open"):
@@ -168,11 +174,17 @@ def baby_head(c, eyes="open"):
     face_anchors(c, "baby", eyes)
 
 
-def kid_body(c):
-    # long upward tail with a curl
-    c.l([(23, 32), (28, 31), (31, 27), (31, 22), (29, 20)], INK, 5)
-    c.l([(23, 32), (28, 31), (30, 27), (30, 23)], FUR, 3)
-    c.l([(30, 28), (30, 23)], SHADOW, 2)
+def kid_body(c, tail_lift=0, tail_droop=False, paw_up=False):
+    # long tail with a curl. It sways its tip with tail_lift and hangs to
+    # the floor when droopy/sad.
+    dy = -tail_lift
+    if tail_droop:
+        c.l([(23, 33), (27, 34), (28, 36)], INK, 5)
+        c.l([(23, 33), (26, 34), (27, 35)], FUR, 3)
+    else:
+        c.l([(23, 32), (28, 31), (31, 27 + dy), (31, 22 + dy), (29, 20 + dy)], INK, 5)
+        c.l([(23, 32), (28, 31), (30, 27 + dy), (30, 23 + dy)], FUR, 3)
+        c.l([(30, 28 + dy), (30, 23 + dy)], SHADOW, 2)
     # longer slim body, legs apart at the bottom
     c.p([(9, 22), (22, 22), (26, 26), (26, 34), (23, 36), (8, 36), (5, 34), (5, 26)], INK)
     c.p([(10, 23), (21, 23), (24, 27), (24, 32), (22, 35), (9, 35), (7, 32), (7, 27)], FUR)
@@ -181,7 +193,7 @@ def kid_body(c):
     c.r(7, 27, 8, 30, SHADOW)
     c.r(8, 31, 9, 33, SHADOW)
     c.r(24, 27, 25, 30, SHADOW)
-    feet(c, ((8, 35, 14, 37), (18, 35, 24, 37)))
+    feet(c, ((8, 35, 14, 37), (18, 35, 24, 37)), paw_up=paw_up)
 
 
 def kid_head(c, eyes="open"):
@@ -203,12 +215,19 @@ def kid_head(c, eyes="open"):
     face_anchors(c, "kid", eyes)
 
 
-def adult_body(c):
-    # large tail curl
-    c.l([(30, 41), (38, 42), (42, 37), (41, 31), (37, 28), (34, 31)], INK, 8)
-    c.l([(30, 41), (38, 41), (40, 37), (39, 32), (37, 30), (35, 32)], FUR, 5)
-    c.l([(38, 40), (40, 37), (39, 33)], SHADOW, 2)
-    c.r(35, 28, 37, 29, LIGHT)
+def adult_body(c, tail_lift=0, tail_droop=False, paw_up=False):
+    # large tail curl. It sways with tail_lift; when droopy/sad the curl
+    # lets go and the tail hangs to the floor.
+    dy = -tail_lift
+    if tail_droop:
+        c.l([(31, 42), (36, 44), (36, 46)], INK, 8)
+        c.l([(31, 42), (35, 44), (35, 45)], FUR, 5)
+        c.px(35, 46, LIGHT)
+    else:
+        c.l([(30, 41), (38, 42), (42, 37 + dy), (41, 31 + dy), (37, 28 + dy), (34, 31 + dy)], INK, 8)
+        c.l([(30, 41), (38, 41), (40, 37 + dy), (39, 32 + dy), (37, 30 + dy), (35, 32 + dy)], FUR, 5)
+        c.l([(38, 40), (40, 37 + dy), (39, 33 + dy)], SHADOW, 2)
+        c.r(35, 28 + dy, 37, 29 + dy, LIGHT)
     # broad body with haunches
     c.p([(12, 28), (32, 28), (37, 32), (38, 39), (36, 44), (33, 46), (11, 46), (8, 44), (6, 39), (7, 32)], INK)
     c.p([(13, 30), (31, 30), (35, 33), (36, 39), (34, 43), (32, 45), (12, 45), (10, 43), (8, 39), (9, 33)], FUR)
@@ -217,7 +236,7 @@ def adult_body(c):
     c.r(10, 33, 12, 38, SHADOW)
     c.r(11, 39, 13, 43, SHADOW)
     c.r(33, 33, 35, 38, SHADOW)
-    feet(c, ((10, 45, 17, 47), (27, 45, 34, 47)))
+    feet(c, ((10, 45, 17, 47), (27, 45, 34, 47)), paw_up=paw_up)
 
 
 def adult_head(c, eyes="open"):
@@ -605,10 +624,12 @@ def draw_cat(stage):
 
 
 def render_pose(stage, head=(0, 0), eyes="open", bowl=False, tear=None,
-                bubble=None, blush=False):
-    """Re-render a stage with the head group pitched/swayed and overlays."""
+                bubble=None, blush=False, tail_lift=0, tail_droop=False,
+                paw_up=False):
+    """Re-render a stage with the head group pitched/swayed, the tail
+    wagging/drooping and overlays applied."""
     c = Canvas(*SIZES[stage])
-    BODIES[stage](c)
+    BODIES[stage](c, tail_lift=tail_lift, tail_droop=tail_droop, paw_up=paw_up)
     if bowl:
         draw_bowl(c, stage)
     c.offset(*head)
@@ -637,30 +658,31 @@ def cat_frame(stage, pose):
     if pose.startswith("sleep-"):
         return draw_sleep(stage, int(pose[-1]))
     if pose == "happy-0":
-        return shift_vertical(draw_cat(stage), 1)      # crouch
+        return shift_vertical(render_pose(stage, tail_lift=1), 1)      # crouch, tail up
     if pose in ("happy-1", "excited-1"):
-        return shift_vertical(draw_cat(stage), -2)     # airborne
+        return shift_vertical(
+            render_pose(stage, tail_lift=-1, paw_up=(pose == "excited-1")), -2)
     if pose == "excited-0":
-        return shift_vertical(draw_cat(stage), -1)     # hop
+        return shift_vertical(render_pose(stage, tail_lift=1), -1)     # hop
     if pose == "happy-2":
-        return draw_cat(stage)                         # landing
+        return render_pose(stage, tail_lift=-1)                        # landing
     # The kitten's face sits just above the heap at pitch +2; +3 made the
     # chin outline touch the heap outline. Bigger stages keep +3.
     pitch = 2 if stage == "baby" else 3
     if pose == "eat-0":
-        return render_pose(stage, head=(0, pitch), bowl=True)
+        return render_pose(stage, head=(0, pitch), bowl=True, tail_lift=1)
     if pose == "eat-1":
-        return render_pose(stage, head=(0, pitch), bowl=True, eyes="closed")
+        return render_pose(stage, head=(0, pitch), bowl=True, eyes="closed", tail_lift=-1)
     if pose == "eat-2":
         return render_pose(stage, head=(0, -2), bowl=True)
     if pose == "excited-2":
-        return render_pose(stage, eyes="star")
+        return render_pose(stage, eyes="star", tail_lift=1, paw_up=True)
     if pose == "sad-0":
-        return render_pose(stage, eyes="lid", tear=0)
+        return render_pose(stage, eyes="lid", tear=0, tail_droop=True)
     if pose == "sad-1":
-        return render_pose(stage, eyes="lid", tear=1)
+        return render_pose(stage, eyes="lid", tear=1, tail_droop=True)
     if pose == "droopy":
-        return render_pose(stage, eyes="lid")
+        return render_pose(stage, eyes="lid", tail_droop=True)
     if pose == "wash-0":
         return render_pose(stage, head=(1, 0), bubble="r")
     if pose == "wash-1":
