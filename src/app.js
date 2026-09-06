@@ -323,13 +323,30 @@
     if (mood) gainMood(mood);
     S.pet.xp += n;
     if (drop) S.pet[drop] = (S.pet[drop] || 0) + 1;
+    var stageBefore = petStageIdx();
     while (S.pet.xp >= xpNeed(S.pet.level)) {
       S.pet.xp -= xpNeed(S.pet.level);
       S.pet.level++;
       toast('🎉 ' + S.pet.name + ' 升到 ' + S.pet.level + ' 级啦！');
       beep('ok');
     }
+    var stageAfter = petStageIdx();
+    if (stageAfter !== stageBefore) celebrateEvolution(stageBefore, stageAfter);
     save();
+  }
+  /* 进化仪式：换形态的那一刻要被孩子看见（星星粒子 + 提示 + 开心跳），
+     不能只在后台悄悄换图——成长感知是这个游戏的核心激励。提示立刻弹；
+     开心跳延迟到触发进化的那套动作（如吃饭）播完后上演，否则会被
+     playAction 的 clearTimeout 掉。 */
+  function celebrateEvolution(before, after) {
+    var nameOf = function (st) { return st === 0 ? '蛋宝宝' : curSpecies().stages[st - 1]; };
+    toast('✨ ' + S.pet.name + ' 从 ' + nameOf(before) + '进化成 ' + nameOf(after) + ' 啦！');
+    spawnFx('star', 6);
+    setTimeout(function () {
+      spawnFx('star', 4);
+      playAction('happy', 'happy', 1800);
+    }, 1200);
+    beep('ok');
   }
 
   function feedPet() {
@@ -833,54 +850,57 @@
      walk=走路循环帧前缀。idle 按阶段分级，每级自带呼吸 A/B，避免 baby 阶段切换到 idle 时
      突然放大成 adult 尺寸。egg 是 PNG 蛋（替代原字符画），idle-0/1 做微 wobble。 */
   var PET_FRAMES = {
-    cat: { stage: { 0: 'cat-egg', 1: 'cat-baby', 2: 'cat-kid', 3: 'cat-adult' },
+    cat: { stage: { 0: 'cat-egg', 1: 'cat-baby-v2', 2: 'cat-kid-v2', 3: 'cat-adult-v2' },
            expr: { idle:    { 0: ['cat-egg-idle-0', 'cat-egg-idle-1'],
-                               1: ['cat-baby-idle-0', 'cat-baby-idle-1'],
-                               2: ['cat-kid-idle-0',  'cat-kid-idle-1'],
-                               3: ['cat-adult-idle-0','cat-adult-idle-1'] },
+                              /* 站姿/idle/blink/全部状态用本地像素重绘 v2 帧（每阶段独立锚点，
+                                 见 docs/sprites/HANDOFF-2026-09-05-cat-local-redraw.md）；
+                                 仅走路侧视仍走旧 GPT 帧，阶段 C 替换 */
+                              1: ['cat-baby-v2-idle-0', 'cat-baby-v2-idle-1'],
+                              2: ['cat-kid-v2-idle-0',  'cat-kid-v2-idle-1'],
+                              3: ['cat-adult-v2-idle-0','cat-adult-v2-idle-1'] },
                    /* blink/eat/happy 按阶段分级，避免 baby 阶段点眨眼显示大猫。
                       蛋阶段有独立帧（v6 水汪汪大眼版） */
                    blink:   { 0: ['cat-egg-blink'],
-                              1: ['cat-baby-blink'],
-                              2: ['cat-kid-blink'],
-                              3: ['cat-blink'] },
+                              1: ['cat-baby-v2-blink'],
+                              2: ['cat-kid-v2-blink'],
+                              3: ['cat-adult-v2-blink'] },
                    eat:     { 0: ['cat-egg-eat'],
-                              /* 同一套真实低头饭碗动作，按成长阶段拟合尺寸 */
-                              1: ['cat-baby-eat-0', 'cat-baby-eat-1', 'cat-baby-eat-2'],
-                              2: ['cat-kid-eat-0', 'cat-kid-eat-1', 'cat-kid-eat-2'],
-                              3: ['cat-adult-eat-0', 'cat-adult-eat-1', 'cat-adult-eat-2'] },
+                              /* 低头咬 / 闭嘴嚼 / 抬头咽，饭碗按阶段贴合 */
+                              1: ['cat-baby-v2-eat-0', 'cat-baby-v2-eat-1', 'cat-baby-v2-eat-2'],
+                              2: ['cat-kid-v2-eat-0', 'cat-kid-v2-eat-1', 'cat-kid-v2-eat-2'],
+                              3: ['cat-adult-v2-eat-0', 'cat-adult-v2-eat-1', 'cat-adult-v2-eat-2'] },
                    sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1'],
-                              1: ['cat-baby-sleep-0', 'cat-baby-sleep-1'],
-                              2: ['cat-kid-sleep-0', 'cat-kid-sleep-1'],
-                              3: ['cat-adult-sleep-0', 'cat-adult-sleep-1'] },
+                              1: ['cat-baby-v2-sleep-0', 'cat-baby-v2-sleep-1'],
+                              2: ['cat-kid-v2-sleep-0', 'cat-kid-v2-sleep-1'],
+                              3: ['cat-adult-v2-sleep-0', 'cat-adult-v2-sleep-1'] },
                    happy:   { 0: ['cat-egg-happy'],
-                              1: ['cat-baby-happy-0', 'cat-baby-happy-1', 'cat-baby-happy-2'],
-                              2: ['cat-kid-happy-0', 'cat-kid-happy-1', 'cat-kid-happy-2'],
-                              3: ['cat-adult-happy-0', 'cat-adult-happy-1', 'cat-adult-happy-2'] },
-                   /* P1/P2 状态按成长阶段保留原轮廓，只在脸部做差分；避免 cat-big 占位导致尺寸跳变 */
+                              1: ['cat-baby-v2-happy-0', 'cat-baby-v2-happy-1', 'cat-baby-v2-happy-2'],
+                              2: ['cat-kid-v2-happy-0', 'cat-kid-v2-happy-1', 'cat-kid-v2-happy-2'],
+                              3: ['cat-adult-v2-happy-0', 'cat-adult-v2-happy-1', 'cat-adult-v2-happy-2'] },
+                   /* P1/P2 状态按成长阶段保留原轮廓，只在脸部做差分 */
                    excited: { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
-                              1: ['cat-baby-excited-0', 'cat-baby-excited-1', 'cat-baby-excited-2'],
-                              2: ['cat-kid-excited-0', 'cat-kid-excited-1', 'cat-kid-excited-2'],
-                              3: ['cat-adult-excited-0', 'cat-adult-excited-1', 'cat-adult-excited-2'] },
+                              1: ['cat-baby-v2-excited-0', 'cat-baby-v2-excited-1', 'cat-baby-v2-excited-2'],
+                              2: ['cat-kid-v2-excited-0', 'cat-kid-v2-excited-1', 'cat-kid-v2-excited-2'],
+                              3: ['cat-adult-v2-excited-0', 'cat-adult-v2-excited-1', 'cat-adult-v2-excited-2'] },
                    big:     { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
-                              1: ['cat-baby-excited-0', 'cat-baby-excited-1', 'cat-baby-excited-2'],
-                              2: ['cat-kid-excited-0', 'cat-kid-excited-1', 'cat-kid-excited-2'],
-                              3: ['cat-adult-excited-0', 'cat-adult-excited-1', 'cat-adult-excited-2'] },
+                              1: ['cat-baby-v2-excited-0', 'cat-baby-v2-excited-1', 'cat-baby-v2-excited-2'],
+                              2: ['cat-kid-v2-excited-0', 'cat-kid-v2-excited-1', 'cat-kid-v2-excited-2'],
+                              3: ['cat-adult-v2-excited-0', 'cat-adult-v2-excited-1', 'cat-adult-v2-excited-2'] },
                    droopy:  { 0: ['cat-egg-droopy'],
-                              1: ['cat-baby-droopy'], 2: ['cat-kid-droopy'], 3: ['cat-adult-droopy'] },
+                              1: ['cat-baby-v2-droopy'], 2: ['cat-kid-v2-droopy'], 3: ['cat-adult-v2-droopy'] },
                    sad:     { 0: ['cat-egg-sad-0', 'cat-egg-sad-1'],
-                              1: ['cat-baby-sad-0', 'cat-baby-sad-1'],
-                              2: ['cat-kid-sad-0', 'cat-kid-sad-1'],
-                              3: ['cat-adult-sad-0', 'cat-adult-sad-1'] },
+                              1: ['cat-baby-v2-sad-0', 'cat-baby-v2-sad-1'],
+                              2: ['cat-kid-v2-sad-0', 'cat-kid-v2-sad-1'],
+                              3: ['cat-adult-v2-sad-0', 'cat-adult-v2-sad-1'] },
                    wash:    { 0: ['cat-egg-wash-0', 'cat-egg-wash-1'],
-                              1: ['cat-baby-wash-0', 'cat-baby-wash-1'],
-                              2: ['cat-kid-wash-0', 'cat-kid-wash-1'],
-                              3: ['cat-adult-wash-0', 'cat-adult-wash-1'] },
+                              1: ['cat-baby-v2-wash-0', 'cat-baby-v2-wash-1'],
+                              2: ['cat-kid-v2-wash-0', 'cat-kid-v2-wash-1'],
+                              3: ['cat-adult-v2-wash-0', 'cat-adult-v2-wash-1'] },
                    grunt:   { 0: ['cat-egg-grunt-0', 'cat-egg-grunt-1'],
-                              1: ['cat-baby-grunt-0', 'cat-baby-grunt-1'],
-                              2: ['cat-kid-grunt-0', 'cat-kid-grunt-1'],
-                              3: ['cat-adult-grunt-0', 'cat-adult-grunt-1'] } },
-           walk: { 1: 'cat-baby-walk-', 2: 'cat-kid-walk-', 3: 'cat-walk-' } }
+                              1: ['cat-baby-v2-grunt-0', 'cat-baby-v2-grunt-1'],
+                              2: ['cat-kid-v2-grunt-0', 'cat-kid-v2-grunt-1'],
+                              3: ['cat-adult-v2-grunt-0', 'cat-adult-v2-grunt-1'] } },
+           walk: { 1: 'cat-baby-v2-walk-', 2: 'cat-kid-v2-walk-', 3: 'cat-adult-v2-walk-' } }
   };
   /* 蛋斑点坐标（相对于 29×36 蛋帧内容）。斑点不在 PNG 里，drawPet 按当前宠物主色
      运行时叠加，这样一套蛋帧通用、斑点颜色可随宠物类型替换。位置避开脸部（眼/腮红/嘴）。 */
@@ -1140,6 +1160,16 @@
   }
   /* ---- 像素风特效精灵：与宠物同一套字符画（. 透明），canvas 原生尺寸绘制、CSS 放大 ---- */
   var FX_SPRITES = {
+    star: { pal: { G: '#f2b13c', W: '#ffe9a8' }, rows: [
+      '...GG...',
+      '...GG...',
+      '..GGGG..',
+      'GGGWWGGG',
+      'GGGWWGGG',
+      '..GGGG..',
+      '...GG...',
+      '...GG...'
+    ] },
     poop: { pal: { B: '#8a562b', D: '#6e4321' }, rows: [
       '...BB...',
       '..BBBB..',
@@ -3184,7 +3214,7 @@
         var ev2 = tbResolveFrames();
         if (!Array.isArray(ev2) || ev2.length <= 1) { tbStopAnim(); return; }
         petAnim.exprIdx[tbExpr] = ((petAnim.exprIdx[tbExpr] || 0) + 1) % ev2.length;
-        tbRedraw();
+        drawPet($('#tb-cv'), tbExpr, tbStage);   // 不走 tbRedraw：它会清 exprIdx，多帧会永远停在第一帧
       }, interval);
     }
     function tbSetExpr(expr) {
