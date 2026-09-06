@@ -8,13 +8,22 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SPRITES = ROOT / "assets" / "sprites"
 INK = (57, 38, 43, 255)
+WHITE = (255, 253, 247, 255)
+TEAR = (159, 183, 255, 255)
+BOWL = (74, 127, 193, 255)
+
+# Egg stage 0 silhouette, row by row: the redrawn shell must match the
+# legacy egg per row, or the runtime EGG_SPOTS overlay lands off the shell.
+EGG_ROWS = [(11, 17), (9, 19), (8, 20), (7, 21), (6, 22), (5, 23), (4, 24),
+            (4, 24), (3, 25), (3, 25), (2, 26), (2, 26), (1, 27), (1, 27),
+            (1, 27), (1, 27), (0, 28), (0, 28), (0, 28), (0, 28), (0, 28),
+            (0, 28), (0, 28), (0, 28), (0, 28), (0, 28), (1, 27), (1, 27),
+            (1, 27), (2, 26), (2, 26), (3, 25), (4, 24), (5, 23), (7, 21),
+            (9, 20)]
 LIGHT = (255, 190, 70, 255)
 FUR = (244, 157, 55, 255)
 PINK = (244, 132, 145, 255)
 NOSE = (207, 82, 105, 255)
-WHITE = (255, 253, 247, 255)
-TEAR = (159, 183, 255, 255)
-BOWL = (74, 127, 193, 255)
 
 EXPECTED_SIZES = {
     "baby": (30, 32),
@@ -423,6 +432,164 @@ def main():
             walks[0].getpixel((x, y)) != walks[1].getpixel((x, y))
             for y in range(ty0, ty1) for x in range(tx0, tx1)
         ), f"{stage} walk tail must sway between frames"
+
+    # ------------------------------------------------------------------
+    # Egg stage 0: locally redrawn shell + face. The silhouette must match
+    # the legacy egg row by row, or the runtime EGG_SPOTS overlay lands
+    # off the shell.
+    stance = load("cat-egg-v2.png")
+    assert stance.size == (29, 36)
+    for y, (ex0, ex1) in enumerate(EGG_ROWS):
+        row = [x for x in range(29) if stance.getpixel((x, y))[3] > 0]
+        assert row and min(row) == ex0 and max(row) == ex1, (
+            f"egg silhouette drifted from the legacy shell at row {y}"
+        )
+    egg_poses = ["idle-0", "idle-1", "blink", "eat", "sleep-0", "sleep-1",
+                 "happy", "excited-0", "excited-1", "excited-2", "droopy",
+                 "sad-0", "sad-1", "wash-0", "wash-1", "grunt-0", "grunt-1"]
+    egg_frames = {"idle-0": stance}
+    for p in egg_poses:
+        if p != "idle-0":
+            path = SPRITES / f"cat-egg-v2-{p}.png"
+            assert path.exists(), f"missing egg frame: {path.name}"
+            img = load(f"cat-egg-v2-{p}.png")
+            assert img.size == (29, 36), f"{path.name} wrong canvas"
+            egg_frames[p] = img
+    assert len({f.tobytes() for f in egg_frames.values()}) == 17, (
+        "all 17 egg frames must be distinct pictures"
+    )
+
+    # base face anchors: dark eyes with white glints, smile arc, pink cheeks
+    egg_sockets = ((7, 14, 9, 16), (18, 14, 20, 16))
+    for sx0, sy0, sx1, sy1, gx in ((7, 14, 9, 16, 8), (18, 14, 20, 16, 19)):
+        for y in range(sy0, sy1 + 1):
+            for x in range(sx0, sx1 + 1):
+                expected = WHITE if x == gx and y == sy0 else INK
+                assert stance.getpixel((x, y)) == expected, "egg eye anchor"
+    for x, y in ((12, 19), (16, 19), (13, 20), (14, 20), (15, 20)):
+        assert stance.getpixel((x, y)) == INK, "egg smile anchor"
+    for bx in (5, 21):
+        for y in (17, 18):
+            assert stance.getpixel((bx, y)) == PINK, "egg cheek anchor"
+
+    # idle-0 is the stance itself; idle-1 dips one pixel, width unchanged
+    assert egg_frames["idle-0"].tobytes() == stance.tobytes()
+    e1 = egg_frames["idle-1"]
+    b0, b1 = stance.getchannel("A").getbbox(), e1.getchannel("A").getbbox()
+    assert b0[0] == b1[0] and b0[2] == b1[2], "egg breath must keep its width"
+    for y in range(36):
+        for x in range(29):
+            expected = stance.getpixel((x, y - 1)) if y > 0 else (0, 0, 0, 0)
+            assert e1.getpixel((x, y)) == expected, "egg idle-1 must be a 1px dip"
+
+    def egg_closed(img):
+        for sx0, sy0, sx1, sy1 in egg_sockets:
+            for y in range(sy0, sy1 + 1):
+                for x in range(sx0, sx1 + 1):
+                    expected = INK if y == sy1 else WHITE
+                    assert img.getpixel((x, y)) == expected, "egg closed eyes"
+
+    blink = egg_frames["blink"]
+    egg_closed(blink)
+    for x, y in ((12, 19), (16, 19), (13, 20), (14, 20), (15, 20)):
+        assert blink.getpixel((x, y)) == INK, "blink keeps the smile"
+
+    eat = egg_frames["eat"]
+    egg_closed(eat)
+    for x in range(12, 16):
+        for y in (19, 20):
+            expected = LIGHT if (x, y) in ((13, 19), (14, 19)) else INK
+            assert eat.getpixel((x, y)) == expected, "eat must show crumbs in an open mouth"
+
+    for p, mouth in (("sleep-0", [(14, 20)]), ("sleep-1", [(13, 20), (14, 20), (15, 20)])):
+        img = egg_frames[p]
+        egg_closed(img)
+        for x in range(11, 18):
+            for y in (19, 20):
+                expected = INK if (x, y) in mouth else WHITE
+                assert img.getpixel((x, y)) == expected, f"{p} mouth"
+
+    happy = egg_frames["happy"]
+    for sx0, sy0, sx1, sy1 in egg_sockets:
+        for y in range(sy0, sy1 + 1):
+            for x in range(sx0, sx1 + 1):
+                on_arc = (y == sy1 and x in (sx0, sx1)) or (y == sy0 and x == sx0 + 1)
+                expected = INK if on_arc else WHITE
+                assert happy.getpixel((x, y)) == expected, "happy arc eyes"
+    for x in range(12, 17):
+        for y in (19, 20):
+            expected = PINK if y == 20 and x in (13, 14, 15) else INK
+            assert happy.getpixel((x, y)) == expected, "happy laugh with tongue"
+
+    e0 = egg_frames["excited-0"]
+    for sx0, sy0, sx1, sy1, gx in ((7, 14, 9, 16, 8), (18, 14, 20, 16, 19)):
+        for y in range(sy0, sy1 + 1):
+            for x in range(sx0, sx1 + 1):
+                expected = WHITE if x == gx and y == sy0 else INK
+                assert e0.getpixel((x, y)) == expected, "excited-0 open eyes"
+    for x in range(12, 17):
+        for y in (19, 20):
+            expected = PINK if y == 20 and x in (13, 14, 15) else INK
+            assert e0.getpixel((x, y)) == expected, "excited-0 laugh"
+
+    for p in ("excited-1",):
+        img = egg_frames[p]
+        for sx0, sy0, sx1, sy1 in egg_sockets:
+            for y in range(sy0, sy1 + 1):
+                for x in range(sx0, sx1 + 1):
+                    expected = LIGHT if (x, y) == (sx0 + 1, sy0 + 1) else INK
+                    assert img.getpixel((x, y)) == expected, f"{p} star eyes"
+    e1x, e2x = egg_frames["excited-1"], egg_frames["excited-2"]
+    for y in range(35):
+        for x in range(29):
+            assert e2x.getpixel((x, y)) == e1x.getpixel((x, y + 1)), (
+                "excited-2 must be excited-1 bounced one pixel up"
+            )
+    for x in range(29):
+        assert e2x.getpixel((x, 35)) == (0, 0, 0, 0), "excited-2 bounce lifts off"
+
+    droopy = egg_frames["droopy"]
+    for sx0, sy0, sx1, sy1 in egg_sockets:
+        for y in range(sy0, sy1 + 1):
+            for x in range(sx0, sx1 + 1):
+                expected = INK if y == sy0 + 1 else WHITE
+                assert droopy.getpixel((x, y)) == expected, "droopy mid lids"
+    for x, y in ((12, 20), (16, 20), (13, 19), (14, 19), (15, 19)):
+        assert droopy.getpixel((x, y)) == INK, "droopy frown"
+    assert droopy.getpixel((5, 19)) != TEAR, "droopy must not show a tear"
+
+    for p, roll in (("sad-0", 0), ("sad-1", 1)):
+        img = egg_frames[p]
+        for sx0, sy0, sx1, sy1 in egg_sockets:
+            for y in range(sy0, sy1 + 1):
+                for x in range(sx0, sx1 + 1):
+                    expected = INK if y == sy0 + 1 else WHITE
+                    assert img.getpixel((x, y)) == expected, "sad lids"
+        for dy in (0, 1):
+            assert img.getpixel((5, 19 + roll + dy)) == TEAR, f"{p} tear"
+
+    for p, side in (("wash-0", "r"), ("wash-1", "l")):
+        img = egg_frames[p]
+        egg_closed(img)
+        assert img.getpixel((14, 20)) == INK, f"{p} tiny mouth"
+        main_b = (24, 1) if side == "r" else (1, 1)
+        mid_b = (25, 6) if side == "r" else (2, 6)
+        assert img.getpixel((main_b[0] + 1, main_b[1])) == INK, f"{p} main bubble"
+        assert img.getpixel((main_b[0] + 1, main_b[1] + 1)) == WHITE
+        assert img.getpixel((mid_b[0] + 1, mid_b[1])) == INK, f"{p} second bubble"
+        assert img.getpixel((mid_b[0] + 1, mid_b[1] + 1)) == WHITE
+
+    for p, dy in (("grunt-0", 0), ("grunt-1", 1)):
+        img = egg_frames[p]
+        for sx0, sy0, sx1, sy1 in egg_sockets:
+            squeeze_rows = (sy0 + 1 + dy, sy1 + dy)
+            for y in range(sy0, sy1 + 1 + dy):
+                for x in range(sx0, sx1 + 1):
+                    expected = INK if y in squeeze_rows else WHITE
+                    assert img.getpixel((x, y)) == expected, "grunt squeeze"
+        frown = ((12, 20 + dy), (16, 20 + dy), (13, 19 + dy), (14, 19 + dy), (15, 19 + dy))
+        for x, y in frown:
+            assert img.getpixel((x, y)) == INK, "grunt frown"
 
     print("cat redraw contract: PASS")
 

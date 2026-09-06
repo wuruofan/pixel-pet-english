@@ -850,53 +850,52 @@
      walk=走路循环帧前缀。idle 按阶段分级，每级自带呼吸 A/B，避免 baby 阶段切换到 idle 时
      突然放大成 adult 尺寸。egg 是 PNG 蛋（替代原字符画），idle-0/1 做微 wobble。 */
   var PET_FRAMES = {
-    cat: { stage: { 0: 'cat-egg', 1: 'cat-baby-v2', 2: 'cat-kid-v2', 3: 'cat-adult-v2' },
-           expr: { idle:    { 0: ['cat-egg-idle-0', 'cat-egg-idle-1'],
+    cat: { stage: { 0: 'cat-egg-v2', 1: 'cat-baby-v2', 2: 'cat-kid-v2', 3: 'cat-adult-v2' },
+           expr: { idle:    { 0: ['cat-egg-v2-idle-0', 'cat-egg-v2-idle-1'],
                               /* 站姿/idle/blink/全部状态用本地像素重绘 v2 帧（每阶段独立锚点，
-                                 见 docs/sprites/HANDOFF-2026-09-05-cat-local-redraw.md）；
-                                 仅走路侧视仍走旧 GPT 帧，阶段 C 替换 */
+                                 见 docs/sprites/HANDOFF-2026-09-06-cat-animation.md）；
+                                 蛋壳斑点仍由 EGG_SPOTS 运行时叠加 */
                               1: ['cat-baby-v2-idle-0', 'cat-baby-v2-idle-1'],
                               2: ['cat-kid-v2-idle-0',  'cat-kid-v2-idle-1'],
                               3: ['cat-adult-v2-idle-0','cat-adult-v2-idle-1'] },
-                   /* blink/eat/happy 按阶段分级，避免 baby 阶段点眨眼显示大猫。
-                      蛋阶段有独立帧（v6 水汪汪大眼版） */
-                   blink:   { 0: ['cat-egg-blink'],
+                   /* blink/eat/happy 按阶段分级，避免 baby 阶段点眨眼显示大猫 */
+                   blink:   { 0: ['cat-egg-v2-blink'],
                               1: ['cat-baby-v2-blink'],
                               2: ['cat-kid-v2-blink'],
                               3: ['cat-adult-v2-blink'] },
-                   eat:     { 0: ['cat-egg-eat'],
-                              /* 低头咬 / 闭嘴嚼 / 抬头咽，饭碗按阶段贴合 */
+                   eat:     { 0: ['cat-egg-v2-eat'],
+                              /* 低头咬 / 闭嘴嚼 / 抬头咽，饭盆按阶段贴合 */
                               1: ['cat-baby-v2-eat-0', 'cat-baby-v2-eat-1', 'cat-baby-v2-eat-2'],
                               2: ['cat-kid-v2-eat-0', 'cat-kid-v2-eat-1', 'cat-kid-v2-eat-2'],
                               3: ['cat-adult-v2-eat-0', 'cat-adult-v2-eat-1', 'cat-adult-v2-eat-2'] },
-                   sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1'],
+                   sleep:   { 0: ['cat-egg-v2-sleep-0', 'cat-egg-v2-sleep-1'],
                               1: ['cat-baby-v2-sleep-0', 'cat-baby-v2-sleep-1'],
                               2: ['cat-kid-v2-sleep-0', 'cat-kid-v2-sleep-1'],
                               3: ['cat-adult-v2-sleep-0', 'cat-adult-v2-sleep-1'] },
-                   happy:   { 0: ['cat-egg-happy'],
+                   happy:   { 0: ['cat-egg-v2-happy'],
                               1: ['cat-baby-v2-happy-0', 'cat-baby-v2-happy-1', 'cat-baby-v2-happy-2'],
                               2: ['cat-kid-v2-happy-0', 'cat-kid-v2-happy-1', 'cat-kid-v2-happy-2'],
                               3: ['cat-adult-v2-happy-0', 'cat-adult-v2-happy-1', 'cat-adult-v2-happy-2'] },
                    /* P1/P2 状态按成长阶段保留原轮廓，只在脸部做差分 */
-                   excited: { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
+                   excited: { 0: ['cat-egg-v2-excited-0', 'cat-egg-v2-excited-1', 'cat-egg-v2-excited-2'],
                               1: ['cat-baby-v2-excited-0', 'cat-baby-v2-excited-1', 'cat-baby-v2-excited-2'],
                               2: ['cat-kid-v2-excited-0', 'cat-kid-v2-excited-1', 'cat-kid-v2-excited-2'],
                               3: ['cat-adult-v2-excited-0', 'cat-adult-v2-excited-1', 'cat-adult-v2-excited-2'] },
-                   big:     { 0: ['cat-egg-excited-0', 'cat-egg-excited-1', 'cat-egg-excited-2'],
+                   big:     { 0: ['cat-egg-v2-excited-0', 'cat-egg-v2-excited-1', 'cat-egg-v2-excited-2'],
                               1: ['cat-baby-v2-excited-0', 'cat-baby-v2-excited-1', 'cat-baby-v2-excited-2'],
                               2: ['cat-kid-v2-excited-0', 'cat-kid-v2-excited-1', 'cat-kid-v2-excited-2'],
                               3: ['cat-adult-v2-excited-0', 'cat-adult-v2-excited-1', 'cat-adult-v2-excited-2'] },
-                   droopy:  { 0: ['cat-egg-droopy'],
+                   droopy:  { 0: ['cat-egg-v2-droopy'],
                               1: ['cat-baby-v2-droopy'], 2: ['cat-kid-v2-droopy'], 3: ['cat-adult-v2-droopy'] },
-                   sad:     { 0: ['cat-egg-sad-0', 'cat-egg-sad-1'],
+                   sad:     { 0: ['cat-egg-v2-sad-0', 'cat-egg-v2-sad-1'],
                               1: ['cat-baby-v2-sad-0', 'cat-baby-v2-sad-1'],
                               2: ['cat-kid-v2-sad-0', 'cat-kid-v2-sad-1'],
                               3: ['cat-adult-v2-sad-0', 'cat-adult-v2-sad-1'] },
-                   wash:    { 0: ['cat-egg-wash-0', 'cat-egg-wash-1'],
+                   wash:    { 0: ['cat-egg-v2-wash-0', 'cat-egg-v2-wash-1'],
                               1: ['cat-baby-v2-wash-0', 'cat-baby-v2-wash-1'],
                               2: ['cat-kid-v2-wash-0', 'cat-kid-v2-wash-1'],
                               3: ['cat-adult-v2-wash-0', 'cat-adult-v2-wash-1'] },
-                   grunt:   { 0: ['cat-egg-grunt-0', 'cat-egg-grunt-1'],
+                   grunt:   { 0: ['cat-egg-v2-grunt-0', 'cat-egg-v2-grunt-1'],
                               1: ['cat-baby-v2-grunt-0', 'cat-baby-v2-grunt-1'],
                               2: ['cat-kid-v2-grunt-0', 'cat-kid-v2-grunt-1'],
                               3: ['cat-adult-v2-grunt-0', 'cat-adult-v2-grunt-1'] } },

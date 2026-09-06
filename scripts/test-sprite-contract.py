@@ -45,19 +45,19 @@ def main():
         )
 
     for name in (
-        "cat-egg-sleep-0.png", "cat-egg-sleep-1.png",
-        "cat-egg-excited-0.png", "cat-egg-excited-1.png", "cat-egg-excited-2.png",
-        "cat-egg-droopy.png",
-        "cat-egg-sad-0.png", "cat-egg-sad-1.png",
-        "cat-egg-wash-0.png", "cat-egg-wash-1.png",
-        "cat-egg-grunt-0.png", "cat-egg-grunt-1.png",
+        "cat-egg-v2-sleep-0.png", "cat-egg-v2-sleep-1.png",
+        "cat-egg-v2-excited-0.png", "cat-egg-v2-excited-1.png", "cat-egg-v2-excited-2.png",
+        "cat-egg-v2-droopy.png",
+        "cat-egg-v2-sad-0.png", "cat-egg-v2-sad-1.png",
+        "cat-egg-v2-wash-0.png", "cat-egg-v2-wash-1.png",
+        "cat-egg-v2-grunt-0.png", "cat-egg-v2-grunt-1.png",
     ):
         assert (SPRITES / name).exists(), f"missing egg state frame: {name}"
 
     # Idle breathing must preserve the full silhouette; a clipped right edge
     # makes the runtime spot overlay and the shell appear to jump.
-    base = alpha_bbox("cat-egg-idle-0.png")
-    breath = alpha_bbox("cat-egg-idle-1.png")
+    base = alpha_bbox("cat-egg-v2-idle-0.png")
+    breath = alpha_bbox("cat-egg-v2-idle-1.png")
     assert base and breath and base[0] == breath[0] and base[2] == breath[2], (
         f"egg idle frames must keep the same horizontal silhouette: {base} vs {breath}"
     )
@@ -185,7 +185,7 @@ def main():
 
     # Sleep is a curled side pose, but each stage still needs its own fitted
     # dimensions so a baby does not grow taller merely by closing its eyes.
-    assert "sleep:   { 0: ['cat-egg-sleep-0', 'cat-egg-sleep-1']," in APP
+    assert "sleep:   { 0: ['cat-egg-v2-sleep-0', 'cat-egg-v2-sleep-1']," in APP
     for stage in ("baby", "kid", "adult"):
         frames = []
         for index in range(2):

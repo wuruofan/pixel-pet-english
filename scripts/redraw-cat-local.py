@@ -332,6 +332,148 @@ def shift_vertical(img, dy):
     return out
 
 
+# --------------------------------------------------------------- egg stage
+
+EGG_SIZE = (29, 36)
+# Row-by-row silhouette of the approved egg shell. The runtime overlays
+# EGG_SPOTS at fixed coordinates, so the redraw must match this exactly.
+EGG_ROWS = [(11, 17), (9, 19), (8, 20), (7, 21), (6, 22), (5, 23), (4, 24),
+            (4, 24), (3, 25), (3, 25), (2, 26), (2, 26), (1, 27), (1, 27),
+            (1, 27), (1, 27), (0, 28), (0, 28), (0, 28), (0, 28), (0, 28),
+            (0, 28), (0, 28), (0, 28), (0, 28), (0, 28), (1, 27), (1, 27),
+            (1, 27), (2, 26), (2, 26), (3, 25), (4, 24), (5, 23), (7, 21),
+            (9, 20)]
+EGG_EYES = ((7, 14, 9, 16), (18, 14, 20, 16))
+EGG_POSES = ("idle-0", "idle-1", "blink", "eat", "sleep-0", "sleep-1",
+             "happy", "excited-0", "excited-1", "excited-2", "droopy",
+             "sad-0", "sad-1", "wash-0", "wash-1", "grunt-0", "grunt-1")
+
+
+def draw_egg_shell(c):
+    """Trace the legacy silhouette row by row; the shell is white with a
+    soft cream weight in the lower flanks and cap."""
+    for y, (x0, x1) in enumerate(EGG_ROWS):
+        c.px(x0, y, INK)
+        c.px(x1, y, INK)
+        if x1 > x0 + 1:
+            c.r(x0 + 1, y, x1 - 1, y, CREAM if y >= 29 else WHITE)
+        if y >= 25 and x1 - x0 > 3:
+            c.px(x0 + 1, y, CREAM)
+            c.px(x1 - 1, y, CREAM)
+    for bx, by in ((4, 17), (20, 17)):
+        c.r(bx, by, bx + 2, by + 1, PINK)
+
+
+def egg_eyes(c, style):
+    for sx0, sy0, sx1, sy1 in EGG_EYES:
+        if style == "open":
+            c.r(sx0, sy0, sx1, sy1, INK)
+            c.px(sx0 + 1, sy0, WHITE)
+        elif style == "closed":
+            c.r(sx0, sy0, sx1, sy1, WHITE)
+            c.r(sx0, sy1, sx1, sy1, INK)
+        elif style == "lid":
+            c.r(sx0, sy0, sx1, sy1, WHITE)
+            c.r(sx0, sy0 + 1, sx1, sy0 + 1, INK)
+        elif style == "squeeze":
+            c.r(sx0, sy0, sx1, sy1, WHITE)
+            c.r(sx0, sy0 + 1, sx1, sy0 + 1, INK)
+            c.r(sx0, sy1, sx1, sy1, INK)
+        elif style == "arc":
+            c.r(sx0, sy0, sx1, sy1, WHITE)
+            c.px(sx0, sy1, INK)
+            c.px(sx0 + 1, sy0, INK)
+            c.px(sx1, sy1, INK)
+        elif style == "star":
+            c.r(sx0, sy0, sx1, sy1, INK)
+            c.px(sx0 + 1, sy0 + 1, LIGHT)
+        else:
+            raise ValueError(f"unknown egg eye style: {style}")
+
+
+def egg_mouth(c, style):
+    if style == "smile":
+        for x, y in ((12, 19), (16, 19), (13, 20), (14, 20), (15, 20)):
+            c.px(x, y, INK)
+    elif style == "crumbs":
+        c.r(12, 19, 15, 20, INK)
+        c.r(13, 19, 14, 19, LIGHT)
+    elif style == "tiny":
+        c.px(14, 20, INK)
+    elif style == "open-small":
+        c.r(13, 20, 15, 20, INK)
+    elif style == "laugh":
+        c.r(12, 19, 16, 20, INK)
+        c.r(13, 20, 15, 20, PINK)
+    elif style == "frown":
+        for x, y in ((12, 20), (16, 20), (13, 19), (14, 19), (15, 19)):
+            c.px(x, y, INK)
+    else:
+        raise ValueError(f"unknown egg mouth style: {style}")
+
+
+def egg_bubble(d, x, y, s):
+    if s == 4:
+        d.rectangle((x, y + 1, x + 3, y + 2), fill=INK)
+        d.rectangle((x + 1, y, x + 2, y + 3), fill=INK)
+        d.rectangle((x + 1, y + 1, x + 2, y + 2), fill=WHITE)
+        d.point((x + 2, y + 1), fill=LIGHT)
+    else:
+        d.point((x, y + 1), fill=INK)
+        d.point((x + 2, y + 1), fill=INK)
+        d.point((x + 1, y), fill=INK)
+        d.point((x + 1, y + 2), fill=INK)
+        d.point((x + 1, y + 1), fill=WHITE)
+
+
+def draw_egg(pose="idle-0"):
+    """The egg stage on one 29x36 canvas: silhouette row-copied from the
+    approved shell (EGG_SPOTS is pinned to it) with a locally drawn face.
+    Eyes/mouth/tear/bubbles change per pose; the shell never does."""
+    c = Canvas(*EGG_SIZE)
+    draw_egg_shell(c)
+    spec = {
+        "idle-0": ("open", "smile", 0),
+        "idle-1": ("open", "smile", 0),
+        "blink": ("closed", "smile", 0),
+        "eat": ("closed", "crumbs", 0),
+        "sleep-0": ("closed", "tiny", 0),
+        "sleep-1": ("closed", "open-small", 0),
+        "happy": ("arc", "laugh", 0),
+        "excited-0": ("open", "laugh", 0),
+        "excited-1": ("star", "laugh", 0),
+        "excited-2": ("star", "laugh", 0),
+        "droopy": ("lid", "frown", 0),
+        "sad-0": ("lid", "frown", 0),
+        "sad-1": ("lid", "frown", 0),
+        "wash-0": ("closed", "tiny", 0),
+        "wash-1": ("closed", "tiny", 0),
+        "grunt-0": ("squeeze", "frown", 0),
+        "grunt-1": ("squeeze", "frown", 1),
+    }[pose]
+    eyes, mouth, dy = spec
+    c.offset(0, dy)
+    egg_eyes(c, eyes)
+    egg_mouth(c, mouth)
+    c.offset(0, -dy)
+    img = c.img
+    d = ImageDraw.Draw(img)
+    if pose.startswith("sad-"):
+        roll = 0 if pose == "sad-0" else 1
+        d.rectangle((5, 19 + roll, 5, 20 + roll), fill=TEAR)
+    if pose == "wash-0":
+        egg_bubble(d, 24, 1, 4)
+        egg_bubble(d, 25, 6, 3)
+    if pose == "wash-1":
+        egg_bubble(d, 1, 1, 4)
+        egg_bubble(d, 2, 6, 3)
+    if pose == "excited-2":
+        img = shift_vertical(img, -1)
+    if pose == "idle-1":
+        img = shift_vertical(img, 1)
+    return img
+
+
 # --------------------------------------------------------------- walking
 
 # Gait table per frame: (front pair dx, back pair dx, body bob). The tail
@@ -553,6 +695,9 @@ def derive_frames(stage, base):
 
 def main():
     SPRITES.mkdir(parents=True, exist_ok=True)
+    draw_egg().save(SPRITES / "cat-egg-v2.png")
+    for pose in EGG_POSES:
+        draw_egg(pose).save(SPRITES / f"cat-egg-v2-{pose}.png")
     for stage in ("baby", "kid", "adult"):
         base = draw_cat(stage)
         base.save(SPRITES / f"cat-{stage}-v2.png")
