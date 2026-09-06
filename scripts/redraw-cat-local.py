@@ -254,20 +254,25 @@ HEADS = {"baby": baby_head, "kid": kid_head, "adult": adult_head}
 def draw_bowl(c, stage):
     """Food dish in front of the paws, in the same blue as the falling-bowl
     FX so the child recognizes one and the same bowl. A trapezoid dish (wide
-    rim, narrow base) with a domed heap of kibble that clearly rises above
-    the rim — a flat strip read as part of the body and hid the food."""
+    rim, narrow base) with a domed kibble heap rising above the rim. The
+    heap gets an INK outline like every other shape: LIGHT-on-orange would
+    melt into the cat's fur behind it."""
     if stage == "baby":
+        heap_edge = ((8, 25), (18, 25), (21, 27), (5, 27))
         dome, dish, inner = ((9, 26), (17, 26), (20, 27), (6, 27)), \
                             ((4, 28), (22, 28), (20, 31), (6, 31)), \
                             ((5, 29), (21, 29), (19, 30), (7, 30))
     elif stage == "kid":
+        heap_edge = ((10, 31), (24, 31), (26, 33), (8, 33))
         dome, dish, inner = ((11, 32), (23, 32), (25, 33), (9, 33)), \
                             ((5, 34), (29, 34), (27, 37), (9, 37)), \
                             ((6, 35), (28, 35), (26, 36), (10, 36))
     else:
+        heap_edge = ((12, 41), (32, 41), (35, 43), (9, 43))
         dome, dish, inner = ((13, 42), (31, 42), (34, 43), (10, 43)), \
                             ((7, 44), (37, 44), (34, 47), (11, 47)), \
                             ((8, 45), (36, 45), (33, 46), (12, 46))
+    c.p(heap_edge, INK)
     c.p(dome, LIGHT)
     top_w = dome[1][0] - dome[0][0]
     c.r(dome[0][0] + top_w // 2 - 1, dome[0][1], dome[0][0] + top_w // 2, dome[0][1], WHITE)

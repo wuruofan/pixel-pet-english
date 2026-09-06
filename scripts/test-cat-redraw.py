@@ -305,6 +305,9 @@ def main():
             assert img.getpixel((cx, rim_y - 2)) == WHITE, (
                 f"{stage} {pose} heap needs a bright glint"
             )
+            assert img.getpixel((cx, rim_y - 3)) == INK, (
+                f"{stage} {pose} heap needs its ink outline to read against the fur"
+            )
             if eyes == "closed":
                 for sx0, sy0, sx1, sy1 in sockets:
                     assert img.getpixel((sx0, sy1 + dy)) == INK, (
