@@ -282,13 +282,16 @@ def main():
                 assert star.getpixel(((sx0 + sx1) // 2, (sy0 + sy1) // 2)) == WHITE
 
         # eating: the whole face pitches while a trapezoid dish with a
-        # domed kibble heap sits in front, wider than the body silhouette.
-        dish_spec = {"baby": (4, 26, 22, 31), "kid": (5, 32, 29, 37),
-                     "adult": (7, 41, 37, 47)}[stage]
+        # domed kibble heap sits in front — ~2/3 of the body width so the
+        # silhouettes don't fuse, and the pitched face keeps a clear gap to
+        # the heap outline.
+        dish_spec = {"baby": (7, 28, 18, 31), "kid": (9, 34, 24, 37),
+                     "adult": (12, 44, 32, 47)}[stage]
         dx0, dy0, dx1, dy1 = dish_spec
         rim_y = {"baby": 28, "kid": 34, "adult": 44}[stage]
         cx = (dx0 + dx1) // 2
-        for pose, dy, eyes in (("eat-0", 3, "open"), ("eat-1", 3, "closed"), ("eat-2", -2, "open")):
+        pitch = 2 if stage == "baby" else 3
+        for pose, dy, eyes in (("eat-0", pitch, "open"), ("eat-1", pitch, "closed"), ("eat-2", -2, "open")):
             img = load(f"cat-{stage}-v2-{pose}.png")
             assert img.getpixel((nx, ny + dy)) == NOSE, (
                 f"{stage} {pose} nose must follow the pitched head"
@@ -299,7 +302,7 @@ def main():
             assert img.getpixel((cx, rim_y + 1)) == BOWL, (
                 f"{stage} {pose} dish must be the blue bowl, not fur-colored"
             )
-            assert img.getpixel((cx - 3, rim_y - 2)) == LIGHT and img.getpixel((cx + 3, rim_y - 2)) == LIGHT, (
+            assert img.getpixel((cx - 2, rim_y - 2)) == LIGHT and img.getpixel((cx + 2, rim_y - 2)) == LIGHT, (
                 f"{stage} {pose} kibble heap must rise above the rim"
             )
             assert img.getpixel((cx, rim_y - 2)) == WHITE, (

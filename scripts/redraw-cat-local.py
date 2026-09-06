@@ -255,23 +255,24 @@ def draw_bowl(c, stage):
     """Food dish in front of the paws, in the same blue as the falling-bowl
     FX so the child recognizes one and the same bowl. A trapezoid dish (wide
     rim, narrow base) with a domed kibble heap rising above the rim. The
-    heap gets an INK outline like every other shape: LIGHT-on-orange would
-    melt into the cat's fur behind it."""
+    dish is ~2/3 of the body width — as wide as the body it fuses with the
+    cat's bottom silhouette — and the heap gets an INK outline like every
+    other shape: LIGHT-on-orange would melt into the fur behind it."""
     if stage == "baby":
-        heap_edge = ((8, 25), (18, 25), (21, 27), (5, 27))
-        dome, dish, inner = ((9, 26), (17, 26), (20, 27), (6, 27)), \
-                            ((4, 28), (22, 28), (20, 31), (6, 31)), \
-                            ((5, 29), (21, 29), (19, 30), (7, 30))
+        heap_edge = ((9, 25), (16, 25), (18, 27), (7, 27))
+        dome, dish, inner = ((10, 26), (15, 26), (17, 27), (8, 27)), \
+                            ((7, 28), (18, 28), (16, 31), (9, 31)), \
+                            ((8, 29), (17, 29), (15, 30), (10, 30))
     elif stage == "kid":
-        heap_edge = ((10, 31), (24, 31), (26, 33), (8, 33))
-        dome, dish, inner = ((11, 32), (23, 32), (25, 33), (9, 33)), \
-                            ((5, 34), (29, 34), (27, 37), (9, 37)), \
-                            ((6, 35), (28, 35), (26, 36), (10, 36))
+        heap_edge = ((11, 31), (22, 31), (24, 33), (9, 33))
+        dome, dish, inner = ((12, 32), (21, 32), (23, 33), (10, 33)), \
+                            ((9, 34), (24, 34), (22, 37), (11, 37)), \
+                            ((10, 35), (23, 35), (21, 36), (12, 36))
     else:
-        heap_edge = ((12, 41), (32, 41), (35, 43), (9, 43))
-        dome, dish, inner = ((13, 42), (31, 42), (34, 43), (10, 43)), \
-                            ((7, 44), (37, 44), (34, 47), (11, 47)), \
-                            ((8, 45), (36, 45), (33, 46), (12, 46))
+        heap_edge = ((14, 41), (30, 41), (32, 43), (12, 43))
+        dome, dish, inner = ((15, 42), (29, 42), (31, 43), (13, 43)), \
+                            ((12, 44), (32, 44), (30, 47), (14, 47)), \
+                            ((13, 45), (31, 45), (29, 46), (15, 46))
     c.p(heap_edge, INK)
     c.p(dome, LIGHT)
     top_w = dome[1][0] - dome[0][0]
@@ -501,10 +502,13 @@ def cat_frame(stage, pose):
         return shift_vertical(draw_cat(stage), -1)     # hop
     if pose == "happy-2":
         return draw_cat(stage)                         # landing
+    # The kitten's face sits just above the heap at pitch +2; +3 made the
+    # chin outline touch the heap outline. Bigger stages keep +3.
+    pitch = 2 if stage == "baby" else 3
     if pose == "eat-0":
-        return render_pose(stage, head=(0, 3), bowl=True)
+        return render_pose(stage, head=(0, pitch), bowl=True)
     if pose == "eat-1":
-        return render_pose(stage, head=(0, 3), bowl=True, eyes="closed")
+        return render_pose(stage, head=(0, pitch), bowl=True, eyes="closed")
     if pose == "eat-2":
         return render_pose(stage, head=(0, -2), bowl=True)
     if pose == "excited-2":
