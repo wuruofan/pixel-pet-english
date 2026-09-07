@@ -506,11 +506,13 @@ def main():
     # the legacy egg row by row, or the runtime EGG_SPOTS overlay lands
     # off the shell.
     stance = load("cat-egg-v2.png")
-    assert stance.size == (29, 36)
+    assert stance.size == (29, 40)
+    # Strip the 2px top/bottom canvas padding to get the 29x36 egg content.
+    stance = stance.crop((0, 2, 29, 38))
     for y, (ex0, ex1) in enumerate(EGG_ROWS):
         row = [x for x in range(29) if stance.getpixel((x, y))[3] > 0]
         assert row and min(row) == ex0 and max(row) == ex1, (
-            f"egg silhouette drifted from the legacy shell at row {y}"
+            f"egg silhouette drifted from the shell at row {y}"
         )
     egg_poses = ["idle-0", "idle-1", "blink", "eat", "sleep-0", "sleep-1",
                  "happy", "excited-0", "excited-1", "excited-2", "droopy",
@@ -521,8 +523,8 @@ def main():
             path = SPRITES / f"cat-egg-v2-{p}.png"
             assert path.exists(), f"missing egg frame: {path.name}"
             img = load(f"cat-egg-v2-{p}.png")
-            assert img.size == (29, 36), f"{path.name} wrong canvas"
-            egg_frames[p] = img
+            assert img.size == (29, 40), f"{path.name} wrong canvas"
+            egg_frames[p] = img.crop((0, 2, 29, 38))
     assert len({f.tobytes() for f in egg_frames.values()}) == 17, (
         "all 17 egg frames must be distinct pictures"
     )

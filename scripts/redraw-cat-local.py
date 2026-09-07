@@ -505,7 +505,11 @@ def draw_egg(pose="idle-0"):
         img = shift_vertical(img, -1)
     if pose == "idle-1":
         img = shift_vertical(img, 1)
-    return img
+    # Pad the 29x36 egg into a 29x40 canvas (2px top + 2px bottom) so the
+    # shell arcs are not clipped by the canvas edge.
+    padded = Image.new('RGBA', (img.width, img.height + 4), (0, 0, 0, 0))
+    padded.paste(img, (0, 2))
+    return padded
 
 
 # --------------------------------------------------------------- walking

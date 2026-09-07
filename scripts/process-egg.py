@@ -329,6 +329,15 @@ def make_grunt(base, phase):
     return out
 
 
+def add_padding(im, top=2, bottom=2):
+    """Add transparent padding above/below the egg so the shell arcs are
+    not clipped by the canvas edge, and the egg reads slightly smaller."""
+    w, h = im.size
+    out = Image.new('RGBA', (w, h + top + bottom), (0, 0, 0, 0))
+    out.paste(im, (0, top))
+    return out
+
+
 def main():
     base_raw = load_raw(SRC)
     base = refine(base_raw)
@@ -353,6 +362,7 @@ def main():
         'cat-egg-grunt-1':  make_grunt(base, 1),
     }
     for name, im in frames.items():
+        im = add_padding(im, top=2, bottom=2)
         p = os.path.join(OUT, name + '.png')
         im.save(p, optimize=True)
         w, h = im.size
