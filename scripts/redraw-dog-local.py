@@ -39,6 +39,8 @@ WHITE = _cat.WHITE
 WALK_PHASES = _cat.WALK_PHASES
 feet = _cat.feet
 shift_vertical = _cat.shift_vertical
+draw_zzz = _cat.draw_zzz
+draw_blue_bubble = _cat.draw_blue_bubble
 draw_sleep = _cat.draw_sleep
 draw_bowl = _cat.draw_bowl
 egg_bubble = _cat.egg_bubble
@@ -66,6 +68,7 @@ DOG_TAIL_BOX = {"baby": (20, 16, 30, 32), "kid": (24, 20, 33, 38), "adult": (30,
 DOG_PAW_BOX = {"baby": (13, 26, 20, 32), "kid": (17, 33, 25, 38), "adult": (26, 42, 35, 48)}
 DOG_PAW_PAD = {"baby": (16, 28), "kid": (20, 34), "adult": (30, 44)}
 DOG_TEAR = {"baby": (10, 13), "kid": (11, 14), "adult": (14, 18)}
+DOG_TEAR_RIGHT = {"baby": 15, "kid": 19, "adult": 27}
 
 
 def dog_eyes(c, stage, style):
@@ -255,42 +258,55 @@ def draw_dog_bowl(c, stage):
 def draw_dog_tear(c, stage, phase):
     x, y = DOG_TEAR[stage]
     d = ImageDraw.Draw(c.img)
-    d.rectangle((x, y + phase, x, y + 1 + phase), fill=TEAR)
+    # tears hang from BOTH eyes (a single tear read as a mole)
+    for x0 in (x, DOG_TEAR_RIGHT[stage]):
+        d.rectangle((x0, y + phase, x0, y + 1 + phase), fill=TEAR)
 
 
 def draw_dog_bubbles(c, stage, side):
     d = ImageDraw.Draw(c.img)
-    spots = {"baby": [(23, 10, 4), (25, 16, 3)], "kid": [(29, 12, 4), (31, 18, 3)],
-             "adult": [(38, 14, 4), (40, 22, 3)]}[stage]
-    if side == "l":
-        w = c.img.width
-        spots = [(w - x - s, y, s) for (x, y, s) in spots]
+    # Each side authored separately: a horizontal mirror of the right spots
+    # would land on the floppy ear / face. Body-side spots may sit against
+    # the fur — blue bubbles stay readable over it.
+    spots = {"baby": {"r": [(23, 9, 5), (26, 17, 4)], "l": [(0, 4, 5), (0, 21, 4)]},
+             "kid": {"r": [(29, 11, 5), (32, 19, 4)], "l": [(0, 3, 5), (0, 18, 4)]},
+             "adult": {"r": [(38, 13, 5), (40, 23, 4)], "l": [(0, 4, 5), (2, 30, 4)]}}[stage][side]
     for x, y, s in spots:
-        egg_bubble(d, x, y, s)
+        draw_blue_bubble(d, x, y, s)
 
 
 # --------------------------------------------------------------- sleeping
 
 def draw_dog_sleep(stage, phase):
-    """Curled sleeping dog: same master layout as the cat but with a floppy
-    ear flap on the resting head."""
-    img = draw_sleep(stage, phase)  # base curled pose with the pointy ear
-    # replace the pointy cat ear with a floppy dog flap (cover + redraw)
-    d = ImageDraw.Draw(img)
-    master_ear = {(10, 9), (11, 9), (12, 10), (10, 10), (11, 10), (12, 11), (11, 12)}
-    w, h = img.size
-    sx, sy = w / 30.0, h / 32.0
-    for mx, my in list(master_ear):
-        d.rectangle((int(mx * sx), int(my * sy),
-                     int(mx * sx) + int(sx), int(my * sy) + int(sy)),
-                    fill=(0, 0, 0, 0))
-    # floppy flap hanging on the head's right side
-    d.polygon([(int(12 * sx), int(9 * sy)), (int(16 * sx), int(11 * sy)),
-               (int(16 * sx), int(15 * sy)), (int(12 * sx), int(15 * sy))],
-              fill=INK)
-    d.polygon([(int(13 * sx), int(11 * sy)), (int(15 * sx), int(12 * sy)),
-               (int(15 * sx), int(14 * sy)), (int(13 * sx), int(14 * sy))],
-              fill=(217, 188, 130, 255))
+    """Side-lying curl — the SAME silhouette as the cat's sleep pose (head
+    resting on the left, body curled to the right, tail wrapping the front,
+    side-profile face). Only the species markers change: dog palette, a
+    floppy ear replacing the cat's triangle ear, and a white muzzle instead
+    of cream. Authored on the 30x32 master, nearest-neighbor fitted, Zzz
+    drawn crisp on the final size."""
+    body = PALS[stage]["body"]
+    ear = PALS[stage]["ear"]
+    c = Canvas(30, 32)
+    # tail wrapping along the front of the curl (same path as the cat)
+    c.l([(12, 30), (20, 32), (27, 29), (28, 25)], INK, 5)
+    c.l([(13, 30), (20, 31), (26, 28)], body, 3)
+    # lying body bean (exact same polygon as the cat, dog palette)
+    c.p([(10, 20), (24, 19), (30, 23), (31, 28), (28, 31), (12, 31), (7, 27), (7, 23)], INK)
+    c.p([(11, 22), (23, 21), (28, 24), (29, 28), (27, 30), (13, 30), (9, 27), (9, 24)], body)
+    c.l([(22, 22), (26, 25), (26, 29)], SHADOW, 2)          # haunch hint
+    # resting head (exact same polygon as the cat, dog palette)
+    c.p([(4, 16), (8, 12), (14, 12), (17, 16), (16, 22), (10, 24), (5, 21)], INK)
+    c.p([(5, 17), (8, 13), (13, 13), (16, 17), (15, 21), (10, 23), (6, 20)], body)
+    # floppy ear replacing the cat's triangle ear (dog signature): hangs
+    # off the top/back of the head where the cat's point ear would be
+    c.p([(9, 10), (14, 9), (16, 12), (15, 18), (11, 19), (9, 15)], INK)
+    c.p([(10, 11), (13, 10), (15, 13), (14, 17), (11, 18), (10, 15)], ear)
+    # muzzle (exact same shape as the cat's cream muzzle, white for dog)
+    c.p([(6, 18), (10, 16), (13, 18), (13, 21), (10, 23), (7, 21)], WHITE)
+    c.r(6, 15, 9, 15, INK)                                 # closed eye (same as cat)
+    c.r(6, 19, 7, 19, NOSE)                                # nose at the muzzle tip (same as cat)
+    img = c.img.resize(SIZES[stage], Image.NEAREST)
+    draw_zzz(img, stage, phase)
     return img
 
 

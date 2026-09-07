@@ -450,16 +450,18 @@ def main():
             assert img.getpixel((nx + dx, ny)) == NOSE, (
                 f"{stage} {pose} nose must sway with the head"
             )
-            bcn = {"baby": (24, 12), "kid": (30, 14), "adult": (38, 18)}[stage]
+            bcn = {"baby": (23, 9), "kid": (29, 10), "adult": (38, 12)}[stage]
             if side == "l":
-                bcn = (size[0] - bcn[0] - 4, bcn[1])
-            assert img.getpixel((bcn[0] + 1, bcn[1])) == INK and img.getpixel((bcn[0] + 1, bcn[1] + 1)) == WHITE, (
+                # left-side spots are authored separately (a mirror would
+                # land the big bubble on the face)
+                bcn = {"baby": (0, 5), "kid": (0, 5), "adult": (0, 8)}[stage]
+            assert img.getpixel((bcn[0], bcn[1] + 1)) == INK and img.getpixel((bcn[0] + 1, bcn[1] + 1)) == TEAR, (
                 f"{stage} {pose} is missing its soap bubble"
             )
-            b2 = {"baby": (27, 17), "kid": (32, 20), "adult": (40, 25)}[stage]
+            b2 = {"baby": (26, 16), "kid": (32, 18), "adult": (40, 22)}[stage]
             if side == "l":
-                b2 = (size[0] - b2[0] - 3, b2[1])
-            assert img.getpixel((b2[0] + 1, b2[1])) == INK and img.getpixel((b2[0] + 1, b2[1] + 1)) == WHITE, (
+                b2 = {"baby": (0, 21), "kid": (0, 25), "adult": (0, 30)}[stage]
+            assert img.getpixel((b2[0], b2[1] + 1)) == INK and img.getpixel((b2[0] + 1, b2[1] + 1)) == TEAR, (
                 f"{stage} {pose} should show a cluster of bubbles"
             )
 

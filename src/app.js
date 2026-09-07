@@ -3058,9 +3058,19 @@
     if ($('#view')) render();
   }
 
+  /* 实验台（状态试验台）定时器：模块级持有，renderSettings 重建时必须
+     清理，否则旧定时器会继续在重建后的画布上绘制旧表情。 */
+  var tbTimers = { play: null, anim: null };
+
   function renderSettings() {
     var v = $('#set-body');
     if (!v) return;
+    /* 实验台定时器是模块级持有的：renderSettings 每次重建设置面板时，
+       必须先清掉旧实验台的"播完回落"和"多帧循环"定时器——否则旧的
+       interval 闭包仍会往新画布上画切换前的表情（切换物种/形态后表情
+       跳变的根因）。 */
+    if (tbTimers.play) { clearTimeout(tbTimers.play); tbTimers.play = null; }
+    if (tbTimers.anim) { clearInterval(tbTimers.anim); tbTimers.anim = null; }
     v.innerHTML = '';
 
     /* --- 教材与词库 --- */
@@ -3189,7 +3199,7 @@
     /* 试验台就地表演：与首页 playAction 同一套动作类 + 表情，播完回落 idle。
        目标是预览画布自身，不碰首页宠物状态（petAnim / 常驻基调完全独立）。
        tbStage：形态选择（0蛋 1宝宝 2/3 物种成长期），默认跟随当前等级；点形态 chip 切换预览 */
-    var tbTimer = null, TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
+    var TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
     var tbExpr = 'idle', tbStage = petStageIdx();
     function tbRedraw() { petAnim.exprIdx[tbExpr] = 0; drawPet($('#tb-cv'), tbExpr, tbStage); }
     function tbPlay(cls, expr, ms) {
@@ -3197,8 +3207,8 @@
       TB_ACT_CLS.forEach(function (k) { w.classList.remove(k); });
       if (cls) w.classList.add(cls);
       tbExpr = expr; tbRedraw();
-      clearTimeout(tbTimer);
-      tbTimer = setTimeout(function () {
+      if (tbTimers.play) clearTimeout(tbTimers.play);
+      tbTimers.play = setTimeout(function () {
         var w2 = $('#tb-cvwrap');
         if (w2) TB_ACT_CLS.forEach(function (k) { w2.classList.remove(k); });
         tbExpr = 'idle'; tbRedraw();
@@ -3240,9 +3250,8 @@
     /* 试验台本地动画定时器：点 chip → 持续循环该 expr 的多帧。
        单帧 expr（blink / excited / big / droopy / sad）保持静态显示。
        expr 值可能是数组（eat/sleep/happy…）也可能是 {stage:array} 映射（idle 按阶段分级）。 */
-    var tbAnimTimer = null;
     function tbStopAnim() {
-      if (tbAnimTimer) { clearInterval(tbAnimTimer); tbAnimTimer = null; }
+      if (tbTimers.anim) { clearInterval(tbTimers.anim); tbTimers.anim = null; }
     }
     function tbResolveFrames() {
       var exprMap = PET_FRAMES[petSpeciesKey()].expr[tbExpr];
@@ -3255,7 +3264,7 @@
       var ev = tbResolveFrames();
       if (!Array.isArray(ev) || ev.length <= 1) return;   // 单帧不循环
       var interval = PET_EXPR_INTERVAL[tbExpr] || 400;
-      tbAnimTimer = setInterval(function () {
+      tbTimers.anim = setInterval(function () {
         var ev2 = tbResolveFrames();
         if (!Array.isArray(ev2) || ev2.length <= 1) { tbStopAnim(); return; }
         petAnim.exprIdx[tbExpr] = ((petAnim.exprIdx[tbExpr] || 0) + 1) % ev2.length;

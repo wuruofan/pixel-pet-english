@@ -252,10 +252,10 @@ def adult_head(c, eyes="open"):
     c.r(19, 9, 20, 13, SHADOW)
     c.r(23, 8, 24, 12, SHADOW)
     c.r(27, 9, 28, 13, SHADOW)
-    # fluffy jaw cheeks; the eyes sit on fur above them
-    c.p([(9, 22), (15, 20), (18, 23), (18, 27), (14, 30), (9, 27)], CREAM)
-    c.p([(22, 23), (26, 20), (33, 22), (34, 27), (28, 30), (22, 27)], CREAM)
-    c.r(19, 24, 21, 26, CREAM)
+    # rounded cheek fluff under the eyes: two soft patches only. A straight
+    # bar between them (the old 19,24,21,26 strip) read as a bra/bib line.
+    c.p([(9, 22), (14, 20), (17, 22), (17, 26), (13, 28), (9, 26)], CREAM)
+    c.p([(23, 22), (27, 20), (33, 22), (33, 26), (28, 28), (23, 26)], CREAM)
     face_anchors(c, "adult", eyes)
     if FACE_SPECS["adult"]["whiskers"]:
         c.l([(10, 22), (4, 21)], INK)
@@ -310,38 +310,52 @@ def draw_blush(c, stage):
 
 
 def draw_tear(c, stage, phase):
-    """A blue tear hanging from the left eye's lower lid, rolling one pixel
-    down on phase 1. Blue (the zzz-FX hue) stays visible on the cream cheek;
-    white there would wash out."""
-    x, y = {"baby": (7, 14), "kid": (8, 16), "adult": (12, 20)}[stage]
-    c.r(x, y + phase, x, y + 1 + phase, TEAR)
+    """Blue tears hanging from BOTH eyes' lower lids (a single tear read as
+    a mole), rolling one pixel down on phase 1. Blue (the zzz-FX hue) stays
+    visible on the cream cheek; white there would wash out."""
+    pts = {"baby": ((7, 14), (16, 14)), "kid": ((8, 16), (20, 16)),
+           "adult": ((12, 20), (27, 20))}[stage]
+    for x, y in pts:
+        c.r(x, y + phase, x, y + 1 + phase, TEAR)
+
+
+def draw_blue_bubble(d, x, y, s):
+    """A soap bubble: ink rim, pale-blue body (the zzz-FX hue), white glint.
+    Bigger than a white speck so the cluster reads as bath foam and stays
+    readable even over fur — blue never fuses with the orange/cream body."""
+    if s >= 5:
+        d.rectangle((x, y + 1, x + 4, y + 2), fill=INK)
+        d.rectangle((x + 1, y, x + 3, y + 4), fill=INK)
+        d.rectangle((x + 1, y + 1, x + 3, y + 3), fill=TEAR)
+        d.point((x + 2, y + 1), fill=WHITE)
+    elif s == 4:
+        d.rectangle((x, y + 1, x + 3, y + 2), fill=INK)
+        d.rectangle((x + 1, y, x + 2, y + 3), fill=INK)
+        d.rectangle((x + 1, y + 1, x + 2, y + 2), fill=TEAR)
+        d.point((x + 2, y + 1), fill=WHITE)
+    else:
+        d.point((x, y + 1), fill=INK)
+        d.point((x + 2, y + 1), fill=INK)
+        d.point((x + 1, y), fill=INK)
+        d.point((x + 1, y + 2), fill=INK)
+        d.point((x + 1, y + 1), fill=TEAR)
 
 
 def draw_bubbles(c, stage, side):
-    """Three soap bubbles (big, mid, small) beside the head, swapping sides
-    with the head sway. One lonely bubble read as a speck; a cluster reads
-    as bath foam."""
-    w = SIZES[stage][0]
-    big = {"baby": (24, 12), "kid": (30, 14), "adult": (38, 18)}[stage]
-    mid = {"baby": (27, 17), "kid": (32, 20), "adult": (40, 25)}[stage]
-    small = {"baby": (26, 7), "kid": (32, 8), "adult": (39, 13)}[stage]
-    trio = ((big, 4), (mid, 3), (small, 3))
-    if side == "r":
-        spots = trio
-    else:
-        spots = tuple(((w - x - s, y), s) for (x, y), s in trio)
-    for (x, y), s in spots:
-        if s == 4:
-            c.r(x, y + 1, x + 3, y + 2, INK)
-            c.r(x + 1, y, x + 2, y + 3, INK)
-            c.r(x + 1, y + 1, x + 2, y + 2, WHITE)
-            c.px(x + 2, y + 1, LIGHT)
-        else:
-            c.px(x, y + 1, INK)
-            c.px(x + 2, y + 1, INK)
-            c.px(x + 1, y, INK)
-            c.px(x + 1, y + 2, INK)
-            c.px(x + 1, y + 1, WHITE)
+    """Soap bubbles beside the head/body, swapping sides with the head sway.
+    Each side is authored separately so no bubble lands on the face; the
+    body-side spots may sit against the fur (blue stays readable on it)."""
+    spots = {
+        "baby": {"r": [(23, 9, 5), (26, 16, 4), (27, 5, 3)],
+                 "l": [(0, 5, 5), (0, 21, 4), (0, 25, 3)]},
+        "kid": {"r": [(29, 10, 5), (32, 18, 4), (32, 6, 3)],
+                "l": [(0, 5, 5), (0, 25, 4), (0, 30, 3)]},
+        "adult": {"r": [(38, 12, 5), (40, 22, 4), (39, 6, 3)],
+                  "l": [(0, 8, 5), (0, 30, 4), (1, 18, 3)]},
+    }[stage][side]
+    d = ImageDraw.Draw(c.img)
+    for x, y, s in spots:
+        draw_blue_bubble(d, x, y, s)
 
 
 def shift_vertical(img, dy):
@@ -479,7 +493,8 @@ def draw_egg(pose="idle-0"):
     d = ImageDraw.Draw(img)
     if pose.startswith("sad-"):
         roll = 0 if pose == "sad-0" else 1
-        d.rectangle((5, 19 + roll, 5, 20 + roll), fill=TEAR)
+        for tx in (5, 16):
+            d.rectangle((tx, 19 + roll, tx, 20 + roll), fill=TEAR)
     if pose == "wash-0":
         egg_bubble(d, 24, 1, 4)
         egg_bubble(d, 25, 6, 3)
@@ -575,7 +590,7 @@ def draw_zzz(img, stage, phase):
     diagonal, bottom bar) at its own coordinates."""
     d = ImageDraw.Draw(img)
     zx, zy, s = {"baby": (21, 8, 5), "kid": (25, 8, 5), "adult": (30, 10, 5)}[stage]
-    small = {"baby": (16, 14, 4), "kid": (20, 17, 4), "adult": (26, 16, 4)}[stage]
+    small = {"baby": (18, 13, 4), "kid": (22, 15, 4), "adult": (28, 15, 4)}[stage]
     if phase:
         zy += 1
     for x, y, w in ((zx, zy, s), small):
@@ -634,9 +649,11 @@ def render_pose(stage, head=(0, 0), eyes="open", bowl=False, tear=None,
         draw_bowl(c, stage)
     c.offset(*head)
     HEADS[stage](c, eyes)
-    c.offset(-head[0], -head[1])
     if blush:
+        # blush belongs to the face group: drawn inside the head offset so it
+        # pitches with the head instead of pinning to the canvas.
         draw_blush(c, stage)
+    c.offset(-head[0], -head[1])
     if tear is not None:
         draw_tear(c, stage, tear)
     if bubble is not None:

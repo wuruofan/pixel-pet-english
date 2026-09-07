@@ -433,19 +433,18 @@ def main():
             assert img.getpixel((nx + dx, ny)) == NOSE, (
                 f"dog {stage} {pose} nose must sway with the head"
             )
-            # The bubble cluster sits in the upper-right corner on wash-0;
-            # on wash-1 it's mirrored to the upper-left. The bubble's rim
-            # is INK and its interior is WHITE.
-            bubble_main = {"baby": (26, 11), "kid": (32, 13), "adult": (41, 15)}[stage]
+            # The bubble cluster sits beside the head on wash-0; on wash-1
+            # it's authored to the left flank. Big blue bubbles: ink rim +
+            # pale-blue body (TEAR hue) so they read over fur too.
+            bubble_main = {"baby": (23, 9), "kid": (29, 11), "adult": (38, 13)}[stage]
             if side == "l":
-                bubble_main = (size[0] - bubble_main[0] - 1, bubble_main[1])
-                interior_dx = 1   # mirrored bubble: interior is RIGHT of rim
-            else:
-                interior_dx = -1  # right-side bubble: interior is LEFT of rim
-            assert img.getpixel(bubble_main) == INK, (
+                # left-side spots are authored separately (a mirror would
+                # land the bubble on the floppy ear / face)
+                bubble_main = {"baby": (0, 4), "kid": (0, 3), "adult": (0, 4)}[stage]
+            assert img.getpixel((bubble_main[0], bubble_main[1] + 1)) == INK, (
                 f"dog {stage} {pose} is missing its soap bubble rim at {bubble_main}"
             )
-            assert img.getpixel((bubble_main[0] + interior_dx, bubble_main[1])) in (WHITE, LIGHT), (
+            assert img.getpixel((bubble_main[0] + 1, bubble_main[1] + 1)) == TEAR, (
                 f"dog {stage} {pose} is missing its soap bubble interior"
             )
 
