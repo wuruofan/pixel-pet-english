@@ -81,3 +81,14 @@ node --check src/app.js && node scripts/build.js
 2. 图鉴文案已兑现；若要继续放大成长感，可给进化庆祝加白屏闪光（CSS 层）。
 3. baby/kid 走路目前是"成年步态缩小版"的参数化侧视，如需更幼态的步态（频率更快、幅度更小），调 `WALK_PHASES`/`WALK_LAYOUT` 即可。
 4. 走路契约与状态契约都在 `scripts/test-cat-redraw.py`，新增帧先加契约再改生成端。
+
+## 7. 物种推广：小狗（2026-09-07 启动，概念稿已获批）
+
+管线完全复用本文档的猫方案，概念稿已按流程出图并获用户确认：
+
+- **三阶段**：小奶狗（30×32，奶油色）/ 狗崽（36×38，棕色）/ 大狗（44×48，金色 + 红项圈），调色板用游戏自带 `dog-cream/brown/gold`。
+- **物种识别特征**：垂耳（挂在头两侧外缘、不遮眼）、凸出白吻部（鼻子坐在吻部上缘、ω 形狗嘴居中对称）、白胸斑、上翘摇尾；狗崽有眉点。
+- **脸部教训已修**：吻部椭圆必须以头部中线为准居中；吻部先画、眼睛后画（否则椭圆上缘裁眼睛，双眼不等大）；ω 嘴中心线与鼻子对齐。
+- **实现文件**：`scripts/redraw-dog-local.py`（导入 `redraw-cat-local` 的 Canvas/feet/调色常量），帧命名 `dog-{stage}-v2[-pose].png`，契约 `scripts/test-dog-redraw.py`（从猫契约裁剪）。
+- **接线**：`PET_FRAMES.dog = { stage + expr + walk }` 必须一次配齐（`drawPet` 直接读 `fr.expr[expr]`，缺 expr 会抛错）；蛋阶段直接共享 `cat-egg-v2-*`（蛋壳与物种无关，斑点色运行时按 `pals[1]` 叠加）。
+- 生成端与猫相同：`tail_lift`/`paw_up`/`tail_droop` 参数直接可用，表情自动获得摇尾/举爪/垂尾动画；睡觉与走路需各画一套狗版侧影。
