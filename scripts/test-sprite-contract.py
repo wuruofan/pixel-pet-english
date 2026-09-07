@@ -219,6 +219,84 @@ def main():
     # The bench must expose all four growth stages, including adult.
     assert "var TB_STAGES = [[0, '蛋'], [1, curSpecies().stages[0]], [2, curSpecies().stages[1]], [3, curSpecies().stages[2]]];" in APP
 
+    # ------------------ dog (小狗) ---------------------------
+    # The dog pipeline mirrors the cat's: 3 stage-distinct v2 stances,
+    # 21 differential frames per stage, and a 7-frame side-view walk loop.
+    # All wiring is local; the egg shell is shared with the cat and tinted
+    # at runtime by the species palette.
+    assert "1: 'dog-baby-v2', 2: 'dog-kid-v2', 3: 'dog-adult-v2'" in APP
+    assert "1: ['dog-baby-v2-idle-0', 'dog-baby-v2-idle-1']" in APP
+    assert "2: ['dog-kid-v2-idle-0',  'dog-kid-v2-idle-1']" in APP
+    assert "3: ['dog-adult-v2-idle-0','dog-adult-v2-idle-1']" in APP
+    assert "1: ['dog-baby-v2-blink']" in APP
+    assert "2: ['dog-kid-v2-blink']" in APP
+    assert "3: ['dog-adult-v2-blink']" in APP
+
+    dog_sizes = {"baby": (30, 32), "kid": (36, 38), "adult": (44, 48)}
+    for stage, size in dog_sizes.items():
+        for frame in ("idle-0", "idle-1", "blink"):
+            path = SPRITES / f"dog-{stage}-v2-{frame}.png"
+            assert path.exists(), f"missing dog v2 frame: {path.name}"
+            assert Image.open(path).size == size, (
+                f"{path.name} must stay on the {stage} v2 canvas {size}"
+            )
+        # idle breath keeps the same horizontal silhouette (no jump on swap)
+        base = alpha_bbox(f"dog-{stage}-v2-idle-0.png")
+        breath = alpha_bbox(f"dog-{stage}-v2-idle-1.png")
+        assert base and breath and base[0] == breath[0] and base[2] == breath[2], (
+            f"{stage} dog v2 idle frames must keep the same horizontal silhouette: {base} vs {breath}"
+        )
+        assert (
+            SPRITES.joinpath(f"dog-{stage}-v2-idle-0.png").read_bytes()
+            != SPRITES.joinpath(f"dog-{stage}-v2-idle-1.png").read_bytes()
+        ), f"{stage} dog v2 idle frames must be a real difference"
+
+        # All 18 differential poses must exist and live on the v2 canvas
+        dog_pose_specs = (
+            ("eat", 3), ("sleep", 2), ("happy", 3), ("excited", 3),
+            ("droopy", 1), ("sad", 2), ("wash", 2), ("grunt", 2),
+        )
+        for expr, count in dog_pose_specs:
+            frames = []
+            for index in range(count):
+                if count == 1:
+                    path = SPRITES / f"dog-{stage}-v2-{expr}.png"
+                else:
+                    path = SPRITES / f"dog-{stage}-v2-{expr}-{index}.png"
+                assert path.exists(), f"missing dog {stage} {expr} frame: {path.name}"
+                assert Image.open(path).size == size
+                frames.append(path.read_bytes())
+            assert len(set(frames)) == count, (
+                f"dog {stage} {expr} frames must be unique ({count} distinct)"
+            )
+
+        # walk: 7 distinct side-view frames on the v2 canvas
+        walk_frames = []
+        for index in range(7):
+            path = SPRITES / f"dog-{stage}-v2-walk-{index}.png"
+            assert path.exists(), f"missing dog {stage} walk frame: {path.name}"
+            assert Image.open(path).size == size
+            walk_frames.append(path.read_bytes())
+        assert len(set(walk_frames)) == 7, (
+            f"dog {stage} walk frames must be 7 distinct pictures"
+        )
+
+    # PET_FRAMES.dog must wire every state and stage the same way cat does.
+    for expr, count in (("eat", 3), ("sleep", 2), ("happy", 3), ("excited", 3),
+                         ("droopy", 1), ("sad", 2), ("wash", 2), ("grunt", 2)):
+        for stage_idx, prefix in ((1, "dog-baby"), (2, "dog-kid"),
+                                  (3, "dog-adult")):
+            if count == 1:
+                assert f"{stage_idx}: ['{prefix}-v2-{expr}']" in APP, (
+                    f"{prefix}-v2-{expr} must be wired in PET_FRAMES.dog"
+                )
+            else:
+                joined = "', '".join(f"{prefix}-v2-{expr}-{i}" for i in range(count))
+                assert f"{stage_idx}: ['{joined}']" in APP, (
+                    f"{prefix} {expr} frames must all be wired in PET_FRAMES.dog"
+                )
+    assert "walk: { 1: 'dog-baby-v2-walk-', 2: 'dog-kid-v2-walk-', 3: 'dog-adult-v2-walk-' }" in APP
+
     print("sprite contract: PASS")
 
 

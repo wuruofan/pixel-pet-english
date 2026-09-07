@@ -92,3 +92,54 @@ node --check src/app.js && node scripts/build.js
 - **实现文件**：`scripts/redraw-dog-local.py`（导入 `redraw-cat-local` 的 Canvas/feet/调色常量），帧命名 `dog-{stage}-v2[-pose].png`，契约 `scripts/test-dog-redraw.py`（从猫契约裁剪）。
 - **接线**：`PET_FRAMES.dog = { stage + expr + walk }` 必须一次配齐（`drawPet` 直接读 `fr.expr[expr]`，缺 expr 会抛错）；蛋阶段直接共享 `cat-egg-v2-*`（蛋壳与物种无关，斑点色运行时按 `pals[1]` 叠加）。
 - 生成端与猫相同：`tail_lift`/`paw_up`/`tail_droop` 参数直接可用，表情自动获得摇尾/举爪/垂尾动画；睡觉与走路需各画一套狗版侧影。
+
+## 8. 狗 v2 完结（2026-09-07）
+
+物种 1 落地：dog 共 87 张本地帧 + 双契约绿 + build 烘焙完成。
+
+### 8.1 帧清单
+
+| 阶段 | 站姿 | idle | blink | eat | sleep | happy | excited | droopy | sad | wash | grunt | walk | 小计 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baby (30×32) | 1 | 2 | 1 | 3 | 2 | 3 | 3 | 1 | 2 | 2 | 2 | 7 | 29 |
+| kid (36×38) | 1 | 2 | 1 | 3 | 2 | 3 | 3 | 1 | 2 | 2 | 2 | 7 | 29 |
+| adult (44×48) | 1 | 2 | 1 | 3 | 2 | 3 | 3 | 1 | 2 | 2 | 2 | 7 | 29 |
+| **合计** | 3 | 6 | 3 | 9 | 6 | 9 | 9 | 3 | 6 | 6 | 6 | 21 | **87** |
+
+蛋阶段共用 `cat-egg-v2-*`（17 张），运行时按 `pals[1]` 自动染斑点。
+
+### 8.2 帧机制（与猫一致）
+
+- 站姿由 `dog_*_body` + `dog_*_head` 派生；嘴巴走 ω（omega）系列：smile / crumbs / laugh / tiny / frown。
+- 眼睛走 open / closed / lid / squeeze / arc / star 六式，`DOG_EYES` 表契约锁定。
+- 走路侧视（`draw_dog_walk`）三阶段各自 `DOG_WALK_LAYOUT` 表（耳垂/凸吻/棒尾/侧眼）。
+- 睡眠用 `draw_sleep` 母版 + 按 `s x = w/30, s y = h/32` 缩放，再覆画垂耳耳盖（替换母版的尖耳）。
+
+### 8.3 关键陷阱（本轮踩过）
+
+- **Canvas.e() 不存在**：`Canvas` 只暴露 `r / p / l / px / offset / d`；椭圆走 `c.d.ellipse(...)` 直调 ImageDraw。
+- **dashed 文件名**：`redraw-cat-local.py` 带横杠，裸 `import` 找不到；多物种脚本用 `importlib.util.spec_from_file_location` 显式加载并解包所需符号（Canvas / feet / shift_vertical / draw_sleep / draw_bowl / egg_bubble / WALK_PHASES / 调色常量）。
+- **`tail_droop` 必须显式接受**：`DOG_BODIES[stage](c, tail_lift=..., tail_droop=..., paw_up=...)`，签名与猫对齐。
+- **excited-1 抬爪 + shift 后会越界**：原 `PAW_BOX` 不含被抬+shift 后的爪位，狗契约把 `PAW_BOX` 上沿往上扩 2 行（baby 26→24，kid 33→31，adult 42→40），否则 shift-equality 断言会在 (18, 32) 这种"被抬爪移入"的位置爆错。
+- **PIL `ImageDraw.line` width=6/7 端点外溢**：line 端点像素会被宽度吞掉，断言"尾尖在 (27, 19)"会假阴；契约改成"tail box 内有 ink 像素"即可，不用硬指端点。
+- **mouth/sockets/tail/paw 联合豁免**：excited-2 把 ω 嘴换成 laugh，牙齿像素会变；`DOG_LAUGH_BOX`（覆盖 smile+laugh 全占位）一并加进豁免。
+- **dog laugh 嘴比 smile 嘴高 1 行**：dog adult 的 smile 画 (21, 23-24)，laugh 画 (18-24, 25-27)，覆盖两者的 box 必须是 y=23..28 而非 24..28，否则 (21, 23) 会差 1 像素。
+- **wash-1 镜像方向**：右侧气泡 rim 在 x=26，镜像到左 x=3，气泡 interior 在 x=4 而不是 x=2（rim 朝中心一侧才算 interior）。
+
+### 8.4 验证
+
+```bash
+python3 scripts/redraw-dog-local.py        # 87 张重新生成
+python3 scripts/test-dog-redraw.py         # 几何契约（剪影/眼眶/ω嘴/尾/爪/差分）
+python3 scripts/test-sprite-contract.py    # PET_FRAMES.dog 接线 + 文件存在
+node scripts/build.js                      # 烘焙进 HTML
+```
+
+`test-dog-redraw.py` 锁定了三类关键不变量：(1) 站姿脚踩画布底边 + 三阶段互不可辨；(2) 18 个状态帧 + idle/blink 在 tail/paw 区域外是 base 的精确 shift；(3) eat 带饭盆 + 抬头/低头/闭眼三态；sleep 带 Z 字符；walk 7 帧互不相同且侧眼存在。
+
+### 8.5 后续物种（fox / dragon）
+
+- 直接复刻 `redraw-dog-local.py` 的脚手架；坐标系表、palette、调色常量按物种特征替换；其它（Canvas、feet、shift_vertical、draw_sleep 缩放）一行不动。
+- 蛋帧继续共用 `cat-egg-v2-*`；`PET_SPECIES[k].egg = { B, S, A }` 决定斑点染色。
+- 走路与睡觉侧影仍是每物种独立的 `*_WALK_LAYOUT` 与 sleep 耳型补丁（垂耳 / 尖耳 / 大角 / 鳍）。
+- 每个物种一个契约脚本 `test-{species}-redraw.py`，公共帧存在性 + 接线走 `test-sprite-contract.py`。
