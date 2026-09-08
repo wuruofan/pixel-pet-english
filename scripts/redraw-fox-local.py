@@ -181,156 +181,148 @@ def fox_bubbles(c, stage, side):
 
 
 def fox_body_kid(c, tail_lift=0, tail_droop=0, paw_up=False):
-    """Fox-kid body silhouette (36x38). Slim long torso (narrower than v4),
-    legs slightly wider apart for a stable stance. The fox tail signature:
-    it rises from the right HIP (not the spine), sweeps up and back in a
-    thick S arc with a fluffy jagged outline (continuous tuft bulges, not
-    isolated points) and a white tip — mimicking the fox emoji 🦊."""
+    """Fox-kid body silhouette (36x38). Anchored to the mmx 1024×1024
+    reference (fox-kid-front_001.jpg) auto-extracted anchor points. The
+    mmx fox stands facing the viewer with feet at y=34, body x=8-28, tail
+    rising from the right hip into a thick S-arc with white tip. White V
+    chest at (16-19, 24-27). Black paws at the bottom row."""
     dy = -tail_lift
-    body = FOX_BODY["kid"]
-    accent = FOX_ACCENT["kid"]
-    # fluffy thick S-arc tail — starts at right hip (28, 32), bulges out
-    # to the right (peaks at x=37 mid-arc), curls back left to tip
-    # (30, 6). Outer (right) edge has continuous jagged fur tufts.
-    if tail_droop:
-        # tail hangs limply down
-        c.l([(28, 32), (32, 36), (32, 38)], INK, 4)
-        c.l([(28, 32), (32, 36), (32, 37)], body, 2)
-        c.r(31, 37, 32, 38, accent)
-    else:
-        # tail silhouette outline — thick S-arc, ~8-9 cols wide
-        c.p([(28, 32), (32, 28), (36, 22 + dy), (37, 16 + dy),
-             (36, 10 + dy), (33, 6 + dy), (30, 6 + dy), (28, 10 + dy),
-             (30, 18 + dy), (32, 24 + dy)], INK)
-        c.p([(29, 32), (32, 29), (35, 23 + dy), (36, 16 + dy),
-             (35, 11 + dy), (32, 7 + dy), (30, 7 + dy), (29, 11 + dy),
-             (31, 18 + dy), (32, 24 + dy)], body)
-        # continuous jagged fur tufts on the outer (right + top) edge of
-        # the tail — bulges every ~2 rows for true fluffy feel.
-        tufts = [(34, 26), (36, 24), (37, 20), (37, 17), (37, 14),
-                 (36, 11), (34, 8), (32, 7), (30, 9), (29, 12),
-                 (29, 16), (30, 21)]
-        for fx, fy in tufts:
-            c.px(fx, fy + dy, INK)
-        # white tail tip on the top-left curve (where the S ends)
-        c.r(28, 6 + dy, 30, 9 + dy, accent)
-    # slim long body — narrower than v4 (was 5→31, now 7→29), legs apart
-    c.p([(8, 24), (28, 24), (30, 28), (30, 35), (27, 37), (8, 37),
-         (6, 35), (6, 28)], INK)
-    c.p([(9, 25), (27, 25), (29, 29), (29, 34), (26, 36), (9, 36),
-         (8, 34), (8, 29)], body)
-    # white chest patch — narrower than v4, leaves rust shoulders visible
-    c.p([(14, 26), (22, 26), (24, 31), (22, 35), (14, 35), (12, 31)], accent)
-    feet(c, ((8, 35, 14, 37), (18, 35, 24, 37)), paw_up=paw_up)
-
-
-def fox_body_adult(c, tail_lift=0, tail_droop=0, paw_up=False):
-    """Fox-adult body silhouette (44x48). Slim long torso; the signature
-    fox feature is the LARGE fluffy thick S-arc tail from the right HIP
-    with continuous jagged fur tufts, two cream ring markings, and a
-    white tip on the outer curve — like the fox emoji 🦊. Tail does NOT
-    rise above head height (keeps the face visible)."""
-    dy = -tail_lift
-    body = FOX_BODY["adult"]
-    accent = FOX_ACCENT["adult"]
-    # big thick S-arc fluffy tail — starts at right hip (32, 38), bulges
-    # out to (44, 22) mid-arc, curls back to tip (38, 7). ~9-10 cols wide.
-    if tail_droop:
-        # tail hangs limply down
-        c.l([(32, 38), (36, 44), (36, 47)], INK, 5)
-        c.l([(32, 38), (36, 44), (36, 46)], body, 3)
-        c.r(35, 46, 36, 47, accent)
-    else:
-        # tail silhouette outline — thick S-arc, ~9-10 cols wide
-        c.p([(32, 38), (37, 33), (42, 26 + dy), (44, 18 + dy),
-             (43, 10 + dy), (40, 6 + dy), (37, 7 + dy), (35, 12 + dy),
-             (37, 22 + dy), (39, 30 + dy)], INK)
-        c.p([(33, 38), (37, 34), (41, 27 + dy), (43, 18 + dy),
-             (42, 11 + dy), (39, 7 + dy), (37, 8 + dy), (36, 13 + dy),
-             (38, 22 + dy), (39, 30 + dy)], body)
-        # continuous jagged fur tufts on the outer edge — bulges every
-        # ~2 rows for true fluffy feel.
-        tufts = [(39, 33), (42, 30), (43, 26), (44, 22), (44, 18),
-                 (44, 14), (43, 10), (40, 7), (37, 9), (35, 13),
-                 (35, 18), (36, 24), (37, 30)]
-        for fx, fy in tufts:
-            c.px(fx, fy + dy, INK)
-        # cream ring markings — two rings on the outer curve
-        c.r(40, 28 + dy, 42, 30 + dy, accent)
-        c.r(42, 16 + dy, 43, 18 + dy, accent)
-        # white tail tip on the top-left curve (where the S ends)
-        c.r(37, 6 + dy, 39, 9 + dy, accent)
-    # slim long body — narrower than v4 (was 9→37, now 11→33)
-    c.p([(11, 28), (33, 28), (35, 32), (35, 43), (33, 47), (12, 47),
-         (10, 43), (10, 32)], INK)
-    c.p([(12, 29), (32, 29), (34, 33), (34, 42), (32, 46), (13, 46),
-         (12, 42), (12, 33)], body)
-    # chest fluff — slightly narrower than v4, leaves rust shoulders
-    c.p([(18, 32), (26, 32), (28, 38), (26, 44), (18, 44), (16, 38)], accent)
-    feet(c, ((12, 45, 19, 47), (25, 45, 32, 47)), paw_up=paw_up)
-
-
-def fox_head_kid(c, eyes="open"):
-    """Fox-kid head (36x38). Angular fox face (NOT a round dome): narrow
-    forehead between the ears, widens to cheekbones, tapers to a pointy
-    chin. Pointy ears with dark ear-tips rising up above the head outline,
-    narrow white forehead blaze, triangular pointed muzzle protruding from
-    the face center (not pasted on the bottom)."""
     body = FOX_BODY["kid"]
     ear = FOX_EAR["kid"]
     accent = FOX_ACCENT["kid"]
-    # tall pointy ears — apex reaches y=0 (canvas top), base wider than v4,
-    # the fox silhouette tell.
-    c.p([(4, 12), (8, 0), (13, 11)], INK)
-    c.p([(5, 11), (8, 2), (12, 11)], body)
-    c.r(8, 0, 8, 3, ear)
-    c.p([(23, 11), (28, 0), (32, 12)], INK)
-    c.p([(24, 11), (28, 2), (31, 11)], body)
-    c.r(28, 0, 28, 3, ear)
-    # angular fox head: narrower top than v4 (forehead 14 wide, was 17),
-    # wider cheeks (24 wide, was 22), sharper chin. The classic
-    # inverted-triangle fox face.
-    c.p([(7, 12), (11, 7), (25, 7), (29, 12), (30, 16), (27, 21),
-         (22, 23), (18, 24), (14, 23), (9, 21), (6, 16)], INK)
-    c.p([(8, 13), (11, 8), (25, 8), (28, 13), (29, 16), (26, 20),
-         (22, 22), (18, 23), (14, 22), (10, 20), (7, 16)], body)
-    # narrow white forehead blaze — only between eyes, leaves rust cheeks
-    # visible on both sides (was a wider band in v4).
-    c.r(17, 9, 19, 12, accent)
-    # triangular pointed muzzle — narrower at top, widens at cheeks,
-    # tapers to a sharp chin (so it reads as protruding from the face
-    # center, not pasted onto the bottom).
-    c.p([(14, 14), (22, 14), (24, 18), (22, 21), (18, 22), (14, 21),
-         (12, 18)], accent)
+    # fluffy thick S-arc tail — starts at right hip (28, 28), bulges
+    # right to (32, 16) mid-arc, curls back left to tip (29, 6).
+    if tail_droop:
+        c.l([(28, 28), (32, 32), (32, 35)], INK, 3)
+        c.l([(28, 28), (32, 32), (32, 34)], body, 2)
+        c.r(31, 34, 32, 35, accent)
+    else:
+        # S-arc tail outline (thick, ~5 cols wide)
+        c.p([(28, 28), (30, 24 + dy), (33, 18 + dy), (33, 12 + dy),
+             (31, 7 + dy), (29, 6 + dy), (28, 11 + dy),
+             (29, 18 + dy), (30, 24 + dy)], INK)
+        c.p([(29, 28), (30, 25 + dy), (32, 19 + dy), (32, 13 + dy),
+             (30, 8 + dy), (29, 7 + dy), (28, 12 + dy),
+             (29, 19 + dy), (30, 25 + dy)], body)
+        # jagged tufts on outer (right) edge
+        for fx, fy in [(31, 22), (32, 20), (32, 16), (32, 13),
+                       (31, 10), (30, 8), (29, 9), (29, 13),
+                       (29, 17), (30, 22)]:
+            c.px(fx, fy + dy, INK)
+        # white tail tip
+        c.r(28, 6 + dy, 30, 9 + dy, accent)
+    # body silhouette — narrower than v4 to match mmx proportions
+    c.p([(8, 24), (28, 24), (29, 27), (29, 33), (27, 34), (9, 34),
+         (7, 33), (7, 27)], INK)
+    c.p([(9, 25), (27, 25), (28, 28), (28, 32), (26, 33), (10, 33),
+         (8, 32), (8, 28)], body)
+    # white chest V — narrower at top, widens at belly (mmx shape)
+    c.p([(16, 24), (19, 24), (20, 27), (19, 30), (16, 30), (15, 27)], accent)
+    # black paws at y=33-35 (anchored to mmx 脚底 y=34-35)
+    c.r(8, 33, 14, 35, INK)
+    c.r(18, 33, 24, 35, INK)
+    # tiny LIGHT paw pad highlight
+    c.r(10, 34, 12, 35, LIGHT)
+    c.r(20, 34, 22, 35, LIGHT)
+
+
+def fox_body_adult(c, tail_lift=0, tail_droop=0, paw_up=False):
+    """Fox-adult body silhouette (44x48). Anchored to the mmx 1024×1024
+    reference. Larger S-arc tail with two cream ring markings, white V
+    chest, four black paws. Feet rest at y=44."""
+    dy = -tail_lift
+    body = FOX_BODY["adult"]
+    ear = FOX_EAR["adult"]
+    accent = FOX_ACCENT["adult"]
+    # big fluffy S-arc tail with cream rings — starts at right hip (33, 36)
+    if tail_droop:
+        c.l([(33, 36), (38, 41), (38, 44)], INK, 4)
+        c.l([(33, 36), (38, 41), (38, 43)], body, 3)
+        c.r(37, 43, 38, 44, accent)
+    else:
+        # S-arc tail outline (~7 cols wide)
+        c.p([(33, 36), (37, 32 + dy), (40, 24 + dy), (41, 16 + dy),
+             (39, 9 + dy), (36, 6 + dy), (33, 9 + dy), (33, 16 + dy),
+             (35, 24 + dy), (37, 32 + dy)], INK)
+        c.p([(34, 36), (37, 33 + dy), (39, 25 + dy), (40, 17 + dy),
+             (38, 10 + dy), (36, 7 + dy), (34, 10 + dy), (34, 17 + dy),
+             (35, 25 + dy), (36, 33 + dy)], body)
+        # jagged tufts on outer edge
+        for fx, fy in [(38, 30), (39, 27), (40, 23), (40, 20),
+                       (40, 16), (39, 12), (38, 9), (36, 7),
+                       (34, 10), (33, 14), (33, 20), (34, 27)]:
+            c.px(fx, fy + dy, INK)
+        # two cream ring markings on the outer curve
+        c.r(38, 27 + dy, 40, 30 + dy, accent)
+        c.r(40, 17 + dy, 41, 20 + dy, accent)
+        # white tail tip
+        c.r(34, 6 + dy, 37, 9 + dy, accent)
+    # body silhouette
+    c.p([(11, 32), (33, 32), (34, 36), (34, 42), (32, 44), (12, 44),
+         (10, 42), (10, 36)], INK)
+    c.p([(12, 33), (32, 33), (33, 37), (33, 41), (31, 43), (13, 43),
+         (11, 41), (11, 37)], body)
+    # white chest V — wider at top, tapers at belly
+    c.p([(18, 32), (26, 32), (27, 38), (26, 42), (18, 42), (17, 38)], accent)
+    # black paws at y=43-45
+    c.r(11, 43, 19, 45, INK)
+    c.r(25, 43, 33, 45, INK)
+    c.r(14, 44, 16, 45, LIGHT)
+    c.r(28, 44, 30, 45, LIGHT)
+
+
+def fox_head_kid(c, eyes="open"):
+    """Fox-kid head (36x38). Anchored to the mmx 1024×1024 reference
+    (fox-kid-front_001.jpg). Pointy ears at y=5-12, face y=11-22, eyes at
+    (15-16, 16-18) and (19-20, 16-18), nose (17-18, 18-19), omega mouth
+    at y=20-21, white muzzle y=14-21, white forehead blaze between eyes."""
+    body = FOX_BODY["kid"]
+    ear = FOX_EAR["kid"]
+    accent = FOX_ACCENT["kid"]
+    # tall pointy ears — apex at y=5 (mmx position), narrow base
+    c.p([(10, 12), (11, 5), (12, 11)], INK)
+    c.p([(10, 11), (11, 6), (12, 11)], body)
+    c.r(11, 5, 11, 8, ear)
+    c.p([(24, 11), (25, 5), (26, 12)], INK)
+    c.p([(24, 11), (25, 6), (26, 11)], body)
+    c.r(25, 5, 25, 8, ear)
+    # round-ish face (mmx style — not a strict inverted triangle)
+    c.p([(8, 12), (12, 9), (24, 9), (28, 12), (28, 18), (26, 21),
+         (22, 22), (18, 22), (14, 22), (10, 21), (8, 18)], INK)
+    c.p([(9, 13), (13, 10), (23, 10), (27, 13), (27, 18), (25, 20),
+         (22, 21), (18, 21), (14, 21), (11, 20), (9, 18)], body)
+    # white forehead blaze between eyes (narrow)
+    c.r(17, 10, 19, 13, accent)
+    # white muzzle — the triangular wedge centered on the face
+    c.p([(14, 14), (22, 14), (23, 18), (21, 21), (18, 21), (15, 21),
+         (13, 18)], accent)
     fox_face_anchors(c, "kid", eyes)
 
 
 def fox_head_adult(c, eyes="open"):
-    """Fox-adult head (44x48). Same angular/triangular fox face shape as
-    kid, scaled up: narrow top, wide cheekbones, pointy chin, triangular
-    muzzle protruding from the face center. Tall pointy ears reach the
-    canvas top — the silhouette signature."""
+    """Fox-adult head (44x48). Anchored to the mmx 1024×1024 reference
+    (fox-adult-front_001.jpg). Big pointy ears, eyes at y=18-21, nose
+    (15-16, 20-21), omega mouth y=22-23, wider white muzzle and chest."""
     body = FOX_BODY["adult"]
     ear = FOX_EAR["adult"]
     accent = FOX_ACCENT["adult"]
-    # big tall pointy ears — apex at y=0 (canvas top)
-    c.p([(7, 15), (11, 0), (20, 13)], INK)
-    c.p([(9, 14), (11, 2), (18, 13)], body)
-    c.r(11, 0, 11, 4, ear)
-    c.p([(24, 13), (33, 0), (37, 15)], INK)
-    c.p([(26, 13), (33, 2), (35, 14)], body)
-    c.r(33, 0, 33, 4, ear)
-    # angular adult head — inverted-triangle fox silhouette (narrower
-    # top, wider cheeks, sharper chin than v4)
-    c.p([(10, 15), (16, 9), (28, 9), (34, 15), (35, 21), (32, 27),
-         (26, 30), (22, 31), (18, 31), (12, 27), (9, 21)], INK)
-    c.p([(11, 16), (16, 10), (28, 10), (33, 16), (34, 21), (31, 26),
-         (26, 29), (22, 30), (18, 30), (13, 26), (10, 21)], body)
-    # narrow forehead blaze between the bigger eyes
-    c.r(20, 12, 24, 16, accent)
-    # triangular muzzle — narrow at top, widens at cheeks, sharp chin
-    c.p([(17, 20), (27, 20), (29, 24), (27, 28), (22, 29), (17, 28),
-         (15, 24)], accent)
+    # big tall pointy ears — apex at y=7 (mmx position)
+    c.p([(7, 15), (10, 7), (12, 15)], INK)
+    c.p([(8, 14), (10, 9), (12, 14)], body)
+    c.r(10, 7, 10, 10, ear)
+    c.p([(32, 15), (34, 7), (37, 15)], INK)
+    c.p([(32, 14), (34, 9), (36, 14)], body)
+    c.r(34, 7, 34, 10, ear)
+    # face (mmx style — rounder than v4 strict inverted triangle)
+    c.p([(7, 14), (13, 10), (31, 10), (37, 14), (37, 22), (35, 27),
+         (30, 30), (25, 31), (19, 31), (14, 30), (9, 27), (7, 22)], INK)
+    c.p([(8, 15), (14, 11), (30, 11), (36, 15), (36, 22), (34, 26),
+         (30, 29), (25, 30), (19, 30), (15, 29), (10, 26), (8, 22)], body)
+    # white forehead blaze between eyes (wider — adult has bigger eyes)
+    c.r(20, 13, 24, 17, accent)
+    # white muzzle — wide wedge centered on the face
+    c.p([(15, 18), (29, 18), (30, 24), (27, 28), (22, 30), (17, 28),
+         (14, 24)], accent)
     fox_face_anchors(c, "adult", eyes)
 
 
