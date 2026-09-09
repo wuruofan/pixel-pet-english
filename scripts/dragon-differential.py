@@ -73,9 +73,9 @@ ALL_POSES = [
     ('idle-1',    {'eyes':'open',    'mouth':'smile'}),
     ('blink',     {'eyes':'closed',  'mouth':'smile'}),
     ('droopy',    {'eyes':'lid',     'mouth':'frown'}),
-    ('eat-0',     {'eyes':'open',    'mouth':'crumbs'}),
-    ('eat-1',     {'eyes':'open',    'mouth':'crumbs'}),
-    ('eat-2',     {'eyes':'open',    'mouth':'crumbs'}),
+    ('eat-0',     {'eyes':'open',    'mouth':'crumbs', 'offset_y': 0}),
+    ('eat-1',     {'eyes':'open',    'mouth':'crumbs', 'offset_y': -1}),
+    ('eat-2',     {'eyes':'open',    'mouth':'crumbs', 'offset_y': 1}),
     ('excited-0', {'eyes':'star',    'mouth':'laugh', 'blush':True}),
     ('excited-1', {'eyes':'star',    'mouth':'laugh', 'blush':True}),
     ('excited-2', {'eyes':'star',    'mouth':'laugh', 'blush':True}),
@@ -95,8 +95,8 @@ ALL_POSES = [
     ('walk-4',    {'eyes':'open',    'mouth':'smile'}),
     ('walk-5',    {'eyes':'open',    'mouth':'smile'}),
     ('walk-6',    {'eyes':'open',    'mouth':'smile'}),
-    ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'R'}),
-    ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'R'}),
+    ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'both'}),
+    ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'both'}),
 ]
 
 # ============================================================
@@ -157,6 +157,7 @@ def draw_eyes(img, face, state):
 
 def draw_mouth(img, face, state):
     px = img.load()
+    w, h = img.size
     mx, my = face['mouth']
     if state == 'smile':
         # 3点ω
@@ -176,15 +177,21 @@ def draw_mouth(img, face, state):
         px[mx, my] = MOUTH_DARK
         px[mx+1, my+1] = MOUTH_DARK
     elif state == 'crumbs':
-        # ω + 食物碎屑
+        # ω + 更多食物碎屑（8个，分散在嘴巴周围）
         px[mx-1, my] = MOUTH_DARK
         px[mx, my+1] = MOUTH_DARK
         px[mx+1, my] = MOUTH_DARK
-        # 碎屑
-        px[mx-2, my-1] = (200, 160, 80, 255)
-        px[mx+2, my-1] = (200, 160, 80, 255)
-        px[mx-1, my-2] = (220, 180, 100, 255)
-        px[mx+1, my-2] = (220, 180, 100, 255)
+        # 碎屑（深浅两种棕色，分散在嘴巴上方和两侧）
+        crumb_colors = [(200, 160, 80, 255), (220, 180, 100, 255), (180, 140, 60, 255)]
+        crumb_positions = [
+            (mx-3, my-1, 0), (mx+3, my-1, 0),
+            (mx-2, my-2, 1), (mx+2, my-2, 1),
+            (mx-1, my-3, 2), (mx+1, my-3, 2),
+            (mx-4, my, 1),   (mx+4, my, 1),
+        ]
+        for cx, cy, ci in crumb_positions:
+            if 0 <= cx < w and 0 <= cy < h:
+                px[cx, cy] = crumb_colors[ci]
     elif state == 'tiny':
         px[mx, my] = MOUTH_DARK
 
@@ -214,8 +221,11 @@ def draw_tears(img, face):
 
 def draw_bubbles(img, side='R'):
     px = img.load()
-    bubbles = BUBBLES_R if side == 'R' else BUBBLES_L
-    for bx, by, size in bubbles:
+    if side == 'both':
+        bubbles_list = BUBBLES_R + BUBBLES_L
+    else:
+        bubbles_list = BUBBLES_R if side == 'R' else BUBBLES_L
+    for bx, by, size in bubbles_list:
         if size == 3:
             for dy in range(3):
                 for dx in range(3):
@@ -293,6 +303,12 @@ def erase_face(img, face, w, h, full_rect=None, extra_rects=None):
 def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None):
     """渲染单帧"""
     img = base.copy()
+    # 头部上下平移（吃饭动画）
+    offset_y = config.get('offset_y', 0)
+    if offset_y != 0:
+        shifted = Image.new("RGBA", (w, h), (0,0,0,0))
+        shifted.paste(img, (0, offset_y))
+        img = shifted
     erase_face(img, face, w, h, full_rect=full_rect, extra_rects=extra_rects)
     draw_eyes(img, face, config['eyes'])
     draw_nose(img, face)
