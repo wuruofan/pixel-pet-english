@@ -242,9 +242,10 @@ def draw_zz(img):
             px[zx+1, zy+1] = ZZ
             for dx in range(2): px[zx+dx, zy+1] = ZZ
 
-def erase_face(img, face, w, h, full_rect=None):
+def erase_face(img, face, w, h, full_rect=None, extra_rects=None):
     """擦除原有脸部区域，用身体绿色填充。
     full_rect=(x1,y1,x2,y2) 时擦除整个矩形（用于 adult 原图有残留眼嘴）。
+    extra_rects=[(x1,y1,x2,y2),...] 额外擦除小矩形（用于 kid 清除残留噪点，保留脸部轮廓）。
     """
     px = img.load()
     erase = face['erase_color']
@@ -254,6 +255,14 @@ def erase_face(img, face, w, h, full_rect=None):
             for x in range(x1, x2+1):
                 if 0 <= x < w and 0 <= y < h:
                     px[x, y] = erase
+    if extra_rects:
+        for rect in extra_rects:
+            x1, y1, x2, y2 = rect
+            for y in range(y1, y2+1):
+                for x in range(x1, x2+1):
+                    if 0 <= x < w and 0 <= y < h:
+                        px[x, y] = erase
+    if full_rect or extra_rects:
         return
     # 擦除眼睛区域
     for key in ['eye_L', 'eye_R']:
@@ -281,10 +290,10 @@ def erase_face(img, face, w, h, full_rect=None):
                 if 0 <= bx+dx < w and 0 <= by+dy < h:
                     px[bx+dx, by+dy] = erase
 
-def render_frame(base, face, config, w, h, full_rect=None):
+def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None):
     """渲染单帧"""
     img = base.copy()
-    erase_face(img, face, w, h, full_rect=full_rect)
+    erase_face(img, face, w, h, full_rect=full_rect, extra_rects=extra_rects)
     draw_eyes(img, face, config['eyes'])
     draw_nose(img, face)
     draw_mouth(img, face, config['mouth'])
@@ -302,9 +311,11 @@ def render_frame(base, face, config, w, h, full_rect=None):
 # 主流程
 # ============================================================
 def main():
-    for stage, face, clean_path, prefix, full_rect in [
-        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', (8, 10, 28, 22)),
-        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24)),
+    for stage, face, clean_path, prefix, full_rect, extra_rects in [
+        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None,
+         [(24,10,28,14), (14,14,21,16), (24,15,27,19), (13,19,21,19),
+          (18,21,22,22), (11,23,12,23), (22,23,22,23)]),
+        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None),
     ]:
         print(f"\n=== {stage} ===")
         base = Image.open(clean_path).convert("RGBA")
@@ -312,13 +323,15 @@ def main():
         print(f"  base: {w}x{h}")
 
         # base 帧（默认表情 open+smile）
-        base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h, full_rect=full_rect)
+        base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h,
+                                   full_rect=full_rect, extra_rects=extra_rects)
         base_frame.save(SPRITES / f"{prefix}.png")
         print(f"  wrote {prefix}.png")
 
         # 全量 pose
         for pose_name, config in ALL_POSES:
-            frame = render_frame(base, face, config, w, h, full_rect=full_rect)
+            frame = render_frame(base, face, config, w, h,
+                                 full_rect=full_rect, extra_rects=extra_rects)
             frame.save(SPRITES / f"{prefix}-{pose_name}.png")
         print(f"  wrote {len(ALL_POSES)} pose frames")
 
