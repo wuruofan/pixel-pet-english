@@ -95,8 +95,8 @@ ALL_POSES = [
     ('walk-4',    {'eyes':'open',    'mouth':'smile'}),
     ('walk-5',    {'eyes':'open',    'mouth':'smile'}),
     ('walk-6',    {'eyes':'open',    'mouth':'smile'}),
-    ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'both'}),
-    ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'both'}),
+    ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'R'}),
+    ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'L'}),
 ]
 
 # ============================================================
