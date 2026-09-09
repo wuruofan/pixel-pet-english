@@ -63,6 +63,9 @@ ADULT_FACE = {
 # ============================================================
 BUBBLES_R = [(32, 6, 3), (34, 10, 2), (31, 4, 2), (34, 14, 2), (30, 8, 2)]
 BUBBLES_L = [(2, 8, 3), (4, 4, 2), (1, 12, 2), (5, 14, 2), (2, 16, 2)]
+# adult 头部更宽，气泡移到脑袋右外侧/左外侧，避免重叠
+ADULT_BUBBLES_R = [(38, 3, 3), (41, 7, 2), (36, 6, 2), (40, 11, 2), (41, 10, 2)]
+ADULT_BUBBLES_L = [(1, 7, 3), (1, 11, 2), (4, 5, 2), (1, 14, 2), (2, 9, 2)]
 ZZ_POS = [(32, 6, 4), (29, 11, 2)]
 
 # ============================================================
@@ -219,12 +222,18 @@ def draw_tears(img, face):
     px[tx_R, ty_R] = TEAR
     px[tx_R, ty_R+1] = TEAR
 
-def draw_bubbles(img, side='R'):
+def draw_bubbles(img, side='R', bubbles_override=None):
     px = img.load()
-    if side == 'both':
-        bubbles_list = BUBBLES_R + BUBBLES_L
+    if bubbles_override:
+        bubbles_r, bubbles_l = bubbles_override
     else:
-        bubbles_list = BUBBLES_R if side == 'R' else BUBBLES_L
+        bubbles_r, bubbles_l = BUBBLES_R, BUBBLES_L
+    if side == 'both':
+        bubbles_list = bubbles_r + bubbles_l
+    elif side == 'L':
+        bubbles_list = bubbles_l
+    else:
+        bubbles_list = bubbles_r
     for bx, by, size in bubbles_list:
         if size == 3:
             for dy in range(3):
@@ -300,7 +309,7 @@ def erase_face(img, face, w, h, full_rect=None, extra_rects=None):
                 if 0 <= bx+dx < w and 0 <= by+dy < h:
                     px[bx+dx, by+dy] = erase
 
-def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None):
+def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bubbles_override=None):
     """渲染单帧"""
     img = base.copy()
     # 头部上下平移（吃饭动画）
@@ -318,7 +327,7 @@ def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None):
     if config.get('tear'):
         draw_tears(img, face)
     if config.get('bubbles'):
-        draw_bubbles(img, config['bubbles'])
+        draw_bubbles(img, config['bubbles'], bubbles_override=bubbles_override)
     if config.get('zz'):
         draw_zz(img)
     return img
@@ -327,11 +336,12 @@ def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None):
 # 主流程
 # ============================================================
 def main():
-    for stage, face, clean_path, prefix, full_rect, extra_rects in [
+    for stage, face, clean_path, prefix, full_rect, extra_rects, bubbles_override in [
         ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None,
          [(24,10,28,14), (14,14,21,16), (24,15,27,19), (13,19,21,19),
-          (18,21,22,22), (11,23,12,23), (22,23,22,23)]),
-        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None),
+          (18,21,22,22), (11,23,12,23), (22,23,22,23)], None),
+        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None,
+         (ADULT_BUBBLES_R, ADULT_BUBBLES_L)),
     ]:
         print(f"\n=== {stage} ===")
         base = Image.open(clean_path).convert("RGBA")
@@ -340,14 +350,14 @@ def main():
 
         # base 帧（默认表情 open+smile）
         base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h,
-                                   full_rect=full_rect, extra_rects=extra_rects)
+                                   full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override)
         base_frame.save(SPRITES / f"{prefix}.png")
         print(f"  wrote {prefix}.png")
 
         # 全量 pose
         for pose_name, config in ALL_POSES:
             frame = render_frame(base, face, config, w, h,
-                                 full_rect=full_rect, extra_rects=extra_rects)
+                                 full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override)
             frame.save(SPRITES / f"{prefix}-{pose_name}.png")
         print(f"  wrote {len(ALL_POSES)} pose frames")
 
