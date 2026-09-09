@@ -303,7 +303,7 @@ def render_frame(base, face, config, w, h, full_rect=None):
 # ============================================================
 def main():
     for stage, face, clean_path, prefix, full_rect in [
-        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None),
+        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', (8, 10, 28, 22)),
         ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24)),
     ]:
         print(f"\n=== {stage} ===")
