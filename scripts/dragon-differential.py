@@ -45,16 +45,16 @@ KID_FACE = {
 # adult 锚点 (44x48)
 # ============================================================
 ADULT_FACE = {
-    'eye_L': (13, 15),
-    'eye_R': (27, 15),
-    'highlight_L': (14, 15),
-    'highlight_R': (28, 15),
-    'nose': (20, 18),
-    'mouth': (20, 21),
-    'blush_L': (10, 17),
-    'blush_R': (31, 17),
-    'tear_L': (12, 18),
-    'tear_R': (30, 18),
+    'eye_L': (13, 17),
+    'eye_R': (27, 17),
+    'highlight_L': (14, 17),
+    'highlight_R': (28, 17),
+    'nose': (20, 19),
+    'mouth': (20, 22),
+    'blush_L': (10, 19),
+    'blush_R': (31, 19),
+    'tear_L': (12, 20),
+    'tear_R': (30, 20),
     'erase_color': (150, 180, 120, 255),
 }
 
@@ -304,7 +304,7 @@ def render_frame(base, face, config, w, h, full_rect=None):
 def main():
     for stage, face, clean_path, prefix, full_rect in [
         ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None),
-        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 23)),
+        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24)),
     ]:
         print(f"\n=== {stage} ===")
         base = Image.open(clean_path).convert("RGBA")
