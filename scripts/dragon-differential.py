@@ -242,10 +242,19 @@ def draw_zz(img):
             px[zx+1, zy+1] = ZZ
             for dx in range(2): px[zx+dx, zy+1] = ZZ
 
-def erase_face(img, face, w, h):
-    """擦除原有脸部区域，用身体绿色填充"""
+def erase_face(img, face, w, h, full_rect=None):
+    """擦除原有脸部区域，用身体绿色填充。
+    full_rect=(x1,y1,x2,y2) 时擦除整个矩形（用于 adult 原图有残留眼嘴）。
+    """
     px = img.load()
     erase = face['erase_color']
+    if full_rect:
+        x1, y1, x2, y2 = full_rect
+        for y in range(y1, y2+1):
+            for x in range(x1, x2+1):
+                if 0 <= x < w and 0 <= y < h:
+                    px[x, y] = erase
+        return
     # 擦除眼睛区域
     for key in ['eye_L', 'eye_R']:
         ex, ey = face[key]
@@ -272,10 +281,10 @@ def erase_face(img, face, w, h):
                 if 0 <= bx+dx < w and 0 <= by+dy < h:
                     px[bx+dx, by+dy] = erase
 
-def render_frame(base, face, config, w, h):
+def render_frame(base, face, config, w, h, full_rect=None):
     """渲染单帧"""
     img = base.copy()
-    erase_face(img, face, w, h)
+    erase_face(img, face, w, h, full_rect=full_rect)
     draw_eyes(img, face, config['eyes'])
     draw_nose(img, face)
     draw_mouth(img, face, config['mouth'])
@@ -293,9 +302,9 @@ def render_frame(base, face, config, w, h):
 # 主流程
 # ============================================================
 def main():
-    for stage, face, clean_path, prefix in [
-        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2'),
-        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2'),
+    for stage, face, clean_path, prefix, full_rect in [
+        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None),
+        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 23)),
     ]:
         print(f"\n=== {stage} ===")
         base = Image.open(clean_path).convert("RGBA")
@@ -303,13 +312,13 @@ def main():
         print(f"  base: {w}x{h}")
 
         # base 帧（默认表情 open+smile）
-        base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h)
+        base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h, full_rect=full_rect)
         base_frame.save(SPRITES / f"{prefix}.png")
         print(f"  wrote {prefix}.png")
 
         # 全量 pose
         for pose_name, config in ALL_POSES:
-            frame = render_frame(base, face, config, w, h)
+            frame = render_frame(base, face, config, w, h, full_rect=full_rect)
             frame.save(SPRITES / f"{prefix}-{pose_name}.png")
         print(f"  wrote {len(ALL_POSES)} pose frames")
 
