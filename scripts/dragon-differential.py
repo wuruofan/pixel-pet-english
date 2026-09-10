@@ -59,19 +59,19 @@ ADULT_FACE = {
 }
 
 # ============================================================
-# teen 锚点 (40x44) — v2 重新生成版
+# teen 锚点 (40x44) — v3 正面对称版
 # ============================================================
 TEEN_FACE = {
-    'eye_L': (9, 13),
-    'eye_R': (17, 13),
-    'highlight_L': (10, 13),
-    'highlight_R': (18, 13),
-    'nose': (18, 17),
-    'mouth': (18, 19),
-    'blush_L': (6, 15),
-    'blush_R': (22, 15),
-    'tear_L': (8, 15),
-    'tear_R': (20, 15),
+    'eye_L': (12, 11),
+    'eye_R': (20, 11),
+    'highlight_L': (13, 11),
+    'highlight_R': (21, 11),
+    'nose': (14, 14),
+    'mouth': (14, 16),
+    'blush_L': (7, 14),
+    'blush_R': (25, 14),
+    'tear_L': (10, 14),
+    'tear_R': (22, 14),
     'erase_color': (140, 170, 95, 255),
 }
 
@@ -360,8 +360,8 @@ def main():
         ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None,
          [(24,10,28,14), (14,14,21,16), (24,15,27,19), (13,19,21,19),
           (18,21,22,22), (11,23,12,23), (22,23,22,23)], None),
-        ('teen', TEEN_FACE, TMP / 'dragon-teen-v2-clean-base.png', 'dragon-teen-v2', None,
-         [(8,12,11,15), (16,12,19,15), (17,16,21,18), (17,18,21,20)],
+        ('teen', TEEN_FACE, TMP / 'dragon-teen-v3-clean-base.png', 'dragon-teen-v2', None,
+         [(11,10,14,14), (19,10,22,14), (13,13,16,15), (13,15,16,17)],
          (TEEN_BUBBLES_R, TEEN_BUBBLES_L)),
         ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None,
          (ADULT_BUBBLES_R, ADULT_BUBBLES_L)),
