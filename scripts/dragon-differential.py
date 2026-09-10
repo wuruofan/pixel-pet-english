@@ -338,6 +338,14 @@ def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bub
         shifted = Image.new("RGBA", (w, h), (0,0,0,0))
         shifted.paste(img, (0, offset_y))
         img = shifted
+        # 五官锚点也跟着偏移
+        face = {k: (v[0], v[1]+offset_y) if isinstance(v, tuple) and len(v)==2 and isinstance(v[0], int) else v
+                for k, v in face.items()}
+        # 擦除区域也跟着偏移
+        if full_rect:
+            full_rect = (full_rect[0], full_rect[1]+offset_y, full_rect[2], full_rect[3]+offset_y)
+        if extra_rects:
+            extra_rects = [(r[0], r[1]+offset_y, r[2], r[3]+offset_y) for r in extra_rects]
     erase_face(img, face, w, h, full_rect=full_rect, extra_rects=extra_rects)
     draw_eyes(img, face, config['eyes'])
     draw_nose(img, face)
