@@ -210,6 +210,28 @@ FOX_BLUSH = {
 # ============================================================
 # 基础函数
 # ============================================================
+def _offset_face_anchors(face, dy):
+    """递归偏移 face 字典中所有锚点的 y 坐标（用于 offset_y 头部上下平移时五官跟随）"""
+    import copy
+    result = copy.deepcopy(face)
+
+    def _offset(val):
+        if isinstance(val, tuple):
+            if len(val) == 2 and isinstance(val[0], int) and isinstance(val[1], int):
+                return (val[0], val[1] + dy)
+            elif len(val) == 4 and all(isinstance(v, int) for v in val):
+                return (val[0], val[1] + dy, val[2], val[3] + dy)
+        elif isinstance(val, list):
+            return [_offset(v) for v in val]
+        elif isinstance(val, dict):
+            return {k: _offset(v) for k, v in val.items()}
+        return val
+
+    for key in result:
+        result[key] = _offset(result[key])
+    return result
+
+
 def load_base(stage):
     # v7.5 正式提交：从 assets/sprites/ 加载大头版 base
     return Image.open(SPRITES / f"fox-{stage}-v2.png").convert("RGBA")
@@ -410,11 +432,15 @@ def render_pose(stage, eyes="open", mouth="smile", tear=None,
             if leg_name in FOX_LEG_REGIONS[stage]:
                 shift_region_with_fill(img, FOX_LEG_REGIONS[stage][leg_name], dx, dy, FOX_BODY_COLOR, fill_rows=2)
     # 头部上下平移（吃饭/走路动画）
+    _original_face = None
     if offset_y != 0:
         w, h = img.size
         shifted = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         shifted.paste(img, (0, offset_y))
         img = shifted
+        # 五官锚点也跟着偏移（否则表情画在原位不跟随身体移动）
+        _original_face = FOX_FACE[stage]
+        FOX_FACE[stage] = _offset_face_anchors(_original_face, offset_y)
     _erase_eyes(img, stage)
     _erase_mouth(img, stage)
     d = ImageDraw.Draw(img)
@@ -474,6 +500,9 @@ def render_pose(stage, eyes="open", mouth="smile", tear=None,
             d.line([(x, y), (x + s, y)], fill=INK)
             d.line([(x + s, y), (x, y + s)], fill=INK)
             d.line([(x, y + s), (x + s, y + s)], fill=INK)
+    # 恢复原始 face 字典（如果 offset_y 时临时偏移了）
+    if _original_face is not None:
+        FOX_FACE[stage] = _original_face
     return img
 
 
