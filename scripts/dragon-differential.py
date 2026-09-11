@@ -111,13 +111,13 @@ ALL_POSES = [
     ('sad-1',     {'eyes':'open',    'mouth':'frown', 'tear':True}),
     ('sleep-0',   {'eyes':'closed',  'mouth':'smile', 'zz':True}),
     ('sleep-1',   {'eyes':'closed',  'mouth':'smile', 'zz':True}),
-    ('walk-0',    {'eyes':'open',    'mouth':'smile'}),
-    ('walk-1',    {'eyes':'open',    'mouth':'smile'}),
-    ('walk-2',    {'eyes':'open',    'mouth':'smile'}),
-    ('walk-3',    {'eyes':'open',    'mouth':'smile'}),
-    ('walk-4',    {'eyes':'open',    'mouth':'smile'}),
-    ('walk-5',    {'eyes':'open',    'mouth':'smile'}),
-    ('walk-6',    {'eyes':'open',    'mouth':'smile'}),
+    ('walk-0',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
+    ('walk-1',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1, 'leg_shift': [('left', -2, 0), ('right', 1, 0)]}),
+    ('walk-2',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
+    ('walk-3',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1, 'leg_shift': [('left', 1, 0), ('right', 2, 0)]}),
+    ('walk-4',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
+    ('walk-5',    {'eyes':'open',    'mouth':'smile', 'offset_y': 1, 'leg_shift': [('left', -2, 0), ('right', 1, 0)]}),
+    ('walk-6',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
     ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'R'}),
     ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'L'}),
 ]
@@ -329,9 +329,35 @@ def erase_face(img, face, w, h, full_rect=None, extra_rects=None):
                 if 0 <= bx+dx < w and 0 <= by+dy < h:
                     px[bx+dx, by+dy] = erase
 
-def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bubbles_override=None):
+def shift_region(img, region, dx, dy):
+    """移动图片中指定区域的像素，原位置填充透明"""
+    x1, y1, x2, y2 = region
+    w, h = img.size
+    px = img.load()
+    # 复制区域像素
+    pixels = []
+    for y in range(y1, y2):
+        for x in range(x1, x2):
+            if 0 <= x < w and 0 <= y < h:
+                pixels.append((x, y, px[x, y]))
+    # 清除原位置
+    for x, y, _ in pixels:
+        px[x, y] = (0, 0, 0, 0)
+    # 在新位置绘制
+    for x, y, color in pixels:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < w and 0 <= ny < h and color[3] > 0:
+            px[nx, ny] = color
+
+def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bubbles_override=None, leg_regions=None):
     """渲染单帧"""
     img = base.copy()
+    # 腿部移动（走路动画）
+    leg_shift = config.get('leg_shift')
+    if leg_shift and leg_regions:
+        for leg_name, dx, dy in leg_shift:
+            if leg_name in leg_regions:
+                shift_region(img, leg_regions[leg_name], dx, dy)
     # 头部上下平移（吃饭动画）
     offset_y = config.get('offset_y', 0)
     if offset_y != 0:
@@ -364,15 +390,18 @@ def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bub
 # 主流程
 # ============================================================
 def main():
-    for stage, face, clean_path, prefix, full_rect, extra_rects, bubbles_override in [
+    for stage, face, clean_path, prefix, full_rect, extra_rects, bubbles_override, leg_regions in [
         ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None,
          [(24,10,28,14), (14,14,21,16), (24,15,27,19), (13,19,21,19),
-          (18,21,22,22), (11,23,12,23), (22,23,22,23)], None),
+          (18,21,22,22), (11,23,12,23), (22,23,22,23)], None,
+         {'left': (8, 30, 16, 38), 'right': (18, 30, 28, 38)}),
         ('teen', TEEN_FACE, TMP / 'dragon-teen-v4-clean-base.png', 'dragon-teen-v2', None,
          [(6,11,10,15), (17,11,21,15), (8,13,20,19)],
-         (TEEN_BUBBLES_R, TEEN_BUBBLES_L)),
+         (TEEN_BUBBLES_R, TEEN_BUBBLES_L),
+         {'left': (8, 37, 21, 44), 'right': (22, 37, 34, 42)}),
         ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None,
-         (ADULT_BUBBLES_R, ADULT_BUBBLES_L)),
+         (ADULT_BUBBLES_R, ADULT_BUBBLES_L),
+         {'left': (10, 38, 22, 48), 'right': (24, 38, 36, 48)}),
     ]:
         print(f"\n=== {stage} ===")
         base = Image.open(clean_path).convert("RGBA")
@@ -381,14 +410,16 @@ def main():
 
         # base 帧（默认表情 open+smile）
         base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h,
-                                   full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override)
+                                   full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override,
+                                   leg_regions=leg_regions)
         base_frame.save(SPRITES / f"{prefix}.png")
         print(f"  wrote {prefix}.png")
 
         # 全量 pose
         for pose_name, config in ALL_POSES:
             frame = render_frame(base, face, config, w, h,
-                                 full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override)
+                                 full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override,
+                                 leg_regions=leg_regions)
             frame.save(SPRITES / f"{prefix}-{pose_name}.png")
         print(f"  wrote {len(ALL_POSES)} pose frames")
 
