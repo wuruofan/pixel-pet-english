@@ -360,18 +360,32 @@ def diff_zzz(base, stage):
 # ============================================================
 # 组合入口
 # ============================================================
-def shift_region(img, region, dx, dy):
-    """移动图片中指定区域的像素，原位置填充透明"""
+def shift_region_with_fill(img, region, dx, dy, fill_color, fill_rows=2):
+    """移动区域像素，原位置上部用 fill_color 填充（避免腿部跟身体衔接处出现空隙）"""
     x1, y1, x2, y2 = region
     w, h = img.size
     px = img.load()
     pixels = []
     for y in range(y1, y2):
         for x in range(x1, x2):
-            if 0 <= x < w and 0 <= y < h:
+            if 0 <= x < w and 0 <= y < h and px[x, y][3] > 0:
                 pixels.append((x, y, px[x, y]))
     for x, y, _ in pixels:
         px[x, y] = (0, 0, 0, 0)
+    # 用身体颜色填充原位置上部（跟身体连接的部分）
+    for y in range(y1, min(y1 + fill_rows, y2)):
+        for x in range(x1, x2):
+            if 0 <= x < w and 0 <= y < h:
+                has_body_above = False
+                for dy_check in range(1, 4):
+                    ny = y - dy_check
+                    if ny >= 0 and px[x, ny][3] > 0:
+                        nr, ng, nb, na = px[x, ny]
+                        if nr > ng and nr > nb:  # 橙色身体
+                            has_body_above = True
+                            break
+                if has_body_above:
+                    px[x, y] = fill_color
     for x, y, color in pixels:
         nx, ny = x + dx, y + dy
         if 0 <= nx < w and 0 <= ny < h and color[3] > 0:
@@ -379,10 +393,12 @@ def shift_region(img, region, dx, dy):
 
 # fox 各阶段腿部区域（用于走路动画）
 FOX_LEG_REGIONS = {
-    "kid":   {"left": (8, 28, 16, 38),  "right": (18, 28, 28, 38)},
-    "teen":  {"left": (8, 30, 18, 40),  "right": (20, 30, 30, 40)},
-    "adult": {"left": (10, 36, 22, 48), "right": (24, 36, 36, 48)},
+    "kid":   {"left": (8, 27, 16, 38),  "right": (18, 27, 28, 38)},
+    "teen":  {"left": (8, 29, 17, 38),  "right": (19, 29, 29, 38)},
+    "adult": {"left": (10, 37, 22, 48), "right": (24, 37, 36, 48)},
 }
+
+FOX_BODY_COLOR = (250, 135, 44, 255)
 
 def render_pose(stage, eyes="open", mouth="smile", tear=None,
                 blush=False, bubble=None, zzz=False, offset_y=0, leg_shift=None):
@@ -392,7 +408,7 @@ def render_pose(stage, eyes="open", mouth="smile", tear=None,
     if leg_shift:
         for leg_name, dx, dy in leg_shift:
             if leg_name in FOX_LEG_REGIONS[stage]:
-                shift_region(img, FOX_LEG_REGIONS[stage][leg_name], dx, dy)
+                shift_region_with_fill(img, FOX_LEG_REGIONS[stage][leg_name], dx, dy, FOX_BODY_COLOR, fill_rows=2)
     # 头部上下平移（吃饭/走路动画）
     if offset_y != 0:
         w, h = img.size
@@ -539,13 +555,13 @@ if __name__ == "__main__":
         # sleep 睡觉 2 帧（闭眼+Zz）
         ("sleep-0",   dict(eyes="closed",  mouth="smile", zzz=True)),
         ("sleep-1",   dict(eyes="closed",  mouth="smile", zzz=True)),
-        # walk 走路 7 帧（第一版暂用 idle 代替，后续补充走路动画）
+        # walk 走路 7 帧
         ("walk-0",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-1",    dict(eyes="open",    mouth="smile", offset_y=-1, leg_shift=[("left", -2, 0), ("right", 1, 0)])),
+        ("walk-1",    dict(eyes="open",    mouth="smile", offset_y=-1, leg_shift=[("left", -3, -1), ("right", 2, 1)])),
         ("walk-2",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-3",    dict(eyes="open",    mouth="smile", offset_y=-1, leg_shift=[("left", 1, 0), ("right", 2, 0)])),
+        ("walk-3",    dict(eyes="open",    mouth="smile", offset_y=-1, leg_shift=[("left", 2, 1), ("right", -3, -1)])),
         ("walk-4",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-5",    dict(eyes="open",    mouth="smile", offset_y=1, leg_shift=[("left", -2, 0), ("right", 1, 0)])),
+        ("walk-5",    dict(eyes="open",    mouth="smile", offset_y=1, leg_shift=[("left", -3, -1), ("right", 2, 1)])),
         ("walk-6",    dict(eyes="open",    mouth="smile", offset_y=0)),
         # wash 洗澡 2 帧（泡泡左右）
         ("wash-0",    dict(eyes="open",    mouth="smile", bubble="r")),

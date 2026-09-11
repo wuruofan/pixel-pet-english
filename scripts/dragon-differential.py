@@ -112,11 +112,11 @@ ALL_POSES = [
     ('sleep-0',   {'eyes':'closed',  'mouth':'smile', 'zz':True}),
     ('sleep-1',   {'eyes':'closed',  'mouth':'smile', 'zz':True}),
     ('walk-0',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
-    ('walk-1',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1, 'leg_shift': [('left', -2, 0), ('right', 1, 0)]}),
+    ('walk-1',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1, 'leg_shift': [('left', -3, -1), ('right', 2, 1)]}),
     ('walk-2',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
-    ('walk-3',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1, 'leg_shift': [('left', 1, 0), ('right', 2, 0)]}),
+    ('walk-3',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1, 'leg_shift': [('left', 2, 1), ('right', -3, -1)]}),
     ('walk-4',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
-    ('walk-5',    {'eyes':'open',    'mouth':'smile', 'offset_y': 1, 'leg_shift': [('left', -2, 0), ('right', 1, 0)]}),
+    ('walk-5',    {'eyes':'open',    'mouth':'smile', 'offset_y': 1, 'leg_shift': [('left', -3, -1), ('right', 2, 1)]}),
     ('walk-6',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
     ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'R'}),
     ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'L'}),
@@ -329,8 +329,8 @@ def erase_face(img, face, w, h, full_rect=None, extra_rects=None):
                 if 0 <= bx+dx < w and 0 <= by+dy < h:
                     px[bx+dx, by+dy] = erase
 
-def shift_region(img, region, dx, dy):
-    """移动图片中指定区域的像素，原位置填充透明"""
+def shift_region_with_fill(img, region, dx, dy, fill_color, fill_rows=2):
+    """移动区域像素，原位置上部用 fill_color 填充（避免腿部跟身体衔接处出现空隙）"""
     x1, y1, x2, y2 = region
     w, h = img.size
     px = img.load()
@@ -338,11 +338,26 @@ def shift_region(img, region, dx, dy):
     pixels = []
     for y in range(y1, y2):
         for x in range(x1, x2):
-            if 0 <= x < w and 0 <= y < h:
+            if 0 <= x < w and 0 <= y < h and px[x, y][3] > 0:
                 pixels.append((x, y, px[x, y]))
     # 清除原位置
     for x, y, _ in pixels:
         px[x, y] = (0, 0, 0, 0)
+    # 用身体颜色填充原位置上部（跟身体连接的部分）
+    for y in range(y1, min(y1 + fill_rows, y2)):
+        for x in range(x1, x2):
+            if 0 <= x < w and 0 <= y < h:
+                # 检查上方是否有身体像素
+                has_body_above = False
+                for dy_check in range(1, 4):
+                    ny = y - dy_check
+                    if ny >= 0 and px[x, ny][3] > 0:
+                        nr, ng, nb, na = px[x, ny]
+                        if ng > nr and ng > nb:  # 绿色身体
+                            has_body_above = True
+                            break
+                if has_body_above:
+                    px[x, y] = fill_color
     # 在新位置绘制
     for x, y, color in pixels:
         nx, ny = x + dx, y + dy
@@ -355,9 +370,11 @@ def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bub
     # 腿部移动（走路动画）
     leg_shift = config.get('leg_shift')
     if leg_shift and leg_regions:
+        # 找到身体底部颜色（浅绿色）
+        body_color = (154, 207, 95, 255)
         for leg_name, dx, dy in leg_shift:
             if leg_name in leg_regions:
-                shift_region(img, leg_regions[leg_name], dx, dy)
+                shift_region_with_fill(img, leg_regions[leg_name], dx, dy, body_color, fill_rows=2)
     # 头部上下平移（吃饭动画）
     offset_y = config.get('offset_y', 0)
     if offset_y != 0:
@@ -398,7 +415,7 @@ def main():
         ('teen', TEEN_FACE, TMP / 'dragon-teen-v4-clean-base.png', 'dragon-teen-v2', None,
          [(6,11,10,15), (17,11,21,15), (8,13,20,19)],
          (TEEN_BUBBLES_R, TEEN_BUBBLES_L),
-         {'left': (8, 37, 21, 44), 'right': (22, 37, 34, 42)}),
+         {'left': (8, 38, 20, 44), 'right': (21, 38, 33, 44)}),
         ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None,
          (ADULT_BUBBLES_R, ADULT_BUBBLES_L),
          {'left': (10, 38, 22, 48), 'right': (24, 38, 36, 48)}),
