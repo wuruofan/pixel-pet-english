@@ -555,13 +555,13 @@ if __name__ == "__main__":
         # sleep 睡觉 2 帧（闭眼+Zz）
         ("sleep-0",   dict(eyes="closed",  mouth="smile", zzz=True)),
         ("sleep-1",   dict(eyes="closed",  mouth="smile", zzz=True)),
-        # walk 走路 7 帧
+        # walk 走路 7 帧（跳跳蹦蹦风格，上下起伏）
         ("walk-0",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-1",    dict(eyes="open",    mouth="smile", offset_y=-1, leg_shift=[("left", -3, -1), ("right", 2, 1)])),
-        ("walk-2",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-3",    dict(eyes="open",    mouth="smile", offset_y=-1, leg_shift=[("left", 2, 1), ("right", -3, -1)])),
-        ("walk-4",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-5",    dict(eyes="open",    mouth="smile", offset_y=1, leg_shift=[("left", -3, -1), ("right", 2, 1)])),
+        ("walk-1",    dict(eyes="open",    mouth="smile", offset_y=-2)),
+        ("walk-2",    dict(eyes="open",    mouth="smile", offset_y=-1)),
+        ("walk-3",    dict(eyes="open",    mouth="smile", offset_y=0)),
+        ("walk-4",    dict(eyes="open",    mouth="smile", offset_y=1)),
+        ("walk-5",    dict(eyes="open",    mouth="smile", offset_y=-1)),
         ("walk-6",    dict(eyes="open",    mouth="smile", offset_y=0)),
         # wash 洗澡 2 帧（泡泡左右）
         ("wash-0",    dict(eyes="open",    mouth="smile", bubble="r")),
