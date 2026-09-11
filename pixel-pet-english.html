@@ -4124,7 +4124,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     var TB_EXPRS = [
       ['idle', '待机'], ['blink', '眨眼'], ['happy', '开心'], ['sad', '难过'],
       ['sleep', '睡着'], ['droopy', '没劲'], ['excited', '兴奋'],
-      ['eat', '吃饭'], ['wash', '搓澡'], ['grunt', '用力']
+      ['eat', '吃饭'], ['wash', '搓澡'], ['grunt', '用力'], ['walk', '走路']
     ];
     var TB_DEMOS = {
       feed: function () { tbPlay('eat', 'eat', 1500); addFoodBowl('#tb-cvwrap'); spawnFx('meat', 1, '#tb-cvwrap'); },
@@ -4142,8 +4142,16 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
        目标是预览画布自身，不碰首页宠物状态（petAnim / 常驻基调完全独立）。
        tbStage：形态选择（0蛋 1宝宝 2/3 物种成长期），默认跟随当前等级；点形态 chip 切换预览 */
     var TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
-    var tbExpr = 'idle', tbStage = petStageIdx();
-    function tbRedraw() { petAnim.exprIdx[tbExpr] = 0; drawPet($('#tb-cv'), tbExpr, tbStage); }
+    var tbExpr = 'idle', tbStage = petStageIdx(), tbWalkIdx = 0;
+    function tbRedraw() {
+      if (tbExpr === 'walk') {
+        petAnim.exprIdx['idle'] = 0;
+        drawPet($('#tb-cv'), 'idle', tbStage, true);
+      } else {
+        petAnim.exprIdx[tbExpr] = 0;
+        drawPet($('#tb-cv'), tbExpr, tbStage);
+      }
+    }
     function tbPlay(cls, expr, ms) {
       var w = $('#tb-cvwrap'); if (!w) return;
       TB_ACT_CLS.forEach(function (k) { w.classList.remove(k); });
@@ -4196,6 +4204,12 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       if (tbTimers.anim) { clearInterval(tbTimers.anim); tbTimers.anim = null; }
     }
     function tbResolveFrames() {
+      if (tbExpr === 'walk') {
+        var fr = PET_FRAMES[petSpeciesKey()];
+        var walkPrefix = fr.walk && (typeof fr.walk === 'string' ? fr.walk : fr.walk[tbStage]);
+        if (!walkPrefix) return null;
+        return [0,1,2,3,4,5,6].map(function(i){ return walkPrefix + i; });
+      }
       var exprMap = PET_FRAMES[petSpeciesKey()].expr[tbExpr];
       if (Array.isArray(exprMap)) return exprMap;
       if (exprMap && typeof exprMap === 'object') return exprMap[tbStage] || null;
@@ -4204,19 +4218,26 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     function tbStartAnim() {
       tbStopAnim();
       var ev = tbResolveFrames();
-      if (!Array.isArray(ev) || ev.length <= 1) return;   // 单帧不循环
-      var interval = PET_EXPR_INTERVAL[tbExpr] || 400;
+      if (!Array.isArray(ev) || ev.length <= 1) return;
+      var interval = tbExpr === 'walk' ? 180 : (PET_EXPR_INTERVAL[tbExpr] || 400);
       tbTimers.anim = setInterval(function () {
         var ev2 = tbResolveFrames();
         if (!Array.isArray(ev2) || ev2.length <= 1) { tbStopAnim(); return; }
-        petAnim.exprIdx[tbExpr] = ((petAnim.exprIdx[tbExpr] || 0) + 1) % ev2.length;
-        drawPet($('#tb-cv'), tbExpr, tbStage);   // 不走 tbRedraw：它会清 exprIdx，多帧会永远停在第一帧
+        if (tbExpr === 'walk') {
+          tbWalkIdx = (tbWalkIdx + 1) % 7;
+          petWalk.frameIdx = tbWalkIdx;
+          drawPet($('#tb-cv'), 'idle', tbStage, true);
+        } else {
+          petAnim.exprIdx[tbExpr] = ((petAnim.exprIdx[tbExpr] || 0) + 1) % ev2.length;
+          drawPet($('#tb-cv'), tbExpr, tbStage);
+        }
       }, interval);
     }
     function tbSetExpr(expr) {
       tbStopAnim();
       tbExpr = expr;
-      petAnim.exprIdx[tbExpr] = 0;
+      if (expr === 'walk') { tbWalkIdx = 0; petWalk.frameIdx = 0; }
+      else { petAnim.exprIdx[tbExpr] = 0; }
       tbRedraw();
       tbStartAnim();
     }
