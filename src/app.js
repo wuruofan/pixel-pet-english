@@ -3312,10 +3312,12 @@
       TB_ACT_CLS.forEach(function (k) { w.classList.remove(k); });
       if (cls) w.classList.add(cls);
       tbExpr = expr; tbRedraw();
+      tbStartAnim();   // 实景演示也播多帧动画（wash 左右气泡交替 / eat 表情变化等）
       if (tbTimers.play) clearTimeout(tbTimers.play);
       tbTimers.play = setTimeout(function () {
         var w2 = $('#tb-cvwrap');
         if (w2) TB_ACT_CLS.forEach(function (k) { w2.classList.remove(k); });
+        tbStopAnim();
         tbExpr = 'idle'; tbRedraw();
       }, ms || 1200);
     }
