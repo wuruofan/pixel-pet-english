@@ -1,446 +1,239 @@
 #!/usr/bin/env python3
+"""Render the approved dragon artwork with reproducible repairs and animation.
+
+The selected kid/teen/adult bases stay the source of the silhouette and coat.
+The teen's original quantized reference restores green pixels accidentally
+removed during background cleanup; its gray ground shadow is removed separately.
+Faces are painted before the whole sprite hops, so features cannot lag behind.
 """
-dragon 差分渲染脚本
-- 从 clean base (mmx量化+背景阴影清除) 加载
-- 擦除原有脸部，程序画对称的脸 (眼/鼻/嘴/腮红)
-- 表驱动锚点，支持眼睛状态(open/closed/lid/squeeze/arc/star)、嘴巴状态(smile/frown/crumbs/laugh/tiny)
-- 渲染全量 28 pose (对齐 cat v2)
-"""
-from PIL import Image
+import argparse
 from pathlib import Path
+
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 TMP = ROOT / "tmp-dragon-concept"
 SPRITES = ROOT / "assets" / "sprites"
+EYE_DARK = (45, 55, 35, 255)
+EYE_WHITE = (255, 255, 240, 255)
+BLUSH = (240, 140, 100, 255)
+TEAR = (120, 200, 240, 255)
+BUBBLE = (150, 210, 245, 255)
+BUBBLE_RIM = (89, 159, 204, 255)
+ZZ = (40, 40, 50, 255)
+GOLD = (255, 216, 105, 255)
+GROUND = (205, 197, 185, 255)
 
-# ============================================================
-# 颜色
-# ============================================================
-EYE_DARK = (45, 55, 35, 255)       # 深绿黑（眼睛/瞳孔）
-EYE_WHITE = (255, 255, 240, 255)   # 眼白/高光
-MOUTH_DARK = (45, 55, 35, 255)     # 嘴/鼻深色
-BLUSH = (240, 140, 100, 255)       # 橙色腮红
-TEAR = (120, 200, 240, 255)        # 蓝色眼泪
-BUBBLE = (150, 210, 245, 255)      # 蓝色气泡
-ZZ = (40, 40, 50, 255)             # Zz 深色
-
-# ============================================================
-# kid 锚点 (36x38)
-# ============================================================
-KID_FACE = {
-    'eye_L': (10, 11),    # 左眼起点 (3x3)
-    'eye_R': (23, 11),    # 右眼起点
-    'highlight_L': (11, 11),
-    'highlight_R': (24, 11),
-    'nose': (16, 15),     # 鼻子中心 (2px 横向)
-    'mouth': (16, 18),    # 嘴巴中心
-    'blush_L': (7, 13),   # 腮红左上 (2x2)
-    'blush_R': (27, 13),  # 腮红右上
-    'tear_L': (9, 14),
-    'tear_R': (25, 14),
-    'erase_color': (140, 170, 95, 255),  # 擦除填充色（身体绿）
+# Measured against the approved quantized references, not the old redraw.
+# Rectangles here are inclusive. Each erase is clipped to the source silhouette.
+STAGES = {
+    "kid": {
+        "source": "dragon-kid-clean-base.png", "size": (36, 38), "pad_y": 1,
+        "skin": (134, 165, 97, 255),
+        "eyes": ((10, 11), (22, 11)), "nose": (17, 15), "nose_width": 1,
+        "mouth": (17, 18), "mouth_width": 3,
+        "blush": ((10, 16), (24, 16)),
+        "erase": ((10, 10, 13, 14), (21, 10, 25, 15), (13, 13, 22, 20)),
+        "zz": ((31, 4, 4), (30, 11, 3)),
+    },
+    "teen": {
+        "source": "dragon-teen-v4-clean-base.png", "size": (40, 44), "pad_y": 0,
+        "skin": (154, 207, 135, 255),
+        "eyes": ((7, 12), (18, 12)), "nose": (13, 15), "nose_width": 2,
+        "mouth": (13, 17), "mouth_width": 4,
+        "blush": ((8, 16), (20, 16)),
+        "erase": ((7, 12, 10, 15), (16, 11, 21, 16), (10, 14, 19, 19)),
+        "zz": ((35, 4, 4), (35, 11, 3)),
+    },
+    "adult": {
+        "source": "dragon-adult-clean-base.png", "size": (44, 48), "pad_y": 1,
+        "skin": (152, 187, 131, 255),
+        "eyes": ((15, 17), (25, 17)), "nose": (20, 21), "nose_width": 3,
+        "mouth": (21, 24), "mouth_width": 5,
+        "blush": ((12, 21), (29, 21)),
+        "erase": ((13, 16, 18, 20), (24, 16, 29, 20), (18, 21, 24, 25)),
+        "zz": ((39, 4, 4), (38, 12, 3)),
+    },
 }
 
-# ============================================================
-# adult 锚点 (44x48)
-# ============================================================
-ADULT_FACE = {
-    'eye_L': (13, 17),
-    'eye_R': (27, 17),
-    'highlight_L': (14, 17),
-    'highlight_R': (28, 17),
-    'nose': (20, 19),
-    'mouth': (20, 22),
-    'blush_L': (10, 19),
-    'blush_R': (31, 19),
-    'tear_L': (12, 20),
-    'tear_R': (30, 20),
-    'erase_color': (150, 180, 120, 255),
-}
-
-# ============================================================
-# teen 锚点 (40x44) — v4 正面对称版(pixel art风格)
-# ============================================================
-TEEN_FACE = {
-    'eye_L': (7, 12),
-    'eye_R': (18, 12),
-    'highlight_L': (8, 12),
-    'highlight_R': (19, 12),
-    'nose': (14, 15),
-    'mouth': (14, 17),
-    'blush_L': (5, 14),
-    'blush_R': (22, 14),
-    'tear_L': (6, 14),
-    'tear_R': (20, 14),
-    'erase_color': (154, 207, 95, 255),
-}
-
-# ============================================================
-# 气泡 / Zz 位置
-# ============================================================
-BUBBLES_R = [(32, 6, 3), (34, 10, 2), (31, 4, 2), (34, 14, 2), (30, 8, 2)]
-BUBBLES_L = [(2, 8, 3), (4, 4, 2), (1, 12, 2), (5, 14, 2), (2, 16, 2)]
-# adult 头部更宽，气泡移到脑袋右外侧/左外侧，避免重叠
-ADULT_BUBBLES_R = [(38, 3, 3), (41, 7, 2), (36, 6, 2), (40, 11, 2), (41, 10, 2)]
-ADULT_BUBBLES_L = [(1, 7, 3), (1, 11, 2), (4, 5, 2), (1, 14, 2), (2, 9, 2)]
-# teen 头部宽度介于 kid 和 adult 之间，气泡移到脑袋外侧
-TEEN_BUBBLES_R = [(34, 4, 3), (37, 8, 2), (33, 6, 2), (36, 12, 2), (35, 9, 2)]
-TEEN_BUBBLES_L = [(1, 7, 3), (1, 11, 2), (3, 5, 2), (1, 14, 2), (2, 9, 2)]
-ZZ_POS = [(32, 6, 4), (29, 11, 2)]
-
-# ============================================================
-# 全量 pose 列表 (28个，对齐 cat v2)
-# ============================================================
 ALL_POSES = [
-    ('idle-0',    {'eyes':'open',    'mouth':'smile'}),
-    ('idle-1',    {'eyes':'open',    'mouth':'smile'}),
-    ('blink',     {'eyes':'closed',  'mouth':'smile'}),
-    ('droopy',    {'eyes':'lid',     'mouth':'frown'}),
-    ('eat-0',     {'eyes':'open',    'mouth':'smile',  'offset_y': 0}),
-    ('eat-1',     {'eyes':'arc',     'mouth':'laugh',  'offset_y': -1}),
-    ('eat-2',     {'eyes':'open',    'mouth':'crumbs', 'offset_y': 1}),
-    ('excited-0', {'eyes':'star',    'mouth':'laugh', 'blush':True}),
-    ('excited-1', {'eyes':'star',    'mouth':'laugh', 'blush':True}),
-    ('excited-2', {'eyes':'star',    'mouth':'laugh', 'blush':True}),
-    ('grunt-0',   {'eyes':'squeeze', 'mouth':'frown'}),
-    ('grunt-1',   {'eyes':'squeeze', 'mouth':'frown'}),
-    ('happy-0',   {'eyes':'arc',     'mouth':'smile', 'blush':True}),
-    ('happy-1',   {'eyes':'arc',     'mouth':'smile', 'blush':True}),
-    ('happy-2',   {'eyes':'arc',     'mouth':'smile', 'blush':True}),
-    ('sad-0',     {'eyes':'open',    'mouth':'frown', 'tear':True}),
-    ('sad-1',     {'eyes':'open',    'mouth':'frown', 'tear':True}),
-    ('sleep-0',   {'eyes':'closed',  'mouth':'smile', 'zz':True}),
-    ('sleep-1',   {'eyes':'closed',  'mouth':'smile', 'zz':True}),
-    ('walk-0',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
-    ('walk-1',    {'eyes':'open',    'mouth':'smile', 'offset_y': -2}),
-    ('walk-2',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1}),
-    ('walk-3',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
-    ('walk-4',    {'eyes':'open',    'mouth':'smile', 'offset_y': 1}),
-    ('walk-5',    {'eyes':'open',    'mouth':'smile', 'offset_y': -1}),
-    ('walk-6',    {'eyes':'open',    'mouth':'smile', 'offset_y': 0}),
-    ('wash-0',    {'eyes':'open',    'mouth':'smile', 'bubbles':'R'}),
-    ('wash-1',    {'eyes':'open',    'mouth':'smile', 'bubbles':'L'}),
+    ("idle-0", {}), ("idle-1", {"offset_y": -1}),
+    ("blink", {"eyes": "closed"}),
+    ("droopy", {"eyes": "lid", "mouth": "frown"}),
+    ("eat-0", {}),
+    ("eat-1", {"eyes": "arc", "mouth": "laugh", "offset_y": -1}),
+    ("eat-2", {"mouth": "crumbs", "offset_y": 1}),
+    ("excited-0", {"eyes": "star", "mouth": "laugh", "blush": True}),
+    ("excited-1", {"eyes": "star", "mouth": "laugh", "blush": True, "offset_y": -2}),
+    ("excited-2", {"eyes": "star", "mouth": "laugh", "blush": True, "offset_y": -1}),
+    ("grunt-0", {"eyes": "squeeze", "mouth": "frown"}),
+    ("grunt-1", {"eyes": "squeeze", "mouth": "tiny", "offset_y": 1}),
+    ("happy-0", {"eyes": "arc", "blush": True, "offset_y": 1}),
+    ("happy-1", {"eyes": "arc", "blush": True, "offset_y": -2}),
+    ("happy-2", {"eyes": "arc", "blush": True}),
+    ("sad-0", {"mouth": "frown", "tear": 0}),
+    ("sad-1", {"mouth": "frown", "tear": 1}),
+    ("sleep-0", {"eyes": "closed", "mouth": "tiny", "zz": 0}),
+    ("sleep-1", {"eyes": "closed", "mouth": "tiny", "zz": 1}),
+    *[(f"walk-{i}", {"offset_y": dy}) for i, dy in enumerate((0, -2, -1, 0, 1, -1, 0))],
+    ("wash-0", {"bubbles": "R"}), ("wash-1", {"bubbles": "L"}),
 ]
 
-# ============================================================
-# 绘制函数
-# ============================================================
-def draw_eyes(img, face, state):
-    px = img.load()
-    ex_L, ey_L = face['eye_L']
-    ex_R, ey_R = face['eye_R']
-    hx_L, hy_L = face['highlight_L']
-    hx_R, hy_R = face['highlight_R']
 
-    if state == 'open':
-        # 3x3 深色填充 + 白色高光
-        for dy in range(3):
-            for dx in range(3):
-                px[ex_L+dx, ey_L+dy] = EYE_DARK
-                px[ex_R+dx, ey_R+dy] = EYE_DARK
-        px[hx_L, hy_L] = EYE_WHITE
-        px[hx_R, hy_R] = EYE_WHITE
-    elif state == 'closed':
-        # 1x3 横线
-        for dx in range(3):
-            px[ex_L+dx, ey_L+1] = EYE_DARK
-            px[ex_R+dx, ey_R+1] = EYE_DARK
-    elif state == 'lid':
-        # 上半填充 + 下半肤色
-        for dx in range(3):
-            px[ex_L+dx, ey_L] = EYE_DARK
-            px[ex_R+dx, ey_R] = EYE_DARK
-        for dx in range(3):
-            px[ex_L+dx, ey_L+1] = face['erase_color']
-            px[ex_R+dx, ey_R+1] = face['erase_color']
-    elif state == 'squeeze':
-        # > < 形
-        px[ex_L, ey_L+1] = EYE_DARK
-        px[ex_L+1, ey_L] = EYE_DARK
-        px[ex_L+1, ey_L+2] = EYE_DARK
-        px[ex_L+2, ey_L+1] = EYE_DARK
-        px[ex_R, ey_R+1] = EYE_DARK
-        px[ex_R+1, ey_R] = EYE_DARK
-        px[ex_R+1, ey_R+2] = EYE_DARK
-        px[ex_R+2, ey_R+1] = EYE_DARK
-    elif state == 'arc':
-        # ⌒ 形（笑眯眯）
-        px[ex_L, ey_L+1] = EYE_DARK
-        px[ex_L+1, ey_L] = EYE_DARK
-        px[ex_L+2, ey_L+1] = EYE_DARK
-        px[ex_R, ey_R+1] = EYE_DARK
-        px[ex_R+1, ey_R] = EYE_DARK
-        px[ex_R+2, ey_R+1] = EYE_DARK
-    elif state == 'star':
-        # ★ 形（兴奋）
-        star_offsets = [(1,0),(0,1),(1,1),(2,1),(1,2)]
-        for dx, dy in star_offsets:
-            px[ex_L+dx, ey_L+dy] = EYE_DARK
-            px[ex_R+dx, ey_R+dy] = EYE_DARK
+def prepare_base(stage):
+    cfg = STAGES[stage]
+    image = Image.open(TMP / cfg["source"]).convert("RGBA")
+    assert image.size == cfg["size"]
+    px = image.load()
+    if stage == "teen":
+        reference = Image.open(TMP / "dragon-teen-v4_001-base.png").convert("RGBA")
+        assert reference.size == image.size
+        for y in range(image.height):
+            for x in range(image.width):
+                r, g, b, a = reference.getpixel((x, y))
+                # Restore only actual green artwork from the approved source;
+                # the white/gray space between the legs must stay transparent.
+                if px[x, y][3] == 0 and a == 255 and g > r + 10 and g > b + 15:
+                    px[x, y] = (r, g, b, a)
+                if y >= 36 and px[x, y] == GROUND:
+                    px[x, y] = (0, 0, 0, 0)
+    for x0, y0, x1, y1 in cfg["erase"]:
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                if px[x, y][3]:
+                    px[x, y] = cfg["skin"]
+    return image
 
-def draw_mouth(img, face, state):
-    px = img.load()
-    w, h = img.size
-    mx, my = face['mouth']
-    if state == 'smile':
-        # 3点ω
-        px[mx-1, my] = MOUTH_DARK
-        px[mx, my+1] = MOUTH_DARK
-        px[mx+1, my] = MOUTH_DARK
-    elif state == 'laugh':
-        # 5点ω（更大）
-        px[mx-2, my] = MOUTH_DARK
-        px[mx-1, my+1] = MOUTH_DARK
-        px[mx, my+1] = MOUTH_DARK
-        px[mx+1, my+1] = MOUTH_DARK
-        px[mx+2, my] = MOUTH_DARK
-    elif state == 'frown':
-        # 倒ω（难过）
-        px[mx-1, my+1] = MOUTH_DARK
-        px[mx, my] = MOUTH_DARK
-        px[mx+1, my+1] = MOUTH_DARK
-    elif state == 'crumbs':
-        # ω + 更多食物碎屑（8个，分散在嘴巴周围）
-        px[mx-1, my] = MOUTH_DARK
-        px[mx, my+1] = MOUTH_DARK
-        px[mx+1, my] = MOUTH_DARK
-        # 碎屑（深浅两种棕色，分散在嘴巴上方和两侧）
-        crumb_colors = [(200, 160, 80, 255), (220, 180, 100, 255), (180, 140, 60, 255)]
-        crumb_positions = [
-            (mx-3, my-1, 0), (mx+3, my-1, 0),
-            (mx-2, my-2, 1), (mx+2, my-2, 1),
-            (mx-1, my-3, 2), (mx+1, my-3, 2),
-            (mx-4, my, 1),   (mx+4, my, 1),
-        ]
-        for cx, cy, ci in crumb_positions:
-            if 0 <= cx < w and 0 <= cy < h:
-                px[cx, cy] = crumb_colors[ci]
-    elif state == 'tiny':
-        px[mx, my] = MOUTH_DARK
 
-def draw_nose(img, face):
-    px = img.load()
-    nx, ny = face['nose']
-    px[nx-1, ny] = MOUTH_DARK
-    px[nx, ny] = MOUTH_DARK
-
-def draw_blush(img, face):
-    px = img.load()
-    bx_L, by_L = face['blush_L']
-    bx_R, by_R = face['blush_R']
-    for dy in range(2):
-        for dx in range(2):
-            px[bx_L+dx, by_L+dy] = BLUSH
-            px[bx_R+dx, by_R+dy] = BLUSH
-
-def draw_tears(img, face):
-    px = img.load()
-    tx_L, ty_L = face['tear_L']
-    tx_R, ty_R = face['tear_R']
-    px[tx_L, ty_L] = TEAR
-    px[tx_L, ty_L+1] = TEAR
-    px[tx_R, ty_R] = TEAR
-    px[tx_R, ty_R+1] = TEAR
-
-def draw_bubbles(img, side='R', bubbles_override=None):
-    px = img.load()
-    if bubbles_override:
-        bubbles_r, bubbles_l = bubbles_override
+def draw_face(image, cfg, pose):
+    draw = ImageDraw.Draw(image)
+    state = pose.get("eyes", "open")
+    for index, (x, y) in enumerate(cfg["eyes"]):
+        if state == "open":
+            draw.rectangle((x, y, x + 2, y + 2), fill=EYE_DARK)
+            draw.point((x + 1, y), fill=EYE_WHITE)
+        elif state == "closed":
+            draw.line((x, y + 1, x + 2, y + 1), fill=EYE_DARK)
+        elif state == "lid":
+            draw.line((x, y + 1, x + 2, y + 1), fill=EYE_DARK)
+            draw.point((x + 2, y + 2), fill=EYE_DARK)
+        elif state == "arc":
+            draw.line([(x, y + 1), (x + 1, y), (x + 2, y + 1)], fill=EYE_DARK)
+        elif state == "squeeze":
+            edge = x if index == 0 else x + 2
+            draw.line([(edge, y), (x + 1, y + 1), (edge, y + 2)], fill=EYE_DARK)
+        elif state == "star":
+            draw.line((x + 1, y, x + 1, y + 2), fill=EYE_DARK)
+            draw.line((x, y + 1, x + 2, y + 1), fill=EYE_DARK)
+            draw.point((x + 1, y + 1), fill=GOLD)
+    nx, ny = cfg["nose"]
+    draw.line((nx, ny, nx + cfg["nose_width"] - 1, ny), fill=EYE_DARK)
+    mx, my = cfg["mouth"]
+    width = cfg["mouth_width"]
+    left, right = mx - (width - 1) // 2, mx + width // 2
+    centers = (mx, mx + 1) if width % 2 == 0 else (mx, mx)
+    mouth = pose.get("mouth", "smile")
+    if mouth == "tiny":
+        draw.line((centers[0], my, centers[1], my), fill=EYE_DARK)
+    elif mouth == "frown":
+        draw.point((left, my + 1), fill=EYE_DARK)
+        draw.point((right, my + 1), fill=EYE_DARK)
+        draw.line((left + 1, my, right - 1, my), fill=EYE_DARK)
+    elif mouth == "laugh":
+        draw.rectangle((left, my, right, my + 1), fill=EYE_DARK)
+        draw.line((centers[0], my + 1, centers[1], my + 1), fill=BLUSH)
     else:
-        bubbles_r, bubbles_l = BUBBLES_R, BUBBLES_L
-    if side == 'both':
-        bubbles_list = bubbles_r + bubbles_l
-    elif side == 'L':
-        bubbles_list = bubbles_l
-    else:
-        bubbles_list = bubbles_r
-    for bx, by, size in bubbles_list:
+        draw.point((left, my), fill=EYE_DARK)
+        draw.point((right, my), fill=EYE_DARK)
+        draw.line((left + 1, my + 1, right - 1, my + 1), fill=EYE_DARK)
+        if mouth == "crumbs":
+            for x, y, color in ((left-2,my-1,(200,160,80,255)), (right+2,my-1,(200,160,80,255)),
+                                (left-1,my+2,(220,180,100,255)), (right+1,my+2,(220,180,100,255))):
+                draw.point((x, y), fill=color)
+    if pose.get("blush"):
+        for x, y in cfg["blush"]:
+            draw.rectangle((x, y, x + 1, y + 1), fill=BLUSH)
+    if "tear" in pose:
+        for x, y in cfg["eyes"]:
+            ty = y + 3 + pose["tear"]
+            draw.line((x + 1, ty, x + 1, ty + 1), fill=TEAR)
+
+
+def draw_bubbles(image, side):
+    draw = ImageDraw.Draw(image)
+    w = image.width
+    spots = [(w-5,5,3),(w-4,11,2),(w-5,17,3),(w-4,23,2),(w-5,29,3)] if side == "R" else [
+        (1,4,3),(2,10,2),(1,16,3),(2,22,2),(1,28,3)]
+    for x, y, size in spots:
+        assert image.crop((x, y, x + size, y + size)).getchannel("A").getbbox() is None, "bubble overlaps dragon"
+        draw.rectangle((x, y, x + size - 1, y + size - 1), fill=BUBBLE_RIM)
+        draw.point((x, y), fill=EYE_WHITE)
+        draw.point((x + 1, y + 1), fill=BUBBLE)
         if size == 3:
-            for dy in range(3):
-                for dx in range(3):
-                    if dx*dx + dy*dy <= 4:
-                        try: px[bx+dx, by+dy] = BUBBLE
-                        except: pass
-        elif size == 2:
-            for dy in range(2):
-                for dx in range(2):
-                    try: px[bx+dx, by+dy] = BUBBLE
-                    except: pass
+            draw.point((x + 1, y), fill=BUBBLE)
+            draw.point((x + 2, y + 1), fill=BUBBLE)
 
-def draw_zz(img):
-    px = img.load()
-    for zx, zy, size in ZZ_POS:
-        if size == 4:
-            # Z 字形 4x4
-            for dx in range(4): px[zx+dx, zy] = ZZ
-            px[zx+2, zy+1] = ZZ
-            px[zx+1, zy+2] = ZZ
-            for dx in range(4): px[zx+dx, zy+3] = ZZ
-        elif size == 2:
-            for dx in range(2): px[zx+dx, zy] = ZZ
-            px[zx+1, zy+1] = ZZ
-            for dx in range(2): px[zx+dx, zy+1] = ZZ
 
-def erase_face(img, face, w, h, full_rect=None, extra_rects=None):
-    """擦除原有脸部区域，用身体绿色填充。
-    full_rect=(x1,y1,x2,y2) 时擦除整个矩形（用于 adult 原图有残留眼嘴）。
-    extra_rects=[(x1,y1,x2,y2),...] 额外擦除小矩形（用于 kid 清除残留噪点，保留脸部轮廓）。
-    """
-    px = img.load()
-    erase = face['erase_color']
-    if full_rect:
-        x1, y1, x2, y2 = full_rect
-        for y in range(y1, y2+1):
-            for x in range(x1, x2+1):
-                if 0 <= x < w and 0 <= y < h:
-                    px[x, y] = erase
-    if extra_rects:
-        for rect in extra_rects:
-            x1, y1, x2, y2 = rect
-            for y in range(y1, y2+1):
-                for x in range(x1, x2+1):
-                    if 0 <= x < w and 0 <= y < h:
-                        px[x, y] = erase
-    if full_rect or extra_rects:
-        return
-    # 擦除眼睛区域
-    for key in ['eye_L', 'eye_R']:
-        ex, ey = face[key]
-        for dy in range(3):
-            for dx in range(3):
-                if 0 <= ex+dx < w and 0 <= ey+dy < h:
-                    px[ex+dx, ey+dy] = erase
-    # 擦除鼻子
-    nx, ny = face['nose']
-    for dx in range(-1, 2):
-        if 0 <= nx+dx < w:
-            px[nx+dx, ny] = erase
-    # 擦除嘴巴
-    mx, my = face['mouth']
-    for dy in range(-1, 3):
-        for dx in range(-3, 4):
-            if 0 <= mx+dx < w and 0 <= my+dy < h:
-                px[mx+dx, my+dy] = erase
-    # 擦除腮红
-    for key in ['blush_L', 'blush_R']:
-        bx, by = face[key]
-        for dy in range(2):
-            for dx in range(2):
-                if 0 <= bx+dx < w and 0 <= by+dy < h:
-                    px[bx+dx, by+dy] = erase
+def draw_zz(image, cfg, phase):
+    draw = ImageDraw.Draw(image)
+    for x, y, size in cfg["zz"]:
+        y -= phase
+        assert image.crop((x, y, x + size, y + size)).getchannel("A").getbbox() is None, "Z overlaps dragon"
+        draw.line([(x, y), (x + size - 1, y), (x, y + size - 1), (x + size - 1, y + size - 1)], fill=ZZ)
 
-def shift_region_with_fill(img, region, dx, dy, fill_color, fill_rows=2):
-    """移动区域像素，原位置上部用 fill_color 填充（避免腿部跟身体衔接处出现空隙）"""
-    x1, y1, x2, y2 = region
-    w, h = img.size
-    px = img.load()
-    # 复制区域像素
-    pixels = []
-    for y in range(y1, y2):
-        for x in range(x1, x2):
-            if 0 <= x < w and 0 <= y < h and px[x, y][3] > 0:
-                pixels.append((x, y, px[x, y]))
-    # 清除原位置
-    for x, y, _ in pixels:
-        px[x, y] = (0, 0, 0, 0)
-    # 用身体颜色填充原位置上部（跟身体连接的部分）
-    for y in range(y1, min(y1 + fill_rows, y2)):
-        for x in range(x1, x2):
-            if 0 <= x < w and 0 <= y < h:
-                # 检查上方是否有身体像素
-                has_body_above = False
-                for dy_check in range(1, 4):
-                    ny = y - dy_check
-                    if ny >= 0 and px[x, ny][3] > 0:
-                        nr, ng, nb, na = px[x, ny]
-                        if ng > nr and ng > nb:  # 绿色身体
-                            has_body_above = True
-                            break
-                if has_body_above:
-                    px[x, y] = fill_color
-    # 在新位置绘制
-    for x, y, color in pixels:
-        nx, ny = x + dx, y + dy
-        if 0 <= nx < w and 0 <= ny < h and color[3] > 0:
-            px[nx, ny] = color
 
-def render_frame(base, face, config, w, h, full_rect=None, extra_rects=None, bubbles_override=None, leg_regions=None):
-    """渲染单帧"""
-    img = base.copy()
-    # 腿部移动（走路动画）
-    leg_shift = config.get('leg_shift')
-    if leg_shift and leg_regions:
-        # 找到身体底部颜色（浅绿色）
-        body_color = (154, 207, 95, 255)
-        for leg_name, dx, dy in leg_shift:
-            if leg_name in leg_regions:
-                shift_region_with_fill(img, leg_regions[leg_name], dx, dy, body_color, fill_rows=2)
-    # 头部上下平移（吃饭动画）
-    offset_y = config.get('offset_y', 0)
-    if offset_y != 0:
-        shifted = Image.new("RGBA", (w, h), (0,0,0,0))
-        shifted.paste(img, (0, offset_y))
-        img = shifted
-        # 五官锚点也跟着偏移
-        face = {k: (v[0], v[1]+offset_y) if isinstance(v, tuple) and len(v)==2 and isinstance(v[0], int) else v
-                for k, v in face.items()}
-        # 擦除区域也跟着偏移
-        if full_rect:
-            full_rect = (full_rect[0], full_rect[1]+offset_y, full_rect[2], full_rect[3]+offset_y)
-        if extra_rects:
-            extra_rects = [(r[0], r[1]+offset_y, r[2], r[3]+offset_y) for r in extra_rects]
-    erase_face(img, face, w, h, full_rect=full_rect, extra_rects=extra_rects)
-    draw_eyes(img, face, config['eyes'])
-    draw_nose(img, face)
-    draw_mouth(img, face, config['mouth'])
-    if config.get('blush'):
-        draw_blush(img, face)
-    if config.get('tear'):
-        draw_tears(img, face)
-    if config.get('bubbles'):
-        draw_bubbles(img, config['bubbles'], bubbles_override=bubbles_override)
-    if config.get('zz'):
-        draw_zz(img)
-    return img
+def render_frame(base, stage, pose):
+    cfg = STAGES[stage]
+    image = base.copy()
+    draw_face(image, cfg, pose)
+    dy = cfg["pad_y"] + pose.get("offset_y", 0)
+    if dy:
+        moved = Image.new("RGBA", image.size)
+        moved.paste(image, (0, dy))
+        assert sum(image.getchannel("A").getdata()) == sum(moved.getchannel("A").getdata()), (
+            stage, pose, "clipped animation"
+        )
+        image = moved
+    if "bubbles" in pose:
+        draw_bubbles(image, pose["bubbles"])
+    if "zz" in pose:
+        draw_zz(image, cfg, pose["zz"])
+    return image
 
-# ============================================================
-# 主流程
-# ============================================================
+
+def preview(rows, destination):
+    poses = ("idle-0", "blink", "eat-0", "eat-1", "eat-2", "happy-1", "sad-1", "sleep-1", "wash-0", "wash-1", "walk-1")
+    sheet = Image.new("RGB", (len(poses) * 152, 3 * 182 + 25), (220, 225, 225))
+    draw = ImageDraw.Draw(sheet)
+    for col, name in enumerate(poses):
+        draw.text((col*152 + 4, 7), name, fill=(30,30,30))
+    for row, (stage, base) in enumerate(rows.items()):
+        for col, pose in enumerate(poses):
+            frame = render_frame(base, stage, dict(ALL_POSES)[pose])
+            canvas = Image.new("RGBA", (48,48))
+            canvas.paste(frame, ((48-frame.width)//2, 48-frame.height))
+            canvas = canvas.resize((144,144), Image.Resampling.NEAREST)
+            sheet.paste(canvas, (col*152,row*182+25), canvas)
+            draw.text((col*152+4,row*182+172),stage,fill=(30,30,30))
+    sheet.save(destination)
+
+
 def main():
-    for stage, face, clean_path, prefix, full_rect, extra_rects, bubbles_override, leg_regions in [
-        ('kid', KID_FACE, TMP / 'dragon-kid-clean-base.png', 'dragon-kid-v2', None,
-         [(24,10,28,14), (14,14,21,16), (24,15,27,19), (13,19,21,19),
-          (18,21,22,22), (11,23,12,23), (22,23,22,23)], None,
-         {'left': (8, 30, 16, 38), 'right': (18, 30, 28, 38)}),
-        ('teen', TEEN_FACE, TMP / 'dragon-teen-v4-clean-base.png', 'dragon-teen-v2', None,
-         [(6,11,10,15), (17,11,21,15), (8,13,20,19)],
-         (TEEN_BUBBLES_R, TEEN_BUBBLES_L),
-         {'left': (8, 38, 17, 40), 'right': (22, 38, 32, 40)}),
-        ('adult', ADULT_FACE, TMP / 'dragon-adult-clean-base.png', 'dragon-adult-v2', (10, 14, 33, 24), None,
-         (ADULT_BUBBLES_R, ADULT_BUBBLES_L),
-         {'left': (10, 38, 22, 48), 'right': (24, 38, 36, 48)}),
-    ]:
-        print(f"\n=== {stage} ===")
-        base = Image.open(clean_path).convert("RGBA")
-        w, h = base.size
-        print(f"  base: {w}x{h}")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preview", type=Path)
+    parser.add_argument("--preview-only", action="store_true")
+    args = parser.parse_args()
+    rows = {stage: prepare_base(stage) for stage in STAGES}
+    for stage, base in rows.items():
+        frames = {"": render_frame(base, stage, {})}
+        frames.update({f"-{name}": render_frame(base, stage, config) for name, config in ALL_POSES})
+        if not args.preview_only:
+            for suffix, image in frames.items():
+                image.save(SPRITES / f"dragon-{stage}-v2{suffix}.png")
+        print(f"{stage}: {len(frames)} frames, {base.width}x{base.height}")
+    if args.preview:
+        preview(rows, args.preview)
 
-        # base 帧（默认表情 open+smile）
-        base_frame = render_frame(base, face, {'eyes':'open', 'mouth':'smile'}, w, h,
-                                   full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override,
-                                   leg_regions=leg_regions)
-        base_frame.save(SPRITES / f"{prefix}.png")
-        print(f"  wrote {prefix}.png")
 
-        # 全量 pose
-        for pose_name, config in ALL_POSES:
-            frame = render_frame(base, face, config, w, h,
-                                 full_rect=full_rect, extra_rects=extra_rects, bubbles_override=bubbles_override,
-                                 leg_regions=leg_regions)
-            frame.save(SPRITES / f"{prefix}-{pose_name}.png")
-        print(f"  wrote {len(ALL_POSES)} pose frames")
-
-    print("\nDone!")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
