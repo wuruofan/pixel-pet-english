@@ -22,6 +22,54 @@
   --font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
+/* Standalone pet preview: the normal game keeps its own layout and state. */
+.pet-test-mode #app { max-width: 1020px; padding-bottom: 28px; }
+.pet-test-mode .tabbar { display: none; }
+.pet-test-topbar { justify-content: space-between; }
+.pet-test-topbar a { text-decoration: none; }
+.pet-test-heading { text-align: center; margin: 24px 0; }
+.pet-test-heading h1 { font-size: clamp(26px, 4vw, 38px); margin: 12px 0 8px; }
+.pet-test-heading p { color: var(--ink-soft); margin: 0; font-size: 15px; }
+.pet-test-species { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.pet-test-species .chip { min-height: 40px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.pet-test-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pet-test-grid .pet-test-card { padding: 12px; margin-bottom: 18px; min-width: 0; text-align: center; }
+.pet-test-scene {
+  min-height: 224px; display: flex; justify-content: center; align-items: flex-end;
+  padding: 16px 0; overflow: hidden; border-radius: 14px;
+  background: linear-gradient(165deg, #e6f6ff, #fff0e6 75%);
+  border-bottom: 4px solid #eddec9;
+}
+.pet-test-scene canvas { width: 192px; max-width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+.pet-test-card h2 { font-size: 16px; margin: 14px 0 2px; }
+.pet-test-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.pet-test-actions .chip { min-height: 40px; min-width: 64px; cursor: pointer; }
+.pet-test-playback { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.pet-test-playback #pet-test-status { margin-left: auto; font-size: 13px; font-variant-numeric: tabular-nums; }
+.pet-test-note { text-align: center; color: var(--ink-soft); font-size: 13px; margin: 20px 0 0; }
+.pet-test-mode button:focus-visible, .pet-test-mode a:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+@media (max-width: 760px) {
+  .pet-test-scene { min-height: 172px; padding: 12px 0; }
+  .pet-test-scene canvas { width: 144px; }
+}
+@media (max-width: 540px) {
+  .pet-test-mode #app { padding: 10px 10px 24px; }
+  .pet-test-topbar .brand { font-size: 15px; gap: 5px; }
+  .pet-test-topbar .brand .logo { font-size: 22px; }
+  .pet-test-heading { margin: 18px 0; }
+  .pet-test-heading p { font-size: 13px; }
+  .pet-test-grid { gap: 6px; }
+  .pet-test-grid .pet-test-card { padding: 5px; border-radius: 15px; }
+  .pet-test-scene { min-height: 120px; padding: 10px 0; border-radius: 10px; }
+  .pet-test-scene canvas { width: 96px; }
+  .pet-test-card h2 { font-size: 13px; margin: 10px 0 5px; }
+  .pet-test-controls { padding: 14px; }
+  .pet-test-actions { gap: 7px; }
+  .pet-test-actions .chip { flex: 1 0 19%; min-width: 54px; }
+  .pet-test-playback { gap: 8px; }
+  .pet-test-playback #pet-test-status { width: 100%; margin: 4px 0 0; }
+}
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body {
@@ -725,6 +773,9 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .pg-cvwrap canvas { width: 54px; height: 54px; image-rendering: pixelated; display: block; }
 @media (max-width: 400px) { .pet-gallery { grid-template-columns: repeat(2, 1fr); } }
 /* 状态试验台：预览画布比图鉴格大一号；精灵一览芯片内的 canvas 保持硬边 */
+.tb-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.tb-heading .section { margin: 0; }
+.tb-heading a { text-decoration: none; }
 .tb-main { width: 96px; height: 96px; animation: none; }
 .tb-main canvas { width: 84px; height: 84px; image-rendering: pixelated; display: block; }
 .tb-chip { display: inline-flex; align-items: center; padding: 4px 7px; }

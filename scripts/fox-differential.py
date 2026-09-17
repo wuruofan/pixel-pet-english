@@ -1,30 +1,17 @@
 #!/usr/bin/env python3
-"""Differential overlay for the fox sprites (v6.1 — anchors re-calibrated).
+"""Rebuild the 87 fox sprites from the three selected, immutable source bases.
 
-mmx 002 风格 + 程序化表情层。v6 失败根因：锚点表把 kid 的鼻子 (15,17-18)
-当成左眼、真眼 (11-13,14-16)/(17-19,14-16) 没被擦除，且擦除区用奶油色填充
-（眼位是橙色毛），于是新表情画在鼻子上、旧眼残留在脸上、脸上留白块。
-
-v6.1 修复（按 36×38 / 44×48 实际像素逐点校准，见 HANDOFF 增量 §12.5）：
-  1. 眼窝/瞳孔/高光/闭眼线/腮红/泪 全部对到 mmx 真实脸部像素
-  2. 擦除眼窝用「毛色」填充（kid=#f7a05b / adult=#f69139），不再留白块
-  3. 嘴/鼻按 mmx 真实位置重画（kid 口鼻区窄，ω 嘴收窄到 3 点）
-
-Layer 1 (AI-generated, fox-{stage}-v2.png = mmx 像素化 base):
-  - mmx 画的头/耳/身体/尾巴/胸/脚底（保留 mmx 自然风格）
-
-Layer 2 (this module — the differential, drawn ON TOP):
-  1. 擦除 mmx 原眼（范围 = 真实深色像素 bbox），用毛色填回
-  2. 程序画 mmx 风格眼（深棕 MELANIN + 白高光）
-  3. 重画鼻（kid 1×2 / adult 2×2，mmx 真实位置）
-  4. 重画嘴（kid 3 点 ω / adult 5 点 ω，mmx 真实位置）
-  5. 状态层：tear / bubble / zzz / blush（per-side 独立登记）
+The source art is preserved in assets/sprite-bases. Small coordinate masks repair
+background-removal damage and remove ground shadows before facial overlays. Draw
+the full pet before translating it so its eyes, mouth, blush and tears stay aligned.
 """
 from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 SPRITES = ROOT / "assets" / "sprites"
+SOURCES = ROOT / "assets" / "sprite-bases"
+STAGES = ("kid", "teen", "adult")
 
 # ============================================================
 # Color palette — mmx 风格
@@ -79,7 +66,7 @@ FOX_FACE = {
     "kid": {
         # v7 bighead: 新 base 眼睛大且非对称（R 比 L 高 2 行）
         #   L 眼珠深色 bbox (9-13, 17-19)；R 眼珠深色 bbox (19-23, 15-19)
-        "socket": {"l": (9, 17, 13, 19), "r": (19, 15, 23, 19)},
+        "socket": {"l": (9, 16, 13, 19), "r": (19, 15, 23, 19)},
         # open 眼：3×2 深棕瞳孔 + 上方白高光（R 比 L 高 1 行）
         "pupil": {
             "l": [(10, 18), (11, 18), (12, 18), (10, 19), (11, 19), (12, 19)],
@@ -112,6 +99,7 @@ FOX_FACE = {
         "mouth_erase": (14, 23, 16, 24),
         # v7 bighead: mmx 残留杂点（右眼下方孤立深色点），用口鼻区色擦除
         "extra_erase": [(22, 20)],
+        "fur_erase": [(18, 19)],
     },
     "adult": {
         # v7 bighead: 新 base 眼睛大且对称
@@ -134,8 +122,9 @@ FOX_FACE = {
                 "r": [(26, 20), (27, 19), (28, 20)]},
         "star_fill": {"l": (13, 19, 15, 20), "r": (26, 19, 28, 20)},
         "star_hi":   {"l": (14, 19), "r": (27, 19)},
-        # 鼻：mmx 1×2 竖线 (21,22)(21,23)，原位重画
-        "nose": [(21, 22), (21, 23)],
+        # 鼻与嘴保留一行奶油色间隔。
+        "nose": [(20, 22), (21, 22)],
+        "nose_erase": (20, 22, 21, 23),
         # 嘴：mmx 嘴在量化后丢失，5 点 ω 居中于鼻下 (x=19-23, y=24-25)
         "mouth_smile": [(19, 24), (20, 25), (21, 25), (22, 25), (23, 24)],
         "mouth_frown": [(19, 25), (20, 24), (21, 24), (22, 24), (23, 25)],
@@ -143,6 +132,8 @@ FOX_FACE = {
         "mouth_crumbs": [(18, 24), (24, 24)],
         "mouth_laugh": [(18, 24), (19, 25), (20, 25), (21, 25), (22, 25), (23, 25), (24, 24)],  # v7.2: 大ω
         "mouth_erase": (19, 24, 23, 26),  # v7.3: 扩大到y26，擦掉mmx残留的红棕色(#ae462b)下嘴唇/舌头阴影
+        "extra_erase": [(14, 22), (15, 22), (26, 22), (27, 22), (28, 22),
+                        (20, 27), (21, 27), (22, 27), (21, 28)],
     },
     "teen": {
         # v7.6 teen (小狐狸, stage 2): 36×38, 介于 kid 和 adult 之间
@@ -165,17 +156,17 @@ FOX_FACE = {
                 "r": [(19, 16), (20, 15), (21, 16)]},
         "star_fill": {"l": (12, 15, 14, 16), "r": (19, 15, 21, 16)},
         "star_hi":   {"l": (13, 15), "r": (20, 15)},
-        # 鼻：2px 横向 (15,17)(16,17)
-        "nose": [(15, 17), (16, 17)],
-        # 嘴：mmx 原图没画嘴，3 点 ω 居中于鼻下 (x=14-16, y=19-20)
-        "mouth_smile": [(14, 19), (15, 20), (16, 19)],
-        "mouth_frown": [(14, 20), (15, 19), (16, 20)],
-        "mouth_tiny":  (15, 20),
-        "mouth_crumbs": [(13, 19), (17, 19)],
-        "mouth_laugh": [(13, 19), (14, 20), (15, 20), (16, 20), (17, 19)],
-        "mouth_erase": (14, 18, 17, 20),
-        # mmx 残留上眼睑杂点
-        "extra_erase": [(14, 11), (21, 12)],
+        # 两眼中轴 x=16.5；鼻、四像素宽微笑同轴，嘴宽介于 kid/adult。
+        "nose": [(16, 17), (17, 17)],
+        "nose_erase": (15, 17, 17, 17),
+        "mouth_smile": [(15, 19), (16, 20), (17, 20), (18, 19)],
+        "mouth_frown": [(15, 20), (16, 19), (17, 19), (18, 20)],
+        "mouth_tiny":  (16, 20),
+        "mouth_crumbs": [(14, 19), (19, 19)],
+        "mouth_laugh": [(14, 19), (15, 20), (16, 20), (17, 20), (18, 20), (19, 19)],
+        "mouth_erase": (14, 18, 19, 20),
+        # 额头属于橙色毛，不能用口鼻奶油色擦除旧点。
+        "fur_erase": [(14, 11), (21, 12)],
     },
 }
 
@@ -188,53 +179,71 @@ FOX_TEAR = {"kid": {"l": 11, "r": 21, "y": 20},
 # 蓝泡泡（v7.1: 更多气泡，大小不一，位置分散到头部周围/上方，不再只在头两侧）
 # 格式 (x, y, size): size=2 → 2x2, size=3 → 3x3
 FOX_BUBBLES = {
-    "kid":   {"r": [(31, 3, 3), (34, 7, 2), (30, 8, 2), (35, 12, 2), (32, 14, 2)],
-              "l": [(3, 6, 3), (5, 2, 2), (1, 10, 2), (6, 12, 2), (2, 14, 2)]},
-    "adult": {"r": [(38, 4, 3), (41, 8, 2), (37, 10, 2), (42, 13, 2), (39, 15, 2)],
-              "l": [(4, 8, 3), (6, 4, 2), (2, 12, 2), (7, 15, 2), (3, 16, 2)]},
-    "teen": {"r": [(31, 3, 3), (34, 7, 2), (30, 8, 2), (35, 12, 2), (32, 14, 2)],
-             "l": [(3, 6, 3), (5, 2, 2), (1, 10, 2), (6, 12, 2), (2, 14, 2)]},
+    "kid":   {"r": [(31, 2, 3), (33, 7, 2), (30, 11, 2), (33, 15, 2), (32, 23, 2)],
+              "l": [(1, 2, 2), (0, 7, 3), (3, 12, 2), (0, 16, 2), (3, 19, 2)]},
+    "adult": {"r": [(38, 3, 3), (41, 8, 2), (37, 12, 2), (40, 16, 2), (38, 21, 2)],
+              "l": [(5, 3, 2), (1, 7, 3), (5, 12, 2), (1, 17, 2), (3, 22, 2)]},
+    "teen":  {"r": [(31, 2, 3), (33, 7, 2), (30, 11, 2), (33, 15, 2), (31, 20, 2)],
+              "l": [(5, 3, 2), (1, 7, 3), (6, 11, 2), (2, 15, 2), (6, 20, 2)]},
 }
-FOX_ZZZ_SMALL = {"kid": [(31, 4, 4), (27, 9, 2)], "adult": [(38, 6, 4), (34, 11, 2)],
-                  "teen": [(31, 4, 4), (27, 9, 2)]}  # v7.2: 两个Z（大+小，错开）
+FOX_ZZZ_SMALL = {"kid": [(31, 3, 3), (31, 11, 2)],
+                 "teen": [(31, 3, 3), (31, 11, 2)],
+                 "adult": [(38, 5, 4), (37, 13, 2)]}
 
-# 腮红（2×2，下移到眼睛下方白色口鼻区两侧，不再盖在橙色毛上）
-# v7.1: kid L=(10,20,11,21) R=(24,20,25,21)；adult L=(18,23,19,24) R=(29,23,30,24)
+# 腮红（2×2，位于眼睛下方奶油色口鼻区，随整个宠物平移）
 FOX_BLUSH = {
-    "kid":   {"l": (10, 20, 11, 21), "r": (24, 20, 25, 21)},
-    "adult": {"l": (18, 23, 19, 24),  "r": (29, 23, 30, 24)},
-    "teen":  {"l": (10, 16, 11, 17),  "r": (22, 16, 23, 17)},
+    "kid":   {"l": (10, 21, 11, 22), "r": (23, 21, 24, 22)},
+    "adult": {"l": (11, 23, 12, 24), "r": (29, 23, 30, 24)},
+    "teen":  {"l": (11, 18, 12, 19), "r": (21, 18, 22, 19)},
 }
 
 
 # ============================================================
 # 基础函数
 # ============================================================
-def _offset_face_anchors(face, dy):
-    """递归偏移 face 字典中所有锚点的 y 坐标（用于 offset_y 头部上下平移时五官跟随）"""
-    import copy
-    result = copy.deepcopy(face)
+# These masks restore only transparent pixels accidentally removed with the white
+# background. Do not fill the real gap between adult's chest and raised tail.
+MUZZLE_FILL_ROWS = {
+    "kid": {20: (8, 30), 21: (8, 28), 22: (8, 28), 23: (9, 26)},
+    "teen": {21: (14, 22), 22: (15, 22)},
+    "adult": {21: (31, 31), 22: (18, 31), 23: (18, 31), 24: (18, 30),
+              25: (18, 29), 26: (18, 28), 27: (18, 27), 28: (18, 26)},
+}
 
-    def _offset(val):
-        if isinstance(val, tuple):
-            if len(val) == 2 and isinstance(val[0], int) and isinstance(val[1], int):
-                return (val[0], val[1] + dy)
-            elif len(val) == 4 and all(isinstance(v, int) for v in val):
-                return (val[0], val[1] + dy, val[2], val[3] + dy)
-        elif isinstance(val, list):
-            return [_offset(v) for v in val]
-        elif isinstance(val, dict):
-            return {k: _offset(v) for k, v in val.items()}
-        return val
 
-    for key in result:
-        result[key] = _offset(result[key])
-    return result
+def clean_base(img, stage):
+    """Repair alpha damage without changing the selected source's character design."""
+    img = img.copy()
+    px = img.load()
+    for y, (left, right) in MUZZLE_FILL_ROWS[stage].items():
+        for x in range(left, right + 1):
+            if px[x, y][3] == 0:
+                px[x, y] = CREAM_MUZZLE[stage]
+    stray = {"kid": [(5, 21)], "teen": [(13, 21), (12, 26)], "adult": []}
+    for point in stray[stage]:
+        px[point] = (0, 0, 0, 0)
+    if stage == "teen":
+        # Pale background/shadow pixels below the two dark paws.
+        for x in range(img.width):
+            px[x, 35] = (0, 0, 0, 0)
+    if stage == "adult":
+        # Keep the original paws; trim the surrounding pale oval ground shadow.
+        feet = {41: (12, 30), 42: (13, 30), 43: (14, 30), 44: (17, 26)}
+        for y in range(41, img.height):
+            left, right = feet.get(y, (1, 0))
+            for x in range(img.width):
+                if not left <= x <= right:
+                    px[x, y] = (0, 0, 0, 0)
+    # Canonical transparent RGB also makes repeated generation byte-identical.
+    for y in range(img.height):
+        for x in range(img.width):
+            if px[x, y][3] == 0:
+                px[x, y] = (0, 0, 0, 0)
+    return img
 
 
 def load_base(stage):
-    # v7.5 正式提交：从 assets/sprites/ 加载大头版 base
-    return Image.open(SPRITES / f"fox-{stage}-v2.png").convert("RGBA")
+    return clean_base(Image.open(SOURCES / f"fox-{stage}-source.png").convert("RGBA"), stage)
 
 
 def _cover(img, x0, y0, x1, y1, color):
@@ -247,12 +256,16 @@ def _erase_eyes(img, stage):
     fur = FUR_EYE[stage]
     for side in ("l", "r"):
         _cover(img, *FOX_FACE[stage]["socket"][side], fur)
+    for point in FOX_FACE[stage].get("fur_erase", []):
+        img.putpixel(point, fur)
 
 
 def _erase_mouth(img, stage):
     box = FOX_FACE[stage]["mouth_erase"]
     if box is not None:
         _cover(img, *box, CREAM_MUZZLE[stage])
+    if "nose_erase" in FOX_FACE[stage]:
+        _cover(img, *FOX_FACE[stage]["nose_erase"], CREAM_MUZZLE[stage])
     # v7 bighead: 额外擦除 mmx 残留杂点（如 kid (22,20) 孤立深色点）
     extra = FOX_FACE[stage].get("extra_erase", [])
     d = ImageDraw.Draw(img)
@@ -382,65 +395,10 @@ def diff_zzz(base, stage):
 # ============================================================
 # 组合入口
 # ============================================================
-def shift_region_with_fill(img, region, dx, dy, fill_color, fill_rows=2):
-    """移动区域像素，原位置上部用 fill_color 填充（避免腿部跟身体衔接处出现空隙）"""
-    x1, y1, x2, y2 = region
-    w, h = img.size
-    px = img.load()
-    pixels = []
-    for y in range(y1, y2):
-        for x in range(x1, x2):
-            if 0 <= x < w and 0 <= y < h and px[x, y][3] > 0:
-                pixels.append((x, y, px[x, y]))
-    for x, y, _ in pixels:
-        px[x, y] = (0, 0, 0, 0)
-    # 用身体颜色填充原位置上部（跟身体连接的部分）
-    for y in range(y1, min(y1 + fill_rows, y2)):
-        for x in range(x1, x2):
-            if 0 <= x < w and 0 <= y < h:
-                has_body_above = False
-                for dy_check in range(1, 4):
-                    ny = y - dy_check
-                    if ny >= 0 and px[x, ny][3] > 0:
-                        nr, ng, nb, na = px[x, ny]
-                        if nr > ng and nr > nb:  # 橙色身体
-                            has_body_above = True
-                            break
-                if has_body_above:
-                    px[x, y] = fill_color
-    for x, y, color in pixels:
-        nx, ny = x + dx, y + dy
-        if 0 <= nx < w and 0 <= ny < h and color[3] > 0:
-            px[nx, ny] = color
-
-# fox 各阶段腿部区域（用于走路动画）
-FOX_LEG_REGIONS = {
-    "kid":   {"left": (8, 27, 16, 38),  "right": (18, 27, 28, 38)},
-    "teen":  {"left": (8, 29, 17, 38),  "right": (19, 29, 29, 38)},
-    "adult": {"left": (10, 37, 22, 48), "right": (24, 37, 36, 48)},
-}
-
-FOX_BODY_COLOR = (250, 135, 44, 255)
-
 def render_pose(stage, eyes="open", mouth="smile", tear=None,
-                blush=False, bubble=None, zzz=False, offset_y=0, leg_shift=None):
-    """组合 base + differential 表情层 → 完整 sprite"""
+                blush=False, bubble=None, zzz=False, offset_y=0, zzz_phase=0):
+    """Draw the full pet first, then apply a lossless whole-sprite hop."""
     img = load_base(stage)
-    # 腿部移动（走路动画）
-    if leg_shift:
-        for leg_name, dx, dy in leg_shift:
-            if leg_name in FOX_LEG_REGIONS[stage]:
-                shift_region_with_fill(img, FOX_LEG_REGIONS[stage][leg_name], dx, dy, FOX_BODY_COLOR, fill_rows=2)
-    # 头部上下平移（吃饭/走路动画）
-    _original_face = None
-    if offset_y != 0:
-        w, h = img.size
-        shifted = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        shifted.paste(img, (0, offset_y))
-        img = shifted
-        # 五官锚点也跟着偏移（否则表情画在原位不跟随身体移动）
-        _original_face = FOX_FACE[stage]
-        FOX_FACE[stage] = _offset_face_anchors(_original_face, offset_y)
     _erase_eyes(img, stage)
     _erase_mouth(img, stage)
     d = ImageDraw.Draw(img)
@@ -496,14 +454,20 @@ def render_pose(stage, eyes="open", mouth="smile", tear=None,
                 d.rectangle((x, y, x + 2, y + 2), fill=TEAR)
                 d.point((x, y), fill=WHITE)
     if zzz:
-        for x, y, s in FOX_ZZZ_SMALL[stage]:
-            d.line([(x, y), (x + s, y)], fill=INK)
-            d.line([(x + s, y), (x, y + s)], fill=INK)
-            d.line([(x, y + s), (x + s, y + s)], fill=INK)
-    # 恢复原始 face 字典（如果 offset_y 时临时偏移了）
-    if _original_face is not None:
-        FOX_FACE[stage] = _original_face
+        for x, y, size in FOX_ZZZ_SMALL[stage]:
+            y -= zzz_phase
+            d.line([(x, y), (x + size, y)], fill=INK)
+            d.line([(x + size, y), (x, y + size)], fill=INK)
+            d.line([(x, y + size), (x + size, y + size)], fill=INK)
+    if offset_y:
+        bbox = img.getbbox()
+        if bbox and (bbox[1] + offset_y < 0 or bbox[3] + offset_y > img.height):
+            raise ValueError(f"{stage}: offset {offset_y} would crop opaque pixels")
+        shifted = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        shifted.paste(img, (0, offset_y))
+        img = shifted
     return img
+
 
 
 # ============================================================
@@ -534,7 +498,7 @@ def render_regions(stage, out_path):
 
 def render_grid(stage, poses, out_path):
     """把多个 pose 拼成一行网格，12x 放大"""
-    cell_w, cell_h = {"kid": (36, 38), "adult": (44, 48)}[stage]
+    cell_w, cell_h = {"kid": (36, 38), "teen": (36, 38), "adult": (44, 48)}[stage]
     scale = 12
     gap = 8 * scale
     W = (cell_w * scale + gap) * len(poses) + gap
@@ -551,55 +515,48 @@ def render_grid(stage, poses, out_path):
     print(f"  grid saved to {out_path}")
 
 
-if __name__ == "__main__":
-    # v7.5 正式提交：全量 28 pose/stage，输出到 assets/sprites/
-    # 跟 cat v2 命名规范一致：fox-{stage}-v2-{pose}.png
-    out = SPRITES
-    ALL_POSES = [
-        # idle 呼吸 2 帧（第一版暂同帧，后续加身体上下移动）
-        ("idle-0",    dict(eyes="open",    mouth="smile")),
-        ("idle-1",    dict(eyes="open",    mouth="smile")),
-        # blink 眨眼
-        ("blink",     dict(eyes="closed",  mouth="smile")),
-        # droopy 耷拉眼+难过嘴
-        ("droopy",    dict(eyes="lid",     mouth="frown")),
-        # eat 吃东西 3 帧（前两帧带食物碎屑，第三帧吃完微笑）
-        ("eat-0",     dict(eyes="open",    mouth="crumbs")),
-        ("eat-1",     dict(eyes="open",    mouth="crumbs")),
-        ("eat-2",     dict(eyes="open",    mouth="smile")),
-        # excited 兴奋 3 帧（星眼+大笑+腮红）
-        ("excited-0", dict(eyes="star",    mouth="laugh", blush=True)),
-        ("excited-1", dict(eyes="star",    mouth="laugh", blush=True)),
-        ("excited-2", dict(eyes="star",    mouth="laugh", blush=True)),
-        # grunt 咕哝 2 帧（眯眼+难过嘴）
-        ("grunt-0",   dict(eyes="squeeze", mouth="frown")),
-        ("grunt-1",   dict(eyes="squeeze", mouth="frown")),
-        # happy 开心 3 帧（笑眯眯眼+微笑+腮红）
-        ("happy-0",   dict(eyes="arc",     mouth="smile", blush=True)),
-        ("happy-1",   dict(eyes="arc",     mouth="smile", blush=True)),
-        ("happy-2",   dict(eyes="arc",     mouth="smile", blush=True)),
-        # sad 难过 2 帧（眼泪位置不同）
-        ("sad-0",     dict(eyes="open",    mouth="frown", tear=0)),
-        ("sad-1",     dict(eyes="open",    mouth="frown", tear=1)),
-        # sleep 睡觉 2 帧（闭眼+Zz）
-        ("sleep-0",   dict(eyes="closed",  mouth="smile", zzz=True)),
-        ("sleep-1",   dict(eyes="closed",  mouth="smile", zzz=True)),
-        # walk 走路 7 帧（跳跳蹦蹦风格，上下起伏）
-        ("walk-0",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-1",    dict(eyes="open",    mouth="smile", offset_y=-2)),
-        ("walk-2",    dict(eyes="open",    mouth="smile", offset_y=-1)),
-        ("walk-3",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        ("walk-4",    dict(eyes="open",    mouth="smile", offset_y=1)),
-        ("walk-5",    dict(eyes="open",    mouth="smile", offset_y=-1)),
-        ("walk-6",    dict(eyes="open",    mouth="smile", offset_y=0)),
-        # wash 洗澡 2 帧（泡泡左右）
-        ("wash-0",    dict(eyes="open",    mouth="smile", bubble="r")),
-        ("wash-1",    dict(eyes="open",    mouth="smile", bubble="l")),
-    ]
-    for stage in ("kid", "teen", "adult"):
+# Full-pet offsets keep the selected body and limbs intact. Idle/happy/excited/
+# grunt/sleep previously repeated one bitmap; each loop now has visible variation.
+ALL_POSES = [
+    ("idle-0",    dict(eyes="open",    mouth="smile")),
+    ("idle-1",    dict(eyes="open",    mouth="smile", offset_y=-1)),
+    ("blink",     dict(eyes="closed",  mouth="smile")),
+    ("droopy",    dict(eyes="lid",     mouth="frown")),
+    ("eat-0",     dict(eyes="open",    mouth="crumbs")),
+    ("eat-1",     dict(eyes="arc",     mouth="laugh", offset_y=1)),
+    ("eat-2",     dict(eyes="open",    mouth="smile")),
+    ("excited-0", dict(eyes="star",    mouth="laugh", blush=True)),
+    ("excited-1", dict(eyes="star",    mouth="laugh", blush=True, offset_y=-2)),
+    ("excited-2", dict(eyes="star",    mouth="smile", blush=True, offset_y=-1)),
+    ("grunt-0",   dict(eyes="squeeze", mouth="frown")),
+    ("grunt-1",   dict(eyes="squeeze", mouth="tiny", offset_y=1)),
+    ("happy-0",   dict(eyes="arc",     mouth="smile", blush=True)),
+    ("happy-1",   dict(eyes="arc",     mouth="laugh", blush=True, offset_y=-1)),
+    ("happy-2",   dict(eyes="arc",     mouth="smile", blush=True, offset_y=1)),
+    ("sad-0",     dict(eyes="open",    mouth="frown", tear=0)),
+    ("sad-1",     dict(eyes="open",    mouth="frown", tear=1)),
+    ("sleep-0",   dict(eyes="closed",  mouth="smile", zzz=True)),
+    ("sleep-1",   dict(eyes="closed",  mouth="smile", zzz=True, zzz_phase=1)),
+    ("walk-0",    dict(eyes="open",    mouth="smile", offset_y=0)),
+    ("walk-1",    dict(eyes="open",    mouth="smile", offset_y=-2)),
+    ("walk-2",    dict(eyes="open",    mouth="smile", offset_y=-1)),
+    ("walk-3",    dict(eyes="open",    mouth="smile", offset_y=0)),
+    ("walk-4",    dict(eyes="open",    mouth="smile", offset_y=1)),
+    ("walk-5",    dict(eyes="open",    mouth="smile", offset_y=-1)),
+    ("walk-6",    dict(eyes="open",    mouth="smile", offset_y=0)),
+    ("wash-0",    dict(eyes="open",    mouth="smile", bubble="r")),
+    ("wash-1",    dict(eyes="open",    mouth="smile", bubble="l")),
+]
+
+
+def main():
+    for stage in STAGES:
+        render_pose(stage).save(SPRITES / f"fox-{stage}-v2.png")
         for name, kw in ALL_POSES:
-            img = render_pose(stage, **kw)
-            path = out / f"fox-{stage}-v2-{name}.png"
-            img.save(path)
-        print(f"  {stage}: wrote {len(ALL_POSES)} poses to {out}/")
-    print(f"\nAll {len(ALL_POSES)*3} frames written to assets/sprites/ (v7.6 kid+teen+adult).")
+            render_pose(stage, **kw).save(SPRITES / f"fox-{stage}-v2-{name}.png")
+        print(f"  {stage}: wrote base + {len(ALL_POSES)} poses")
+    print(f"All {(len(ALL_POSES) + 1) * len(STAGES)} fox sprites regenerated.")
+
+
+if __name__ == "__main__":
+    main()
