@@ -10,6 +10,9 @@
   var WORDS = window.__WORDS__.words;
   var VISUALS = window.__VISUALS__;
   var PHONICS = window.__PHONICS__;
+  var PET_TEST_KEYS = ['cat', 'dog', 'fox', 'dragon'];
+  var petTestParam = new URLSearchParams(window.location.search).get('pet-test');
+  var PET_TEST_SPECIES = PET_TEST_KEYS.indexOf(petTestParam) >= 0 ? petTestParam : null;
 
   var BOOK_META = {
     g1a: { label: '一年级上册', short: '一上', emoji: '📗' },
@@ -36,7 +39,8 @@
     streak: 0
   };
 
-  var S = load();
+  // Preview has its own state and never loads or migrates a player's save.
+  var S = PET_TEST_SPECIES ? JSON.parse(JSON.stringify(DEFAULT_STATE)) : load();
 
   function load() {
     try {
@@ -75,6 +79,7 @@
   }
   var saveTimer = null;
   function save() {
+    if (PET_TEST_SPECIES) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
@@ -843,7 +848,10 @@
   var PET_IMG_EL = {};
   Object.keys(PET_IMGS).forEach(function (k) {
     var im = new Image();
-    im.onload = function () { PET_IMG_EL[k] = im; petDraw(); };   // 加载完刷新首页宠物
+    im.onload = function () {
+      PET_IMG_EL[k] = im;
+      if (PET_TEST_SPECIES) drawPetTest(); else petDraw();
+    };
     im.src = PET_IMGS[k];
   });
   /* 每物种帧映射：stage=成长阶段主帧（含 0=蛋），expr=表情/动作→帧数组（多帧循环）或单 key（静态），
@@ -1065,34 +1073,37 @@
                   baseExpr: 'idle', actionExpr: null };
   /* stageOverride: 0蛋 1宝宝 2/3 物种剪影；缺省画当前宠物阶段（图鉴/试验台预览用）
      walking: 走路中 → 换用 *-side 侧面剪影（朝右画，向左走由 face-left 翻转），不叠正面表情 */
-  function drawPet(cv, expr, stageOverride, walking) {
+  function drawPet(cv, expr, stageOverride, walking, preview) {
     if (!cv || !cv.getContext) return;
     var ctx = cv.getContext('2d');
     if (!ctx) return;   // jsdom 等无 canvas 实现下静默跳过
     var px = cv.width / 16;
     ctx.clearRect(0, 0, cv.width, cv.height);
     var stage = stageOverride == null ? petStageIdx() : stageOverride;
-    var sp = curSpecies();
+    var species = preview && preview.species || petSpeciesKey();
+    var sp = PET_SPECIES[species] || curSpecies();
+    var frameIdx = preview && preview.frame != null ? preview.frame : (petAnim.exprIdx[expr] || 0);
     var key = stage === 0 ? 'egg' : (stage === 1 ? 'baby' : (sp.art[stage - 2] || 'baby'));
     /* PNG 帧分支（试点物种）：统一 48×48 画布，底边对齐保持站地面一致 */
-    var fr = PET_FRAMES[petSpeciesKey()];
+    var fr = PET_FRAMES[species];
     if (fr && stage >= 0) {
       var fk = null;
-      if (walking && stage >= 1 && fr.walk && !petAnim.actionExpr) {
+      if (walking && stage >= 1 && fr.walk && (preview || !petAnim.actionExpr)) {
         var walkPrefix = typeof fr.walk === 'string' ? fr.walk : fr.walk[stage];
-        if (walkPrefix) fk = walkPrefix + (petWalk.frameIdx || 0);
+        var walkIdx = preview && preview.frame != null ? preview.frame : (petWalk.frameIdx || 0);
+        if (walkPrefix) fk = walkPrefix + (walkIdx % 7);
       }
       else {
         var ev = fr.expr[expr];
         if (Array.isArray(ev)) {
           if (ev.length === 1) fk = ev[0];
-          else if (ev.length > 1) fk = ev[petAnim.exprIdx[expr] || 0];
+          else if (ev.length > 1) fk = ev[frameIdx % ev.length];
         } else if (ev && typeof ev === 'object') {
           // 按阶段分级的 expr（如 idle → {1:[...],2:[...],3:[...]}），避免 baby 切 idle 突然变大成 adult
           var stageArr = ev[stage];
           if (Array.isArray(stageArr)) {
             if (stageArr.length === 1) fk = stageArr[0];
-            else if (stageArr.length > 1) fk = stageArr[petAnim.exprIdx[expr] || 0];
+            else if (stageArr.length > 1) fk = stageArr[frameIdx % stageArr.length];
           }
         } else if (typeof ev === 'string') {
           fk = ev;
@@ -3323,7 +3334,11 @@
     }
     var c2b = el('div', 'card');
     var TB_STAGES = [[0, '蛋'], [1, curSpecies().stages[0]], [2, curSpecies().stages[1]], [3, curSpecies().stages[2]]];
-    c2b.innerHTML = '<h2 class="section">状态试验台 · 点了就看</h2>' +
+    var tbPreviewUrl = new URL(window.location.href);
+    tbPreviewUrl.searchParams.set('pet-test', PET_TEST_KEYS.indexOf(petSpeciesKey()) >= 0 ? petSpeciesKey() : 'dragon');
+    tbPreviewUrl.hash = '';
+    c2b.innerHTML = '<div class="tb-heading"><h2 class="section">状态试验台 · 点了就看</h2>' +
+      '<a class="btn ghost sm" href="' + esc(tbPreviewUrl.href) + '">动作预览 →</a></div>' +
       '<div class="pg-cvwrap pet-canvas-wrap tb-main" id="tb-cvwrap"><canvas id="tb-cv" width="16" height="16"></canvas></div>' +
       '<div class="row wrap" style="gap:6px;margin-top:8px" id="tb-stages">' +
       TB_STAGES.map(function (s) {
@@ -3513,8 +3528,141 @@
     };
   }
 
+  /* ---------------- isolated sprite preview ---------------- */
+  var petTest = { expr: 'idle', frame: 0, playing: true, timer: null };
+  var PET_TEST_ACTIONS = [
+    ['idle', '待机'], ['blink', '眨眼'], ['happy', '开心'], ['excited', '兴奋'],
+    ['eat', '吃饭'], ['walk', '走路'], ['sleep', '睡觉'], ['droopy', '没劲'],
+    ['sad', '难过'], ['wash', '洗澡'], ['grunt', '用力']
+  ];
+
+  function petTestFrameCount(stage) {
+    var fr = PET_FRAMES[PET_TEST_SPECIES];
+    if (!fr) return 1;
+    if (petTest.expr === 'walk') return fr.walk && fr.walk[stage] ? 7 : 1;
+    var frames = fr.expr[petTest.expr];
+    if (frames && !Array.isArray(frames) && typeof frames === 'object') frames = frames[stage];
+    return Array.isArray(frames) ? frames.length : 1;
+  }
+
+  function drawPetTest() {
+    if (!PET_TEST_SPECIES || !petTest) return;
+    $$('[data-pet-test-stage]').forEach(function (cv) {
+      drawPet(cv, petTest.expr === 'walk' ? 'idle' : petTest.expr, +cv.dataset.petTestStage,
+        petTest.expr === 'walk', { species: PET_TEST_SPECIES, frame: petTest.frame });
+    });
+    var count = petTestFrameCount(1);
+    var status = $('#pet-test-status');
+    if (status) status.textContent = (petTest.playing ? '播放中' : '已暂停') + ' · 第 ' +
+      ((petTest.frame % count) + 1) + ' / ' + count + ' 帧';
+    var toggle = $('#pet-test-toggle');
+    if (toggle) {
+      toggle.textContent = petTest.playing ? '暂停' : '播放';
+      toggle.setAttribute('aria-pressed', String(petTest.playing));
+    }
+  }
+
+  function stopPetTestTimer() {
+    if (petTest.timer) { clearInterval(petTest.timer); petTest.timer = null; }
+  }
+
+  function startPetTestTimer() {
+    stopPetTestTimer();
+    if (!petTest.playing || document.hidden) return;
+    var count = Math.max(petTestFrameCount(1), petTestFrameCount(2), petTestFrameCount(3));
+    if (count <= 1) return;
+    var interval = petTest.expr === 'walk' ? 110 : (PET_EXPR_INTERVAL[petTest.expr] || 400);
+    petTest.timer = setInterval(function () {
+      petTest.frame = (petTest.frame + 1) % count;
+      drawPetTest();
+    }, interval);
+  }
+
+  function stepPetTest(dir) {
+    petTest.playing = false;
+    stopPetTestTimer();
+    var count = Math.max(petTestFrameCount(1), petTestFrameCount(2), petTestFrameCount(3));
+    petTest.frame = (petTest.frame + dir + count) % count;
+    drawPetTest();
+  }
+
+  function bootPetTest() {
+    var species = PET_SPECIES[PET_TEST_SPECIES];
+    document.body.classList.add('pet-test-mode');
+    document.title = species.label + '动作预览 · 皮克学英语';
+    var gameUrl = new URL(window.location.href);
+    gameUrl.searchParams.delete('pet-test');
+    gameUrl.hash = '';
+    $('#app').innerHTML =
+      '<header class="topbar pet-test-topbar">' +
+        '<div class="brand"><span class="logo">' + species.emoji + '</span><span>皮克学英语</span></div>' +
+        '<a class="btn ghost sm" href="' + esc(gameUrl.pathname + gameUrl.search) + '">回到游戏</a>' +
+      '</header>' +
+      '<main id="view" class="pet-test-view">' +
+        '<div class="pet-test-heading"><span class="pill">一起长大</span>' +
+          '<h1>' + esc(species.label) + '动作预览</h1><p>看看三种成长模样，一起动起来。</p></div>' +
+        '<nav class="pet-test-species" aria-label="选择宠物">' +
+          PET_TEST_KEYS.map(function (key) {
+            var target = new URL(gameUrl.href);
+            target.searchParams.set('pet-test', key);
+            var active = key === PET_TEST_SPECIES;
+            return '<a class="chip' + (active ? ' on' : '') + '" data-pet-test-species="' + key + '"' +
+              (active ? ' aria-current="page"' : '') + ' href="' + esc(target.pathname + target.search) + '">' +
+              PET_SPECIES[key].emoji + ' ' + esc(PET_SPECIES[key].label) + '</a>';
+          }).join('') +
+        '</nav>' +
+        '<section class="pet-test-grid" aria-label="三个成长阶段">' +
+          [1, 2, 3].map(function (stage) {
+            var label = species.stages[stage - 1];
+            return '<article class="card pet-test-card"><div class="pet-test-scene">' +
+              '<canvas width="48" height="48" data-pet-test-stage="' + stage + '" role="img" aria-label="' +
+              esc(label) + '">' + esc(label) + '</canvas></div><h2>' + esc(label) + '</h2></article>';
+          }).join('') +
+        '</section>' +
+        '<section class="card pet-test-controls" aria-label="动作和播放">' +
+          '<h2 class="section">换个动作</h2><div class="pet-test-actions" role="group" aria-label="选择动作">' +
+            PET_TEST_ACTIONS.map(function (action) {
+              return '<button class="chip' + (action[0] === petTest.expr ? ' on' : '') + '" data-pet-test-expr="' +
+                action[0] + '" aria-pressed="' + (action[0] === petTest.expr) + '">' + action[1] + '</button>';
+            }).join('') +
+          '</div><div class="pet-test-playback">' +
+            '<button class="btn sm" id="pet-test-toggle" aria-label="播放或暂停动画">暂停</button>' +
+            '<button class="btn ghost sm" id="pet-test-prev">上一帧</button>' +
+            '<button class="btn ghost sm" id="pet-test-next">下一帧</button>' +
+            '<span class="muted" id="pet-test-status"></span>' +
+          '</div></section>' +
+        '<p class="pet-test-note">仅预览，不影响学习进度。</p>' +
+      '</main>';
+    $$('[data-pet-test-expr]').forEach(function (button) {
+      button.onclick = function () {
+        petTest.expr = button.dataset.petTestExpr;
+        petTest.frame = 0;
+        $$('[data-pet-test-expr]').forEach(function (b) {
+          var active = b === button;
+          b.classList.toggle('on', active);
+          b.setAttribute('aria-pressed', String(active));
+        });
+        drawPetTest();
+        startPetTestTimer();
+      };
+    });
+    $('#pet-test-toggle').onclick = function () {
+      petTest.playing = !petTest.playing;
+      drawPetTest(); startPetTestTimer();
+    };
+    $('#pet-test-prev').onclick = function () { stepPetTest(-1); };
+    $('#pet-test-next').onclick = function () { stepPetTest(1); };
+    document.addEventListener('visibilitychange', startPetTestTimer);
+    window.addEventListener('pagehide', stopPetTestTimer);
+    window.addEventListener('pageshow', startPetTestTimer);
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) petTest.playing = false;
+    drawPetTest();
+    startPetTestTimer();
+  }
+
   /* ---------------- boot ---------------- */
   function boot() {
+    if (PET_TEST_SPECIES) { bootPetTest(); return; }
     document.body.insertAdjacentHTML('beforeend', '<div class="toast" id="toast"></div>');
     renderTabs();
     var sb = $('#btn-settings');
