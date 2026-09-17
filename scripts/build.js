@@ -18,6 +18,15 @@ const textbooksRaw = readJson('data/textbooks.json');
 const words = readJson('data/words.json');
 const visuals = readJson('data/visuals.json');
 
+/* PNG 精灵帧（试点：GPT 生成橘猫全套）。以 dataURL 注入保持单文件架构。
+   命名即运行时帧 key：cat-adult.png → 'cat-adult'。 */
+const spriteDir = path.join(root, 'assets', 'sprites');
+const petImgs = {};
+for (const f of fs.readdirSync(spriteDir).filter((f) => f.endsWith('.png')).sort()) {
+  petImgs[f.replace(/\.png$/, '')] =
+    'data:image/png;base64,' + fs.readFileSync(path.join(spriteDir, f)).toString('base64');
+}
+
 /* Sentence UI was removed — only per-book word lists are needed at runtime.
    Stripping units/sentences cuts the bundle a lot (per-sentence audio URL
    tables were the bulk of the payload). */
@@ -121,6 +130,7 @@ window.__TEXTBOOKS__ = ${JSON.stringify(textbooks)};
 window.__WORDS__ = ${JSON.stringify(words)};
 window.__VISUALS__ = ${JSON.stringify(visuals)};
 window.__PHONICS__ = ${JSON.stringify(phonics)};
+window.__PET_IMGS__ = ${JSON.stringify(petImgs)};
 </script>
 <script>
 ${js}

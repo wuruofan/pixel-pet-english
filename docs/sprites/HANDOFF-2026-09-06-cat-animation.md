@@ -1,0 +1,175 @@
+# 猫 v2 全量动画 · 交接与复盘
+
+> 日期：2026-09-06 ｜ 项目：pixel-pet-english ｜ 主题：三阶段差异化形体 + 全套动画 + 进化庆祝
+>
+> 前置文档：[`HANDOFF-2026-09-05-cat-local-redraw.md`](./HANDOFF-2026-09-05-cat-local-redraw.md)（基础稿方法论与脸部锚点，仍然有效）。
+>
+> **2026-09-07 补充**：蛋阶段（阶段 0）也已本地重绘并接入——`draw_egg` 逐行复刻旧蛋轮廓（`EGG_ROWS` 表，运行时 EGG_SPOTS 斑点叠加不跑位），17 张差分帧（`cat-egg-v2-*.png`）走同一套眼睛样式/派生架构。至此猫四阶段共 105 张帧全部本地化，契约见 `test-cat-redraw.py` 蛋阶段段落。
+
+## 1. 结论先行
+
+本轮把 09-05 的 v2 基础稿推进到**全量上线**：
+
+1. **三阶段形体差异化重画**——不再是"一只猫的三个字号"，而是三种体态：
+   - 小奶猫（30×32）：头身比 1:1.3 的大头短身、圆耳、绒球尾、额纹只剩 2 小截
+   - 猫崽（36×38）：立耳、拉长身体带腿缝、长尾上翘、额纹 3 条 + 侧身条纹
+   - 大猫（44×48）：大耳突破头轮廓、腮部胸毛丰满、全身条纹完整、胡须、大卷尾
+2. **87 张本地 PNG** 全部由 `scripts/redraw-cat-local.py` 参数化派生：每阶段 = 站姿 1 + 呼吸 2 + 眨眼 1 + 状态帧 18 + 走路 7。
+3. **全部接入运行时**（`src/app.js` 的 `PET_FRAMES`），仅蛋阶段仍用旧 egg 帧。
+4. **进化庆祝**：升级跨形态时 toast + 星星粒子 + 延迟开心跳（见 §5）。
+
+## 2. 派生架构（改帧必读）
+
+`redraw-cat-local.py` 的关键结构：
+
+- `Canvas` 带坐标偏移（`offset`），头部组（耳/头/颊/脸）可以整体俯仰/摇摆而不重写像素——吃饭低头、搓澡歪头靠它实现。
+- `draw_eyes(c, stage, style)`：五种眼睛样式 `open / closed / lid / squeeze / star`，全部只作用于 `EYE_SOCKETS` 眼眶矩形。
+- `draw_cat(stage)` 永远返回" approved 站姿"；`cat_frame(stage, pose)` 派生状态帧；`POSES` 元组列出全部 18 个状态。
+- `draw_sleep` 是唯一独立剪影（侧卧蜷缩）：30×32 母版绘制 → NEAREST 缩放 → **Zzz 缩放后按阶段坐标直接画在最终画布上**。
+- `draw_walk(stage, f)`：侧视 7 帧，`WALK_PHASES` 表驱动（前/后腿 dx + 身体 bob），腿锚定地面，头和侧眼不动。
+
+**规矩：每个状态帧只改它声称要改的东西。** 契约测试逐像素锁死这一点，改帧先改契约。
+
+## 3. 坐标与调色板规则
+
+- 脸部锚点（眼/鼻/嘴）三阶段各自独立、契约锁定（§4 of 09-05 文档），状态帧的脸部随头部组整体移动，锚点相对关系不变。
+- **道具专用色**（基础 8 色表达不了，取自 FX 精灵词汇表）：
+  - 眼泪 / 洗澡泡泡 = `TEAR #9fb7ff`（zzz 特效淡蓝）——奶油腮红/橙色毛皮上白色不可见，蓝滴才能被读成"眼泪"或"泡沫"而不是污点
+  - 饭盆 = `BOWL #4a7fc1`（落盆特效蓝）——奶油盆会和胸口混色
+- **表情自带肢体动画**（`tail_lift` / `tail_droop` / `paw_up` 参数）：
+  - idle-1 呼吸同时尾巴下摆；开心/兴奋三帧尾巴上/下交替摇；吃饭三帧慢摇
+  - excited-1 举起右前爪（离地 1px）+ 星星眼；excited-2 举爪 + 摇尾 + 星星眼
+  - droopy/sad 的尾巴**耷拉到地面**（低落感的关键信号）
+  - 契约按"尾部区域豁免 + 尾尖像素断言"锁定（`TAIL_BOX`/`TAIL_TIP0`/`DROOP_TIP`/`PAW_BOX`/`PAW_PAD`）
+- 眼泪挂在**双眼**正下方脸颊（单个泪滴会被读成"痣"）。sad-1 下滚 1px。坐标按物种分别登记（**不要做水平镜像**——左右眼 y 偶有差异）：
+  - 猫：`draw_tear` 表 — `baby 左(7,14)/右(16,14)`、`kid 左(8,16)/右(20,16)`、`adult 左(12,20)/右(27,20)`
+  - 狗：`DOG_TEAR[stage]` 左眼 + `DOG_TEAR_RIGHT = {baby:15, kid:19, adult:27}` 右眼
+  - 蛋：`tx ∈ (5, 16)`，y=19+roll（roll ∈ {0,1}）
+- 洗澡泡泡是**蓝色大泡泡**（`TEAR` 色 + INK 描边 + 白色高光；5×5 / 4×4 / 3×3 三档，`draw_blue_bubble`）——白色小点在奶油/橙色毛皮上要么不可见要么被读成污渍。位置按 `r`/`l` **两套表分别登记**（猫 `draw_bubbles` 内的 `spots[stage][side]`），不要水平镜像：镜像到左的泡泡会落到耳朵/脸上。身体侧的泡泡允许贴在毛皮上，蓝滴读得出来。
+- 饭盆是**梯形碗身（上宽下窄）+ 冒沿的 LIGHT 粮堆 + 白色高光**，比身体轮廓宽一圈——扁平条会被读成胸口。粮堆必须带 **INK 描边**：橙黄粮堆衬在橙色身体前会融色，描边后才是独立物体。吃饭时头部俯仰 +3px（eat-2 抬头 -2px）。
+- 大猫脸部奶油色只画**两片圆润短块**（左腮 + 右腮），**不要中间横条**——之前 `(19,24,21,26)` 那条横条会被读成 bra/bib line。这条规矩对所有"脸颊色"物种通用（狐狸脸颊虽不同色，但同样禁横条）。
+- Zzz 是真 Z 字形（顶横/对角/底横，5×5 大 + 4×4 小），坐标按阶段登记（`draw_zzz`）。小 Z 从 `(16,14,4)/(20,17,4)/(26,16,4)` **右上移**到 `(18,13,4)/(22,15,4)/(28,15,4)`，避免贴动物边缘被 NEAREST 缩放糊掉。
+- 腮红偏移**按阶段登记**（`draw_blush`）：眼距随成长变宽，固定偏移会落到脸中间。**腮红必须在 `c.offset(*head)` 块内绘制**（`render_pose` 里 `draw_blush` 排在 `c.offset(-x, -y)` 之前）——腮红是脸组成员，跟头摆；否则用力表情摇头时腮红钉死在画布上。
+- 走路帧腿锚定画布底行，身体 bob ±1px 时腿被身体自然遮住/露出。
+
+## 4. 验证方法（复现管线）
+
+```bash
+python3 scripts/redraw-cat-local.py     # 重新生成全部 87 张
+python3 scripts/test-cat-redraw.py      # 逐像素几何契约
+python3 scripts/test-sprite-contract.py # 接线 + 帧清单 + 人脸保真度
+node --check src/app.js && node scripts/build.js
+```
+
+浏览器级像素验收（本次大量使用，强烈建议保留）：
+
+1. `playwright-core` + 缓存的 Chromium（本机 `~/Library/Caches/ms-playwright`）无头打开打包页。
+2. 试验台逐表情采样 `#tb-cv` 的 `toDataURL()`，在 Python 侧把 PNG 底边居中合成进 48×48 后与抓帧**逐字节比对**。
+3. 首页同理可验呼吸/眨眼/走路轮播。
+4. ⚠️ 比对脚本必须从项目根目录跑——曾三次因 cwd 错误误判"帧不匹配"。
+
+本轮成绩：试验台 30/30 表情组、首页走路 7/7、进化庆祝实测（toast 文案 + 等级写入 + 新形态帧）。
+
+## 5. 本轮踩过的坑（不要再踩）
+
+- **试验台多帧冻结**：`tbRedraw` 每次重置 `exprIdx`，定时器翻帧必须直接调 `drawPet`（契约已锁）。
+- **试验台切物种/形态表情跳变**：`tbTimer` 和 `tbAnimTimer` 必须是**模块级**持有（`tbTimers = { play: null, anim: null }`），`renderSettings` 每次重建设置面板时先 `clearTimeout`/`clearInterval`。否则旧的 `setInterval` 闭包仍会往新画布上画切换前的表情——切物种/切形态后画面表情瞬间跳变的根因就是这里。
+- **PIL RGBA 陷阱**：对两张全不透明 RGBA 图 `ImageChops.difference().getbbox()` 恒为 None（alpha 全 0 被掩膜），比较用 `getpixel`/`tobytes()`。
+- **NEAREST 缩放糊斜线**：1px 对角笔画缩放 1.2× 后变竖块（Z 读成 I）——细笔画一律缩放后按阶段坐标直绘。
+- **庆祝被吃动画吃掉**：`feedPet` 里 `gainXp`（庆祝）先于 `playAction('eat')`，后者的 `clearTimeout` 会清掉庆祝跳跃 → `celebrateEvolution` 的星星/跳跃延迟 1.2s，toast 立即弹。
+- **走路相位表要整表去重**：`WALK_PHASES` 曾出现两帧完全同参（过渡帧 + 同奇偶尾巴），7 帧契约抓住了它。
+- **道具色不够用是合法的**：8 色基色板之外允许道具借用 FX 词汇表颜色，前提是和游戏内已有特效一致。
+- 头less 采样偶发"画面静止"多半是采样节奏/随机小表演（宠物漫步时会随机来一段星星眼舞蹈），不是渲染 bug——先怀疑自己的脚本。
+
+## 6. 下一步建议
+
+1. **清理旧素材**（阶段 D，已列入 PROGRESS.md）：`cat-baby/kid/adult*.png`、旧状态帧、旧走路帧共 60 余张已无引用，删除前跑一遍两个契约测试确认（egg 帧保留）。
+2. 图鉴文案已兑现；若要继续放大成长感，可给进化庆祝加白屏闪光（CSS 层）。
+3. baby/kid 走路目前是"成年步态缩小版"的参数化侧视，如需更幼态的步态（频率更快、幅度更小），调 `WALK_PHASES`/`WALK_LAYOUT` 即可。
+4. 走路契约与状态契约都在 `scripts/test-cat-redraw.py`，新增帧先加契约再改生成端。
+
+## 7. 物种推广：小狗（2026-09-07 启动，概念稿已获批）
+
+管线完全复用本文档的猫方案，概念稿已按流程出图并获用户确认：
+
+- **三阶段**：小奶狗（30×32，奶油色）/ 狗崽（36×38，棕色）/ 大狗（44×48，金色 + 红项圈），调色板用游戏自带 `dog-cream/brown/gold`。
+- **物种识别特征**：垂耳（挂在头两侧外缘、不遮眼）、凸出白吻部（鼻子坐在吻部上缘、ω 形狗嘴居中对称）、白胸斑、上翘摇尾；狗崽有眉点。
+- **脸部教训已修**：吻部椭圆必须以头部中线为准居中；吻部先画、眼睛后画（否则椭圆上缘裁眼睛，双眼不等大）；ω 嘴中心线与鼻子对齐。
+- **实现文件**：`scripts/redraw-dog-local.py`（导入 `redraw-cat-local` 的 Canvas/feet/调色常量），帧命名 `dog-{stage}-v2[-pose].png`，契约 `scripts/test-dog-redraw.py`（从猫契约裁剪）。
+- **接线**：`PET_FRAMES.dog = { stage + expr + walk }` 必须一次配齐（`drawPet` 直接读 `fr.expr[expr]`，缺 expr 会抛错）；蛋阶段直接共享 `cat-egg-v2-*`（蛋壳与物种无关，斑点色运行时按 `pals[1]` 叠加）。
+- 生成端与猫相同：`tail_lift`/`paw_up`/`tail_droop` 参数直接可用，表情自动获得摇尾/举爪/垂尾动画；睡觉与走路需各画一套狗版侧影。
+
+## 8. 狗 v2 完结（2026-09-07）
+
+物种 1 落地：dog 共 87 张本地帧 + 双契约绿 + build 烘焙完成。
+
+### 8.1 帧清单
+
+| 阶段 | 站姿 | idle | blink | eat | sleep | happy | excited | droopy | sad | wash | grunt | walk | 小计 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| baby (30×32) | 1 | 2 | 1 | 3 | 2 | 3 | 3 | 1 | 2 | 2 | 2 | 7 | 29 |
+| kid (36×38) | 1 | 2 | 1 | 3 | 2 | 3 | 3 | 1 | 2 | 2 | 2 | 7 | 29 |
+| adult (44×48) | 1 | 2 | 1 | 3 | 2 | 3 | 3 | 1 | 2 | 2 | 2 | 7 | 29 |
+| **合计** | 3 | 6 | 3 | 9 | 6 | 9 | 9 | 3 | 6 | 6 | 6 | 21 | **87** |
+
+蛋阶段共用 `cat-egg-v2-*`（17 张），运行时按 `pals[1]` 自动染斑点。
+
+### 8.2 帧机制（与猫一致）
+
+- 站姿由 `dog_*_body` + `dog_*_head` 派生；嘴巴走 ω（omega）系列：smile / crumbs / laugh / tiny / frown。
+- 眼睛走 open / closed / lid / squeeze / arc / star 六式，`DOG_EYES` 表契约锁定。
+- 走路侧视（`draw_dog_walk`）三阶段各自 `DOG_WALK_LAYOUT` 表（耳垂/凸吻/棒尾/侧眼）。
+- 睡眠用 `draw_sleep` 母版 + 按 `s x = w/30, s y = h/32` 缩放，再覆画垂耳耳盖（替换母版的尖耳）。
+
+### 8.3 关键陷阱（本轮踩过）
+
+- **Canvas.e() 不存在**：`Canvas` 只暴露 `r / p / l / px / offset / d`；椭圆走 `c.d.ellipse(...)` 直调 ImageDraw。
+- **dashed 文件名**：`redraw-cat-local.py` 带横杠，裸 `import` 找不到；多物种脚本用 `importlib.util.spec_from_file_location` 显式加载并解包所需符号（Canvas / feet / shift_vertical / draw_sleep / draw_bowl / egg_bubble / WALK_PHASES / 调色常量）。
+- **`tail_droop` 必须显式接受**：`DOG_BODIES[stage](c, tail_lift=..., tail_droop=..., paw_up=...)`，签名与猫对齐。
+- **excited-1 抬爪 + shift 后会越界**：原 `PAW_BOX` 不含被抬+shift 后的爪位，狗契约把 `PAW_BOX` 上沿往上扩 2 行（baby 26→24，kid 33→31，adult 42→40），否则 shift-equality 断言会在 (18, 32) 这种"被抬爪移入"的位置爆错。
+- **PIL `ImageDraw.line` width=6/7 端点外溢**：line 端点像素会被宽度吞掉，断言"尾尖在 (27, 19)"会假阴；契约改成"tail box 内有 ink 像素"即可，不用硬指端点。
+- **mouth/sockets/tail/paw 联合豁免**：excited-2 把 ω 嘴换成 laugh，牙齿像素会变；`DOG_LAUGH_BOX`（覆盖 smile+laugh 全占位）一并加进豁免。
+- **dog laugh 嘴比 smile 嘴高 1 行**：dog adult 的 smile 画 (21, 23-24)，laugh 画 (18-24, 25-27)，覆盖两者的 box 必须是 y=23..28 而非 24..28，否则 (21, 23) 会差 1 像素。
+- **wash-1 镜像方向**：右侧气泡 rim 在 x=26，镜像到左 x=3，气泡 interior 在 x=4 而不是 x=2（rim 朝中心一侧才算 interior）。
+
+### 8.4 验证
+
+```bash
+python3 scripts/redraw-dog-local.py        # 87 张重新生成
+python3 scripts/test-dog-redraw.py         # 几何契约（剪影/眼眶/ω嘴/尾/爪/差分）
+python3 scripts/test-sprite-contract.py    # PET_FRAMES.dog 接线 + 文件存在
+node scripts/build.js                      # 烘焙进 HTML
+```
+
+`test-dog-redraw.py` 锁定了三类关键不变量：(1) 站姿脚踩画布底边 + 三阶段互不可辨；(2) 18 个状态帧 + idle/blink 在 tail/paw 区域外是 base 的精确 shift；(3) eat 带饭盆 + 抬头/低头/闭眼三态；sleep 带 Z 字符；walk 7 帧互不相同且侧眼存在。
+
+### 8.5 后续物种（fox / dragon）
+
+- 直接复刻 `redraw-dog-local.py` 的脚手架；坐标系表、palette、调色常量按物种特征替换；其它（Canvas、feet、shift_vertical、draw_sleep 缩放）一行不动。
+- 蛋帧继续共用 `cat-egg-v2-*`；`PET_SPECIES[k].egg = { B, S, A }` 决定斑点染色。
+- 走路与睡觉侧影仍是每物种独立的 `*_WALK_LAYOUT` 与 sleep 耳型补丁（垂耳 / 尖耳 / 大角 / 鳍）。
+- 每个物种一个契约脚本 `test-{species}-redraw.py`，公共帧存在性 + 接线走 `test-sprite-contract.py`。
+- **必继承 §9 的视觉规则**——双眼泪/蓝泡泡/per-side 登记/腮红随头/不画中间横条/侧影直绘路线。狐狸开工前若 §9 改了，先同步 §3 再起 `redraw-fox-local.py`。
+
+## 9. 精灵视觉修复批次（2026-09-07, 08aebbf）
+
+本批次在猫 v2 + 狗 v2 上线后做的统一视觉修正，主要修订 §3 的视觉规则。新增/修改的契约字段在派生新物种（fox）时必须继承，否则会重蹈已修过的视觉问题。
+
+**逐条改动 + 根因**：
+
+- **双眼流泪** — 之前只画左眼，单滴被读成"痣"。猫 (`draw_tear`)、狗 (`DOG_TEAR` + `DOG_TEAR_RIGHT`)、蛋（`for tx in (5,16)`）统一改双泪。右眼坐标按阶段独立登记，不要做水平镜像。
+- **洗澡泡泡改蓝大泡泡** — 白色小点 + 镜像布置在奶油/橙色毛皮上读成污渍。新 `draw_blue_bubble(d, x, y, s)` 用 `TEAR` 色 + INK 描边 + 白色高光，5×5 / 4×4 / 3×3 三档。位置按 `r`/`l` 两套表分别登记——水平镜像到左的泡泡会落到耳朵/脸上。
+- **用力腮红随头运动** — `render_pose` 把 `draw_blush` 排在 `c.offset(-head[0], -head[1])` 之前。腮红是脸组成员，要在头部 offset 块内画；否则用力摇头时腮红钉死在画布上。
+- **大猫奶油色重塑** — 删掉中间的 `(19,24,21,26)` 横条（被读成 bra/bib line），两腮改圆润短块。规则对狐狸脸颊色同样通用（禁中间横条）。
+- **狗睡姿完全重写** — 原本是"母版 `draw_sleep` + 覆盖尖耳画垂耳"，现改成 `draw_dog_sleep` 直接在 30×32 母版画完整侧卧剪影（狗配色 + 垂耳 + 白口鼻），再 NEAREST 缩放 + Zzz 缩放后直绘。**不要**复用老"覆盖+重绘"方案。
+- **睡觉小 Z 右上移** — small Z 坐标从 `(16,14,4)/(20,17,4)/(26,16,4)` 改 `(18,13,4)/(22,15,4)/(28,15,4)`，避免贴动物边缘被 NEAREST 糊掉。
+- **试验台定时器模块化** — `tbTimer`/`tbAnimTimer` → 模块级 `tbTimers = { play: null, anim: null }`，`renderSettings` 重建时 clear。详见 §5。
+
+**对狐狸（Phase E）管线的继承清单**：
+
+- 沿用 `DOG_TEAR_RIGHT` 模式建 `FOX_TEAR_RIGHT`（左右眼 y 各自登记，不要镜像）
+- 沿用猫/狗 `draw_bubbles` 的 per-side 表结构（`spots[stage][side]`），新增 `fox_baby_r/l`、`fox_kid_r/l`、`fox_adult_r/l` 三阶段各两套
+- 沿用 `render_pose` 的 offset 顺序：`HEAd→BLUSH→offset(-x,-y)`
+- `draw_fox_sleep` 走"直接画完整侧影"路线，不复用"覆盖+重绘"
+- 狐狸脸颊色不照搬猫奶油，但"不画中间横条"通用
+- 契约脚本除原有断言外，新增"双眼泪对称性"（左右眼 y 同行、x 距 ≥ 一定像素）和"蓝泡泡颜色断言"（任一泡泡像素 `== TEAR`）

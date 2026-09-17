@@ -10,6 +10,9 @@
   var WORDS = window.__WORDS__.words;
   var VISUALS = window.__VISUALS__;
   var PHONICS = window.__PHONICS__;
+  var PET_TEST_KEYS = ['cat', 'dog', 'fox', 'dragon'];
+  var petTestParam = new URLSearchParams(window.location.search).get('pet-test');
+  var PET_TEST_SPECIES = PET_TEST_KEYS.indexOf(petTestParam) >= 0 ? petTestParam : null;
 
   var BOOK_META = {
     g1a: { label: '一年级上册', short: '一上', emoji: '📗' },
@@ -36,7 +39,8 @@
     streak: 0
   };
 
-  var S = load();
+  // Preview has its own state and never loads or migrates a player's save.
+  var S = PET_TEST_SPECIES ? JSON.parse(JSON.stringify(DEFAULT_STATE)) : load();
 
   function load() {
     try {
@@ -75,6 +79,7 @@
   }
   var saveTimer = null;
   function save() {
+    if (PET_TEST_SPECIES) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
@@ -323,13 +328,30 @@
     if (mood) gainMood(mood);
     S.pet.xp += n;
     if (drop) S.pet[drop] = (S.pet[drop] || 0) + 1;
+    var stageBefore = petStageIdx();
     while (S.pet.xp >= xpNeed(S.pet.level)) {
       S.pet.xp -= xpNeed(S.pet.level);
       S.pet.level++;
       toast('🎉 ' + S.pet.name + ' 升到 ' + S.pet.level + ' 级啦！');
       beep('ok');
     }
+    var stageAfter = petStageIdx();
+    if (stageAfter !== stageBefore) celebrateEvolution(stageBefore, stageAfter);
     save();
+  }
+  /* 进化仪式：换形态的那一刻要被孩子看见（星星粒子 + 提示 + 开心跳），
+     不能只在后台悄悄换图——成长感知是这个游戏的核心激励。提示立刻弹；
+     开心跳延迟到触发进化的那套动作（如吃饭）播完后上演，否则会被
+     playAction 的 clearTimeout 掉。 */
+  function celebrateEvolution(before, after) {
+    var nameOf = function (st) { return st === 0 ? '蛋宝宝' : curSpecies().stages[st - 1]; };
+    toast('✨ ' + S.pet.name + ' 从 ' + nameOf(before) + '进化成 ' + nameOf(after) + ' 啦！');
+    spawnFx('star', 6);
+    setTimeout(function () {
+      spawnFx('star', 4);
+      playAction('happy', 'happy', 1800);
+    }, 1200);
+    beep('ok');
   }
 
   function feedPet() {
@@ -819,18 +841,295 @@
   function petSpeciesKey() { return (S.pet && S.pet.species) || 'dragon'; }
   function curSpecies() { return PET_SPECIES[petSpeciesKey()] || PET_SPECIES.dragon; }
 
-  var petAnim = { blinkTimer: null, dreamTimer: null, actionTimer: null, baseExpr: 'idle', actionExpr: null };
+  /* PNG 精灵帧（试点：GPT 生成的橘猫全套，scripts/process-pet-frames.py 加工）。
+     贴图自带表情脸 → 不叠字符画表情层；走路用 7 帧侧影循环（原图朝右，
+     与游戏朝向约定一致，向左走由 face-left 整体翻转）；蛋无 PNG 帧保留字符画。 */
+  var PET_IMGS = window.__PET_IMGS__ || {};
+  var PET_IMG_EL = {};
+  Object.keys(PET_IMGS).forEach(function (k) {
+    var im = new Image();
+    im.onload = function () {
+      PET_IMG_EL[k] = im;
+      if (PET_TEST_SPECIES) drawPetTest(); else petDraw();
+    };
+    im.src = PET_IMGS[k];
+  });
+  /* 每物种帧映射：stage=成长阶段主帧（含 0=蛋），expr=表情/动作→帧数组（多帧循环）或单 key（静态），
+     walk=走路循环帧前缀。idle 按阶段分级，每级自带呼吸 A/B，避免 baby 阶段切换到 idle 时
+     突然放大成 adult 尺寸。egg 是 PNG 蛋（替代原字符画），idle-0/1 做微 wobble。 */
+  var PET_FRAMES = {
+    cat: { stage: { 0: 'cat-egg-v2', 1: 'cat-baby-v2', 2: 'cat-kid-v2', 3: 'cat-adult-v2' },
+           expr: { idle:    { 0: ['cat-egg-v2-idle-0', 'cat-egg-v2-idle-1'],
+                              /* 站姿及全部动作来自选定 mmx 图量化后的 v2 帧（每阶段独立锚点，
+                                 见 docs/sprites/HANDOFF-2026-09-16-cat-mmx-base.md）；
+                                 蛋壳斑点仍由 EGG_SPOTS 运行时叠加 */
+                              1: ['cat-baby-v2-idle-0', 'cat-baby-v2-idle-1'],
+                              2: ['cat-kid-v2-idle-0',  'cat-kid-v2-idle-1'],
+                              3: ['cat-adult-v2-idle-0','cat-adult-v2-idle-1'] },
+                   /* blink/eat/happy 按阶段分级，避免 baby 阶段点眨眼显示大猫 */
+                   blink:   { 0: ['cat-egg-v2-blink'],
+                              1: ['cat-baby-v2-blink'],
+                              2: ['cat-kid-v2-blink'],
+                              3: ['cat-adult-v2-blink'] },
+                   eat:     { 0: ['cat-egg-v2-eat'],
+                              /* 闭嘴 / 张嘴 / 带碎屑咀嚼，五官随整只猫同步起伏 */
+                              1: ['cat-baby-v2-eat-0', 'cat-baby-v2-eat-1', 'cat-baby-v2-eat-2'],
+                              2: ['cat-kid-v2-eat-0', 'cat-kid-v2-eat-1', 'cat-kid-v2-eat-2'],
+                              3: ['cat-adult-v2-eat-0', 'cat-adult-v2-eat-1', 'cat-adult-v2-eat-2'] },
+                   sleep:   { 0: ['cat-egg-v2-sleep-0', 'cat-egg-v2-sleep-1'],
+                              1: ['cat-baby-v2-sleep-0', 'cat-baby-v2-sleep-1'],
+                              2: ['cat-kid-v2-sleep-0', 'cat-kid-v2-sleep-1'],
+                              3: ['cat-adult-v2-sleep-0', 'cat-adult-v2-sleep-1'] },
+                   happy:   { 0: ['cat-egg-v2-happy'],
+                              1: ['cat-baby-v2-happy-0', 'cat-baby-v2-happy-1', 'cat-baby-v2-happy-2'],
+                              2: ['cat-kid-v2-happy-0', 'cat-kid-v2-happy-1', 'cat-kid-v2-happy-2'],
+                              3: ['cat-adult-v2-happy-0', 'cat-adult-v2-happy-1', 'cat-adult-v2-happy-2'] },
+                   /* P1/P2 状态按成长阶段保留原轮廓，只在脸部做差分 */
+                   excited: { 0: ['cat-egg-v2-excited-0', 'cat-egg-v2-excited-1', 'cat-egg-v2-excited-2'],
+                              1: ['cat-baby-v2-excited-0', 'cat-baby-v2-excited-1', 'cat-baby-v2-excited-2'],
+                              2: ['cat-kid-v2-excited-0', 'cat-kid-v2-excited-1', 'cat-kid-v2-excited-2'],
+                              3: ['cat-adult-v2-excited-0', 'cat-adult-v2-excited-1', 'cat-adult-v2-excited-2'] },
+                   big:     { 0: ['cat-egg-v2-excited-0', 'cat-egg-v2-excited-1', 'cat-egg-v2-excited-2'],
+                              1: ['cat-baby-v2-excited-0', 'cat-baby-v2-excited-1', 'cat-baby-v2-excited-2'],
+                              2: ['cat-kid-v2-excited-0', 'cat-kid-v2-excited-1', 'cat-kid-v2-excited-2'],
+                              3: ['cat-adult-v2-excited-0', 'cat-adult-v2-excited-1', 'cat-adult-v2-excited-2'] },
+                   droopy:  { 0: ['cat-egg-v2-droopy'],
+                              1: ['cat-baby-v2-droopy'], 2: ['cat-kid-v2-droopy'], 3: ['cat-adult-v2-droopy'] },
+                   sad:     { 0: ['cat-egg-v2-sad-0', 'cat-egg-v2-sad-1'],
+                              1: ['cat-baby-v2-sad-0', 'cat-baby-v2-sad-1'],
+                              2: ['cat-kid-v2-sad-0', 'cat-kid-v2-sad-1'],
+                              3: ['cat-adult-v2-sad-0', 'cat-adult-v2-sad-1'] },
+                   wash:    { 0: ['cat-egg-v2-wash-0', 'cat-egg-v2-wash-1'],
+                              1: ['cat-baby-v2-wash-0', 'cat-baby-v2-wash-1'],
+                              2: ['cat-kid-v2-wash-0', 'cat-kid-v2-wash-1'],
+                              3: ['cat-adult-v2-wash-0', 'cat-adult-v2-wash-1'] },
+                   grunt:   { 0: ['cat-egg-v2-grunt-0', 'cat-egg-v2-grunt-1'],
+                              1: ['cat-baby-v2-grunt-0', 'cat-baby-v2-grunt-1'],
+                              2: ['cat-kid-v2-grunt-0', 'cat-kid-v2-grunt-1'],
+                              3: ['cat-adult-v2-grunt-0', 'cat-adult-v2-grunt-1'] } },
+           walk: { 1: 'cat-baby-v2-walk-', 2: 'cat-kid-v2-walk-', 3: 'cat-adult-v2-walk-' } },
+    /* 狗（dog）— 与猫共享蛋壳 cat-egg-v2-*（运行时按物种主色染斑点），
+       金毛三阶段参考图量化后生成表情与整只蹦跳，每阶段独立五官锚点 */
+    dog: { stage: { 0: 'cat-egg-v2', 1: 'dog-baby-v2', 2: 'dog-kid-v2', 3: 'dog-adult-v2' },
+           expr: { idle:    { 0: ['cat-egg-v2-idle-0', 'cat-egg-v2-idle-1'],
+                              1: ['dog-baby-v2-idle-0', 'dog-baby-v2-idle-1'],
+                              2: ['dog-kid-v2-idle-0',  'dog-kid-v2-idle-1'],
+                              3: ['dog-adult-v2-idle-0','dog-adult-v2-idle-1'] },
+                   blink:   { 0: ['cat-egg-v2-blink'],
+                              1: ['dog-baby-v2-blink'],
+                              2: ['dog-kid-v2-blink'],
+                              3: ['dog-adult-v2-blink'] },
+                   eat:     { 0: ['cat-egg-v2-eat'],
+                              1: ['dog-baby-v2-eat-0', 'dog-baby-v2-eat-1', 'dog-baby-v2-eat-2'],
+                              2: ['dog-kid-v2-eat-0', 'dog-kid-v2-eat-1', 'dog-kid-v2-eat-2'],
+                              3: ['dog-adult-v2-eat-0', 'dog-adult-v2-eat-1', 'dog-adult-v2-eat-2'] },
+                   sleep:   { 0: ['cat-egg-v2-sleep-0', 'cat-egg-v2-sleep-1'],
+                              1: ['dog-baby-v2-sleep-0', 'dog-baby-v2-sleep-1'],
+                              2: ['dog-kid-v2-sleep-0', 'dog-kid-v2-sleep-1'],
+                              3: ['dog-adult-v2-sleep-0', 'dog-adult-v2-sleep-1'] },
+                   happy:   { 0: ['cat-egg-v2-happy'],
+                              1: ['dog-baby-v2-happy-0', 'dog-baby-v2-happy-1', 'dog-baby-v2-happy-2'],
+                              2: ['dog-kid-v2-happy-0', 'dog-kid-v2-happy-1', 'dog-kid-v2-happy-2'],
+                              3: ['dog-adult-v2-happy-0', 'dog-adult-v2-happy-1', 'dog-adult-v2-happy-2'] },
+                   excited: { 0: ['cat-egg-v2-excited-0', 'cat-egg-v2-excited-1', 'cat-egg-v2-excited-2'],
+                              1: ['dog-baby-v2-excited-0', 'dog-baby-v2-excited-1', 'dog-baby-v2-excited-2'],
+                              2: ['dog-kid-v2-excited-0', 'dog-kid-v2-excited-1', 'dog-kid-v2-excited-2'],
+                              3: ['dog-adult-v2-excited-0', 'dog-adult-v2-excited-1', 'dog-adult-v2-excited-2'] },
+                   big:     { 0: ['cat-egg-v2-excited-0', 'cat-egg-v2-excited-1', 'cat-egg-v2-excited-2'],
+                              1: ['dog-baby-v2-excited-0', 'dog-baby-v2-excited-1', 'dog-baby-v2-excited-2'],
+                              2: ['dog-kid-v2-excited-0', 'dog-kid-v2-excited-1', 'dog-kid-v2-excited-2'],
+                              3: ['dog-adult-v2-excited-0', 'dog-adult-v2-excited-1', 'dog-adult-v2-excited-2'] },
+                   droopy:  { 0: ['cat-egg-v2-droopy'],
+                              1: ['dog-baby-v2-droopy'], 2: ['dog-kid-v2-droopy'], 3: ['dog-adult-v2-droopy'] },
+                   sad:     { 0: ['cat-egg-v2-sad-0', 'cat-egg-v2-sad-1'],
+                              1: ['dog-baby-v2-sad-0', 'dog-baby-v2-sad-1'],
+                              2: ['dog-kid-v2-sad-0', 'dog-kid-v2-sad-1'],
+                              3: ['dog-adult-v2-sad-0', 'dog-adult-v2-sad-1'] },
+                   wash:    { 0: ['cat-egg-v2-wash-0', 'cat-egg-v2-wash-1'],
+                              1: ['dog-baby-v2-wash-0', 'dog-baby-v2-wash-1'],
+                              2: ['dog-kid-v2-wash-0', 'dog-kid-v2-wash-1'],
+                              3: ['dog-adult-v2-wash-0', 'dog-adult-v2-wash-1'] },
+                   grunt:   { 0: ['cat-egg-v2-grunt-0', 'cat-egg-v2-grunt-1'],
+                              1: ['dog-baby-v2-grunt-0', 'dog-baby-v2-grunt-1'],
+                              2: ['dog-kid-v2-grunt-0', 'dog-kid-v2-grunt-1'],
+                              3: ['dog-adult-v2-grunt-0', 'dog-adult-v2-grunt-1'] } },
+           walk: { 1: 'dog-baby-v2-walk-', 2: 'dog-kid-v2-walk-', 3: 'dog-adult-v2-walk-' } },
+    fox: { stage: { 0: 'cat-egg-v2', 1: 'fox-kid-v2', 2: 'fox-teen-v2', 3: 'fox-adult-v2' },
+           expr: { idle:     { 0: ['cat-egg-v2-idle-0','cat-egg-v2-idle-1'],
+                                1: ['fox-kid-v2-idle-0','fox-kid-v2-idle-1'],
+                                2: ['fox-teen-v2-idle-0','fox-teen-v2-idle-1'],
+                                3: ['fox-adult-v2-idle-0','fox-adult-v2-idle-1'] },
+                   blink:    { 0: ['cat-egg-v2-blink'],
+                                1: ['fox-kid-v2-blink'], 2: ['fox-teen-v2-blink'], 3: ['fox-adult-v2-blink'] },
+                   eat:      { 0: ['cat-egg-v2-eat'],
+                                1: ['fox-kid-v2-eat-0','fox-kid-v2-eat-1','fox-kid-v2-eat-2'],
+                                2: ['fox-teen-v2-eat-0','fox-teen-v2-eat-1','fox-teen-v2-eat-2'],
+                                3: ['fox-adult-v2-eat-0','fox-adult-v2-eat-1','fox-adult-v2-eat-2'] },
+                   sleep:    { 0: ['cat-egg-v2-sleep-0','cat-egg-v2-sleep-1'],
+                                1: ['fox-kid-v2-sleep-0','fox-kid-v2-sleep-1'],
+                                2: ['fox-teen-v2-sleep-0','fox-teen-v2-sleep-1'],
+                                3: ['fox-adult-v2-sleep-0','fox-adult-v2-sleep-1'] },
+                   happy:    { 0: ['cat-egg-v2-happy'],
+                                1: ['fox-kid-v2-happy-0','fox-kid-v2-happy-1','fox-kid-v2-happy-2'],
+                                2: ['fox-teen-v2-happy-0','fox-teen-v2-happy-1','fox-teen-v2-happy-2'],
+                                3: ['fox-adult-v2-happy-0','fox-adult-v2-happy-1','fox-adult-v2-happy-2'] },
+                   excited:  { 0: ['cat-egg-v2-excited-0','cat-egg-v2-excited-1','cat-egg-v2-excited-2'],
+                                1: ['fox-kid-v2-excited-0','fox-kid-v2-excited-1','fox-kid-v2-excited-2'],
+                                2: ['fox-teen-v2-excited-0','fox-teen-v2-excited-1','fox-teen-v2-excited-2'],
+                                3: ['fox-adult-v2-excited-0','fox-adult-v2-excited-1','fox-adult-v2-excited-2'] },
+                   big:      { 0: ['cat-egg-v2-excited-0','cat-egg-v2-excited-1','cat-egg-v2-excited-2'],
+                                1: ['fox-kid-v2-excited-0','fox-kid-v2-excited-1','fox-kid-v2-excited-2'],
+                                2: ['fox-teen-v2-excited-0','fox-teen-v2-excited-1','fox-teen-v2-excited-2'],
+                                3: ['fox-adult-v2-excited-0','fox-adult-v2-excited-1','fox-adult-v2-excited-2'] },
+                   droopy:   { 0: ['cat-egg-v2-droopy'],
+                                1: ['fox-kid-v2-droopy'], 2: ['fox-teen-v2-droopy'], 3: ['fox-adult-v2-droopy'] },
+                   sad:      { 0: ['cat-egg-v2-sad-0','cat-egg-v2-sad-1'],
+                                1: ['fox-kid-v2-sad-0','fox-kid-v2-sad-1'],
+                                2: ['fox-teen-v2-sad-0','fox-teen-v2-sad-1'],
+                                3: ['fox-adult-v2-sad-0','fox-adult-v2-sad-1'] },
+                   wash:     { 0: ['cat-egg-v2-wash-0','cat-egg-v2-wash-1'],
+                                1: ['fox-kid-v2-wash-0','fox-kid-v2-wash-1'],
+                                2: ['fox-teen-v2-wash-0','fox-teen-v2-wash-1'],
+                                3: ['fox-adult-v2-wash-0','fox-adult-v2-wash-1'] },
+                   grunt:    { 0: ['cat-egg-v2-grunt-0','cat-egg-v2-grunt-1'],
+                                1: ['fox-kid-v2-grunt-0','fox-kid-v2-grunt-1'],
+                                2: ['fox-teen-v2-grunt-0','fox-teen-v2-grunt-1'],
+                                3: ['fox-adult-v2-grunt-0','fox-adult-v2-grunt-1'] } },
+           walk: { 1: 'fox-kid-v2-walk-', 2: 'fox-teen-v2-walk-', 3: 'fox-adult-v2-walk-' } },
+    dragon: { stage: { 0: 'cat-egg-v2', 1: 'dragon-kid-v2', 2: 'dragon-teen-v2', 3: 'dragon-adult-v2' },
+           expr: { idle:     { 0: ['cat-egg-v2-idle-0','cat-egg-v2-idle-1'],
+                                1: ['dragon-kid-v2-idle-0','dragon-kid-v2-idle-1'],
+                                2: ['dragon-teen-v2-idle-0','dragon-teen-v2-idle-1'],
+                                3: ['dragon-adult-v2-idle-0','dragon-adult-v2-idle-1'] },
+                   blink:    { 0: ['cat-egg-v2-blink'],
+                                1: ['dragon-kid-v2-blink'], 2: ['dragon-teen-v2-blink'], 3: ['dragon-adult-v2-blink'] },
+                   eat:      { 0: ['cat-egg-v2-eat'],
+                                1: ['dragon-kid-v2-eat-0','dragon-kid-v2-eat-1','dragon-kid-v2-eat-2'],
+                                2: ['dragon-teen-v2-eat-0','dragon-teen-v2-eat-1','dragon-teen-v2-eat-2'],
+                                3: ['dragon-adult-v2-eat-0','dragon-adult-v2-eat-1','dragon-adult-v2-eat-2'] },
+                   sleep:    { 0: ['cat-egg-v2-sleep-0','cat-egg-v2-sleep-1'],
+                                1: ['dragon-kid-v2-sleep-0','dragon-kid-v2-sleep-1'],
+                                2: ['dragon-teen-v2-sleep-0','dragon-teen-v2-sleep-1'],
+                                3: ['dragon-adult-v2-sleep-0','dragon-adult-v2-sleep-1'] },
+                   happy:    { 0: ['cat-egg-v2-happy'],
+                                1: ['dragon-kid-v2-happy-0','dragon-kid-v2-happy-1','dragon-kid-v2-happy-2'],
+                                2: ['dragon-teen-v2-happy-0','dragon-teen-v2-happy-1','dragon-teen-v2-happy-2'],
+                                3: ['dragon-adult-v2-happy-0','dragon-adult-v2-happy-1','dragon-adult-v2-happy-2'] },
+                   excited:  { 0: ['cat-egg-v2-excited-0','cat-egg-v2-excited-1','cat-egg-v2-excited-2'],
+                                1: ['dragon-kid-v2-excited-0','dragon-kid-v2-excited-1','dragon-kid-v2-excited-2'],
+                                2: ['dragon-teen-v2-excited-0','dragon-teen-v2-excited-1','dragon-teen-v2-excited-2'],
+                                3: ['dragon-adult-v2-excited-0','dragon-adult-v2-excited-1','dragon-adult-v2-excited-2'] },
+                   big:      { 0: ['cat-egg-v2-excited-0','cat-egg-v2-excited-1','cat-egg-v2-excited-2'],
+                                1: ['dragon-kid-v2-excited-0','dragon-kid-v2-excited-1','dragon-kid-v2-excited-2'],
+                                2: ['dragon-teen-v2-excited-0','dragon-teen-v2-excited-1','dragon-teen-v2-excited-2'],
+                                3: ['dragon-adult-v2-excited-0','dragon-adult-v2-excited-1','dragon-adult-v2-excited-2'] },
+                   droopy:   { 0: ['cat-egg-v2-droopy'],
+                                1: ['dragon-kid-v2-droopy'], 2: ['dragon-teen-v2-droopy'], 3: ['dragon-adult-v2-droopy'] },
+                   sad:      { 0: ['cat-egg-v2-sad-0','cat-egg-v2-sad-1'],
+                                1: ['dragon-kid-v2-sad-0','dragon-kid-v2-sad-1'],
+                                2: ['dragon-teen-v2-sad-0','dragon-teen-v2-sad-1'],
+                                3: ['dragon-adult-v2-sad-0','dragon-adult-v2-sad-1'] },
+                   wash:     { 0: ['cat-egg-v2-wash-0','cat-egg-v2-wash-1'],
+                                1: ['dragon-kid-v2-wash-0','dragon-kid-v2-wash-1'],
+                                2: ['dragon-teen-v2-wash-0','dragon-teen-v2-wash-1'],
+                                3: ['dragon-adult-v2-wash-0','dragon-adult-v2-wash-1'] },
+                   grunt:    { 0: ['cat-egg-v2-grunt-0','cat-egg-v2-grunt-1'],
+                                1: ['dragon-kid-v2-grunt-0','dragon-kid-v2-grunt-1'],
+                                2: ['dragon-teen-v2-grunt-0','dragon-teen-v2-grunt-1'],
+                                3: ['dragon-adult-v2-grunt-0','dragon-adult-v2-grunt-1'] } },
+           walk: { 1: 'dragon-kid-v2-walk-', 2: 'dragon-teen-v2-walk-', 3: 'dragon-adult-v2-walk-' } }
+  };
+  /* 蛋斑点坐标（相对于 29×44 蛋帧，内容 y=4-39）。斑点不在 PNG 里，drawPet 按当前宠物主色
+     运行时叠加，这样一套蛋帧通用、斑点颜色可随宠物类型替换。耀西蛋(Yoshi)风格：
+     2大(5x5)+2中(3x3)+2小(1x1)，不对称错落分布，避开脸部(眼/腮红/嘴)。 */
+  var EGG_SPOTS = [
+    [14,6],
+    [6,7],
+    [5,8],[6,8],[7,8],
+    [4,9],[5,9],[6,9],[7,9],[8,9],
+    [5,10],[6,10],[7,10],
+    [6,11],
+    [22,13],
+    [21,14],[22,14],[23,14],
+    [20,15],[21,15],[22,15],[23,15],[24,15],
+    [21,16],[22,16],[23,16],
+    [22,17],
+    [4,26],
+    [3,27],[4,27],[5,27],
+    [4,28],
+    [17,33],
+    [16,34],[17,34],[18,34],
+    [17,35],
+    [9,36]
+  ];
+  /* 各表情/动作的多帧切换间隔（ms）。单帧数组不需要切换。 */
+  var PET_EXPR_INTERVAL = {
+    idle: 800, blink: 170, eat: 280, sleep: 700,
+    happy: 180, excited: 220, droopy: 800, sad: 380, wash: 220, grunt: 240
+  };
+
+  var petAnim = { blinkTimer: null, dreamTimer: null, actionTimer: null,
+                  exprTimer: null, exprIdx: {},
+                  baseExpr: 'idle', actionExpr: null };
   /* stageOverride: 0蛋 1宝宝 2/3 物种剪影；缺省画当前宠物阶段（图鉴/试验台预览用）
      walking: 走路中 → 换用 *-side 侧面剪影（朝右画，向左走由 face-left 翻转），不叠正面表情 */
-  function drawPet(cv, expr, stageOverride, walking) {
+  function drawPet(cv, expr, stageOverride, walking, preview) {
     if (!cv || !cv.getContext) return;
     var ctx = cv.getContext('2d');
     if (!ctx) return;   // jsdom 等无 canvas 实现下静默跳过
     var px = cv.width / 16;
     ctx.clearRect(0, 0, cv.width, cv.height);
     var stage = stageOverride == null ? petStageIdx() : stageOverride;
-    var sp = curSpecies();
+    var species = preview && preview.species || petSpeciesKey();
+    var sp = PET_SPECIES[species] || curSpecies();
+    var frameIdx = preview && preview.frame != null ? preview.frame : (petAnim.exprIdx[expr] || 0);
     var key = stage === 0 ? 'egg' : (stage === 1 ? 'baby' : (sp.art[stage - 2] || 'baby'));
+    /* PNG 帧分支（试点物种）：统一 48×48 画布，底边对齐保持站地面一致 */
+    var fr = PET_FRAMES[species];
+    if (fr && stage >= 0) {
+      var fk = null;
+      if (walking && stage >= 1 && fr.walk && (preview || !petAnim.actionExpr)) {
+        var walkPrefix = typeof fr.walk === 'string' ? fr.walk : fr.walk[stage];
+        var walkIdx = preview && preview.frame != null ? preview.frame : (petWalk.frameIdx || 0);
+        if (walkPrefix) fk = walkPrefix + (walkIdx % 7);
+      }
+      else {
+        var ev = fr.expr[expr];
+        if (Array.isArray(ev)) {
+          if (ev.length === 1) fk = ev[0];
+          else if (ev.length > 1) fk = ev[frameIdx % ev.length];
+        } else if (ev && typeof ev === 'object') {
+          // 按阶段分级的 expr（如 idle → {1:[...],2:[...],3:[...]}），避免 baby 切 idle 突然变大成 adult
+          var stageArr = ev[stage];
+          if (Array.isArray(stageArr)) {
+            if (stageArr.length === 1) fk = stageArr[0];
+            else if (stageArr.length > 1) fk = stageArr[frameIdx % stageArr.length];
+          }
+        } else if (typeof ev === 'string') {
+          fk = ev;
+        }
+        if (!fk) fk = fr.stage[stage];
+      }
+      var el = fk ? PET_IMG_EL[fk] : null;
+      if (el) {
+        if (cv.width !== 48) { cv.width = 48; cv.height = 48; }   // 设宽即清屏
+        ctx.imageSmoothingEnabled = false;
+        var eggX = Math.round((48 - el.width) / 2);
+        // 小奶猫的右伸尾巴拉宽了素材边界；统一校正主体中心，避免各动作左右跳。
+        if (species === 'cat' && stage === 1) eggX += 2;
+        var eggY = 48 - el.height;
+        ctx.drawImage(el, eggX, eggY);
+        /* 蛋阶段：斑点按当前宠物主色运行时叠加（PNG 蛋身无斑点，便于多宠物定制） */
+        if (stage === 0) {
+          var spotColor = (PET_PALETTES[sp.pals[1]] || PET_PALETTES.egg).B;
+          ctx.fillStyle = spotColor;
+          for (var si = 0; si < EGG_SPOTS.length; si++) {
+            ctx.fillRect(eggX + EGG_SPOTS[si][0], eggY + EGG_SPOTS[si][1], 1, 1);
+          }
+        }
+        return;
+      }
+    }
     var useSide = false;
     if (walking && stage >= 1) {
       var sk = key + '-side';
@@ -950,13 +1249,44 @@
     var walking = !!(t && t.classList.contains('walking'));
     drawPet(c, petAnim.actionExpr || petAnim.baseExpr, null, walking);
   }
+  /* 多帧动画驱动：每 ~180ms 检查当前 expr 并推进其帧下标，重绘画布。
+     各 expr 用自己的 PET_EXPR_INTERVAL 节奏——这里用最小间隔做轮询，避免开多定时器。 */
+  function startExprAnim() {
+    if (petAnim.exprTimer) return;
+    petAnim.exprTimer = setInterval(function () {
+      var cur = petAnim.actionExpr || petAnim.baseExpr;
+      if (!cur) return;
+      var fr = PET_FRAMES[petSpeciesKey()];
+      if (!fr) return;
+      var ev = fr.expr[cur];
+      if (ev && typeof ev === 'object') ev = ev[petStageIdx()];
+      if (!Array.isArray(ev) || ev.length <= 1) return;
+      var interval = PET_EXPR_INTERVAL[cur] || 400;
+      // 累加累计时间，到点就翻帧
+      petAnim._lastTick = petAnim._lastTick || Date.now();
+      var now = Date.now();
+      var elapsed = now - petAnim._lastTick;
+      if (elapsed < 180) return;   // 轮询节流
+      petAnim._lastTick = now;
+      // 用 elapsed / interval 估算应该翻几帧（兜底：翻 1 帧）
+      var advance = Math.max(1, Math.floor(elapsed / interval));
+      petAnim.exprIdx[cur] = ((petAnim.exprIdx[cur] || 0) + advance) % ev.length;
+      petDraw();
+    }, 180);
+  }
   function applyPetLayer(cls, expr, transient) {
     var w = $('#pet-touch');
     if (w) PET_CLASSES.forEach(function (k) { w.classList.remove(k); });
     if (cls && w) w.classList.add(cls);
     if (w) w.classList.remove('walking');   // 表演优先，停止步态（位移过渡自然走完）
     petAnim.actionExpr = transient ? expr : null;
-    if (!transient) petAnim.baseExpr = expr;
+    if (!transient) {
+      // 切到新的常驻 expr 时，把它的帧下标归零，让动画从头开始
+      if (petAnim.baseExpr !== expr) petAnim.exprIdx[expr] = 0;
+      petAnim.baseExpr = expr;
+    } else {
+      petAnim.exprIdx[expr] = 0;
+    }
     petDraw();
   }
   /* 常驻基调：按 sati/mood/clean 推导待机外观与动作循环 */
@@ -985,6 +1315,16 @@
   }
   /* ---- 像素风特效精灵：与宠物同一套字符画（. 透明），canvas 原生尺寸绘制、CSS 放大 ---- */
   var FX_SPRITES = {
+    star: { pal: { G: '#f2b13c', W: '#ffe9a8' }, rows: [
+      '...GG...',
+      '...GG...',
+      '..GGGG..',
+      'GGGWWGGG',
+      'GGGWWGGG',
+      '..GGGG..',
+      '...GG...',
+      '...GG...'
+    ] },
     poop: { pal: { B: '#8a562b', D: '#6e4321' }, rows: [
       '...BB...',
       '..BBBB..',
@@ -1464,6 +1804,7 @@
     startPetBlink();
     startPetDream();
     startPetRoam();
+    startExprAnim();
     renderPoops();
     $('#pet-touch').onclick = touchPet;
     petPoopRoll();
@@ -2827,9 +3168,19 @@
     if ($('#view')) render();
   }
 
+  /* 实验台（状态试验台）定时器：模块级持有，renderSettings 重建时必须
+     清理，否则旧定时器会继续在重建后的画布上绘制旧表情。 */
+  var tbTimers = { play: null, anim: null };
+
   function renderSettings() {
     var v = $('#set-body');
     if (!v) return;
+    /* 实验台定时器是模块级持有的：renderSettings 每次重建设置面板时，
+       必须先清掉旧实验台的"播完回落"和"多帧循环"定时器——否则旧的
+       interval 闭包仍会往新画布上画切换前的表情（切换物种/形态后表情
+       跳变的根因）。 */
+    if (tbTimers.play) { clearTimeout(tbTimers.play); tbTimers.play = null; }
+    if (tbTimers.anim) { clearInterval(tbTimers.anim); tbTimers.anim = null; }
     v.innerHTML = '';
 
     /* --- 教材与词库 --- */
@@ -2899,15 +3250,20 @@
       '<div class="muted" style="margin-top:10px">学单词得 🍖、拼读得 🎾、闯关得 🧼；照顾它都会涨经验，每 4 级进化一次，进化后长得不一样哦。</div>';
     v.appendChild(c2);
     $$('#set-body [data-pgst]').forEach(function (cv) {
+      petAnim.exprIdx['idle'] = 0;
       drawPet(cv, 'idle', +cv.dataset.pgst);
     });
     $$('#set-body .pg-cvwrap').forEach(function (w) {
       var st = +w.dataset.st;
       w.onclick = function () {
         var cv = w.querySelector('canvas');
+        petAnim.exprIdx['happy'] = 0;
         drawPet(cv, 'happy', st);
         beep('tap');
-        setTimeout(function () { drawPet(cv, 'idle', st); }, 900);
+        setTimeout(function () {
+          petAnim.exprIdx['idle'] = 0;
+          drawPet(cv, 'idle', st);
+        }, 900);
       };
     });
 
@@ -2936,7 +3292,7 @@
     var TB_EXPRS = [
       ['idle', '待机'], ['blink', '眨眼'], ['happy', '开心'], ['sad', '难过'],
       ['sleep', '睡着'], ['droopy', '没劲'], ['excited', '兴奋'],
-      ['eat', '吃饭'], ['wash', '搓澡'], ['grunt', '用力']
+      ['eat', '吃饭'], ['wash', '搓澡'], ['grunt', '用力'], ['walk', '走路']
     ];
     var TB_DEMOS = {
       feed: function () { tbPlay('eat', 'eat', 1500); addFoodBowl('#tb-cvwrap'); spawnFx('meat', 1, '#tb-cvwrap'); },
@@ -2953,24 +3309,38 @@
     /* 试验台就地表演：与首页 playAction 同一套动作类 + 表情，播完回落 idle。
        目标是预览画布自身，不碰首页宠物状态（petAnim / 常驻基调完全独立）。
        tbStage：形态选择（0蛋 1宝宝 2/3 物种成长期），默认跟随当前等级；点形态 chip 切换预览 */
-    var tbTimer = null, TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
-    var tbExpr = 'idle', tbStage = petStageIdx();
-    function tbRedraw() { drawPet($('#tb-cv'), tbExpr, tbStage); }
+    var TB_ACT_CLS = ['eat', 'happy', 'sad', 'wash', 'dance', 'prop', 'poop'];
+    var tbExpr = 'idle', tbStage = petStageIdx(), tbWalkIdx = 0;
+    function tbRedraw() {
+      if (tbExpr === 'walk') {
+        petAnim.exprIdx['idle'] = 0;
+        drawPet($('#tb-cv'), 'idle', tbStage, true);
+      } else {
+        petAnim.exprIdx[tbExpr] = 0;
+        drawPet($('#tb-cv'), tbExpr, tbStage);
+      }
+    }
     function tbPlay(cls, expr, ms) {
       var w = $('#tb-cvwrap'); if (!w) return;
       TB_ACT_CLS.forEach(function (k) { w.classList.remove(k); });
       if (cls) w.classList.add(cls);
       tbExpr = expr; tbRedraw();
-      clearTimeout(tbTimer);
-      tbTimer = setTimeout(function () {
+      tbStartAnim();   // 实景演示也播多帧动画（wash 左右气泡交替 / eat 表情变化等）
+      if (tbTimers.play) clearTimeout(tbTimers.play);
+      tbTimers.play = setTimeout(function () {
         var w2 = $('#tb-cvwrap');
         if (w2) TB_ACT_CLS.forEach(function (k) { w2.classList.remove(k); });
+        tbStopAnim();
         tbExpr = 'idle'; tbRedraw();
       }, ms || 1200);
     }
     var c2b = el('div', 'card');
-    var TB_STAGES = [[0, '蛋'], [1, '宝宝'], [2, curSpecies().stages[0]], [3, curSpecies().stages[1]]];
-    c2b.innerHTML = '<h2 class="section">状态试验台 · 点了就看</h2>' +
+    var TB_STAGES = [[0, '蛋'], [1, curSpecies().stages[0]], [2, curSpecies().stages[1]], [3, curSpecies().stages[2]]];
+    var tbPreviewUrl = new URL(window.location.href);
+    tbPreviewUrl.searchParams.set('pet-test', PET_TEST_KEYS.indexOf(petSpeciesKey()) >= 0 ? petSpeciesKey() : 'dragon');
+    tbPreviewUrl.hash = '';
+    c2b.innerHTML = '<div class="tb-heading"><h2 class="section">状态试验台 · 点了就看</h2>' +
+      '<a class="btn ghost sm" href="' + esc(tbPreviewUrl.href) + '">动作预览 →</a></div>' +
       '<div class="pg-cvwrap pet-canvas-wrap tb-main" id="tb-cvwrap"><canvas id="tb-cv" width="16" height="16"></canvas></div>' +
       '<div class="row wrap" style="gap:6px;margin-top:8px" id="tb-stages">' +
       TB_STAGES.map(function (s) {
@@ -3001,11 +3371,55 @@
     }
     tbMarkStage();
     tbRedraw();
+    /* 试验台本地动画定时器：点 chip → 持续循环该 expr 的多帧。
+       单帧 expr（blink / excited / big / droopy / sad）保持静态显示。
+       expr 值可能是数组（eat/sleep/happy…）也可能是 {stage:array} 映射（idle 按阶段分级）。 */
+    function tbStopAnim() {
+      if (tbTimers.anim) { clearInterval(tbTimers.anim); tbTimers.anim = null; }
+    }
+    function tbResolveFrames() {
+      if (tbExpr === 'walk') {
+        var fr = PET_FRAMES[petSpeciesKey()];
+        var walkPrefix = fr.walk && (typeof fr.walk === 'string' ? fr.walk : fr.walk[tbStage]);
+        if (!walkPrefix) return null;
+        return [0,1,2,3,4,5,6].map(function(i){ return walkPrefix + i; });
+      }
+      var exprMap = PET_FRAMES[petSpeciesKey()].expr[tbExpr];
+      if (Array.isArray(exprMap)) return exprMap;
+      if (exprMap && typeof exprMap === 'object') return exprMap[tbStage] || null;
+      return null;
+    }
+    function tbStartAnim() {
+      tbStopAnim();
+      var ev = tbResolveFrames();
+      if (!Array.isArray(ev) || ev.length <= 1) return;
+      var interval = tbExpr === 'walk' ? 180 : (PET_EXPR_INTERVAL[tbExpr] || 400);
+      tbTimers.anim = setInterval(function () {
+        var ev2 = tbResolveFrames();
+        if (!Array.isArray(ev2) || ev2.length <= 1) { tbStopAnim(); return; }
+        if (tbExpr === 'walk') {
+          tbWalkIdx = (tbWalkIdx + 1) % 7;
+          petWalk.frameIdx = tbWalkIdx;
+          drawPet($('#tb-cv'), 'idle', tbStage, true);
+        } else {
+          petAnim.exprIdx[tbExpr] = ((petAnim.exprIdx[tbExpr] || 0) + 1) % ev2.length;
+          drawPet($('#tb-cv'), tbExpr, tbStage);
+        }
+      }, interval);
+    }
+    function tbSetExpr(expr) {
+      tbStopAnim();
+      tbExpr = expr;
+      if (expr === 'walk') { tbWalkIdx = 0; petWalk.frameIdx = 0; }
+      else { petAnim.exprIdx[tbExpr] = 0; }
+      tbRedraw();
+      tbStartAnim();
+    }
     $$('#set-body [data-tbs]').forEach(function (b) {
       b.onclick = function () { tbStage = +b.dataset.tbs; tbMarkStage(); tbRedraw(); beep('tap'); };
     });
     $$('#set-body [data-tbe]').forEach(function (b) {
-      b.onclick = function () { tbExpr = b.dataset.tbe; tbRedraw(); beep('tap'); };
+      b.onclick = function () { tbSetExpr(b.dataset.tbe); beep('tap'); };
     });
     Object.keys(FX_SPRITES).forEach(function (n) {
       var s = document.createElement('span');
@@ -3116,8 +3530,141 @@
     };
   }
 
+  /* ---------------- isolated sprite preview ---------------- */
+  var petTest = { expr: 'idle', frame: 0, playing: true, timer: null };
+  var PET_TEST_ACTIONS = [
+    ['idle', '待机'], ['blink', '眨眼'], ['happy', '开心'], ['excited', '兴奋'],
+    ['eat', '吃饭'], ['walk', '走路'], ['sleep', '睡觉'], ['droopy', '没劲'],
+    ['sad', '难过'], ['wash', '洗澡'], ['grunt', '用力']
+  ];
+
+  function petTestFrameCount(stage) {
+    var fr = PET_FRAMES[PET_TEST_SPECIES];
+    if (!fr) return 1;
+    if (petTest.expr === 'walk') return fr.walk && fr.walk[stage] ? 7 : 1;
+    var frames = fr.expr[petTest.expr];
+    if (frames && !Array.isArray(frames) && typeof frames === 'object') frames = frames[stage];
+    return Array.isArray(frames) ? frames.length : 1;
+  }
+
+  function drawPetTest() {
+    if (!PET_TEST_SPECIES || !petTest) return;
+    $$('[data-pet-test-stage]').forEach(function (cv) {
+      drawPet(cv, petTest.expr === 'walk' ? 'idle' : petTest.expr, +cv.dataset.petTestStage,
+        petTest.expr === 'walk', { species: PET_TEST_SPECIES, frame: petTest.frame });
+    });
+    var count = petTestFrameCount(1);
+    var status = $('#pet-test-status');
+    if (status) status.textContent = (petTest.playing ? '播放中' : '已暂停') + ' · 第 ' +
+      ((petTest.frame % count) + 1) + ' / ' + count + ' 帧';
+    var toggle = $('#pet-test-toggle');
+    if (toggle) {
+      toggle.textContent = petTest.playing ? '暂停' : '播放';
+      toggle.setAttribute('aria-pressed', String(petTest.playing));
+    }
+  }
+
+  function stopPetTestTimer() {
+    if (petTest.timer) { clearInterval(petTest.timer); petTest.timer = null; }
+  }
+
+  function startPetTestTimer() {
+    stopPetTestTimer();
+    if (!petTest.playing || document.hidden) return;
+    var count = Math.max(petTestFrameCount(1), petTestFrameCount(2), petTestFrameCount(3));
+    if (count <= 1) return;
+    var interval = petTest.expr === 'walk' ? 110 : (PET_EXPR_INTERVAL[petTest.expr] || 400);
+    petTest.timer = setInterval(function () {
+      petTest.frame = (petTest.frame + 1) % count;
+      drawPetTest();
+    }, interval);
+  }
+
+  function stepPetTest(dir) {
+    petTest.playing = false;
+    stopPetTestTimer();
+    var count = Math.max(petTestFrameCount(1), petTestFrameCount(2), petTestFrameCount(3));
+    petTest.frame = (petTest.frame + dir + count) % count;
+    drawPetTest();
+  }
+
+  function bootPetTest() {
+    var species = PET_SPECIES[PET_TEST_SPECIES];
+    document.body.classList.add('pet-test-mode');
+    document.title = species.label + '动作预览 · 皮克学英语';
+    var gameUrl = new URL(window.location.href);
+    gameUrl.searchParams.delete('pet-test');
+    gameUrl.hash = '';
+    $('#app').innerHTML =
+      '<header class="topbar pet-test-topbar">' +
+        '<div class="brand"><span class="logo">' + species.emoji + '</span><span>皮克学英语</span></div>' +
+        '<a class="btn ghost sm" href="' + esc(gameUrl.pathname + gameUrl.search) + '">回到游戏</a>' +
+      '</header>' +
+      '<main id="view" class="pet-test-view">' +
+        '<div class="pet-test-heading"><span class="pill">一起长大</span>' +
+          '<h1>' + esc(species.label) + '动作预览</h1><p>看看三种成长模样，一起动起来。</p></div>' +
+        '<nav class="pet-test-species" aria-label="选择宠物">' +
+          PET_TEST_KEYS.map(function (key) {
+            var target = new URL(gameUrl.href);
+            target.searchParams.set('pet-test', key);
+            var active = key === PET_TEST_SPECIES;
+            return '<a class="chip' + (active ? ' on' : '') + '" data-pet-test-species="' + key + '"' +
+              (active ? ' aria-current="page"' : '') + ' href="' + esc(target.pathname + target.search) + '">' +
+              PET_SPECIES[key].emoji + ' ' + esc(PET_SPECIES[key].label) + '</a>';
+          }).join('') +
+        '</nav>' +
+        '<section class="pet-test-grid" aria-label="三个成长阶段">' +
+          [1, 2, 3].map(function (stage) {
+            var label = species.stages[stage - 1];
+            return '<article class="card pet-test-card"><div class="pet-test-scene">' +
+              '<canvas width="48" height="48" data-pet-test-stage="' + stage + '" role="img" aria-label="' +
+              esc(label) + '">' + esc(label) + '</canvas></div><h2>' + esc(label) + '</h2></article>';
+          }).join('') +
+        '</section>' +
+        '<section class="card pet-test-controls" aria-label="动作和播放">' +
+          '<h2 class="section">换个动作</h2><div class="pet-test-actions" role="group" aria-label="选择动作">' +
+            PET_TEST_ACTIONS.map(function (action) {
+              return '<button class="chip' + (action[0] === petTest.expr ? ' on' : '') + '" data-pet-test-expr="' +
+                action[0] + '" aria-pressed="' + (action[0] === petTest.expr) + '">' + action[1] + '</button>';
+            }).join('') +
+          '</div><div class="pet-test-playback">' +
+            '<button class="btn sm" id="pet-test-toggle" aria-label="播放或暂停动画">暂停</button>' +
+            '<button class="btn ghost sm" id="pet-test-prev">上一帧</button>' +
+            '<button class="btn ghost sm" id="pet-test-next">下一帧</button>' +
+            '<span class="muted" id="pet-test-status"></span>' +
+          '</div></section>' +
+        '<p class="pet-test-note">仅预览，不影响学习进度。</p>' +
+      '</main>';
+    $$('[data-pet-test-expr]').forEach(function (button) {
+      button.onclick = function () {
+        petTest.expr = button.dataset.petTestExpr;
+        petTest.frame = 0;
+        $$('[data-pet-test-expr]').forEach(function (b) {
+          var active = b === button;
+          b.classList.toggle('on', active);
+          b.setAttribute('aria-pressed', String(active));
+        });
+        drawPetTest();
+        startPetTestTimer();
+      };
+    });
+    $('#pet-test-toggle').onclick = function () {
+      petTest.playing = !petTest.playing;
+      drawPetTest(); startPetTestTimer();
+    };
+    $('#pet-test-prev').onclick = function () { stepPetTest(-1); };
+    $('#pet-test-next').onclick = function () { stepPetTest(1); };
+    document.addEventListener('visibilitychange', startPetTestTimer);
+    window.addEventListener('pagehide', stopPetTestTimer);
+    window.addEventListener('pageshow', startPetTestTimer);
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) petTest.playing = false;
+    drawPetTest();
+    startPetTestTimer();
+  }
+
   /* ---------------- boot ---------------- */
   function boot() {
+    if (PET_TEST_SPECIES) { bootPetTest(); return; }
     document.body.insertAdjacentHTML('beforeend', '<div class="toast" id="toast"></div>');
     renderTabs();
     var sb = $('#btn-settings');

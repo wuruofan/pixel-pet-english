@@ -2,7 +2,7 @@
 
 > 文档日期：2026-09-04 ｜ 项目：pixel-pet-english ｜ 物种：小猫（cat）
 
-本文件定义电子宠物游戏中**小猫（cat）** 物种所需的全套像素精灵素材，包括当前已实现的、以及设计目标中需要补齐的全部帧。
+本文件定义电子宠物游戏中**小猫（cat）**物种的阶段化像素精灵素材，以及当前实现与后续美术打磨边界。
 
 参考：游戏运行时使用 `scripts/build.js` 把 PNG 转 base64 注入 `window.__PET_IMGS__`，`src/app.js` 的 `drawPet` 按 `PET_FRAMES` 表按需取帧。
 
@@ -26,8 +26,9 @@
 { species }-{ animation }[ -{ index }].png
 
 species:   cat（小猫）
-animation: baby | kid | adult | walk-{0..6} | eat | sleep | happy | excited
-                | idle-{0,1} | blink | droopy | sad-{0,1}
+animation: baby | kid | adult | walk-{0..6} | eat-{0..2} | sleep-{0,1}
+                | happy-{0..2} | excited-{0..2} | idle-{0,1} | blink
+                | droopy | sad-{0,1} | wash-{0,1} | grunt-{0,1}
 ```
 
 例：`cat-baby.png`、`cat-walk-3.png`、`cat-eat.png`。
@@ -38,7 +39,7 @@ animation: baby | kid | adult | walk-{0..6} | eat | sleep | happy | excited
 
 来源：`gpt-assets/ChatGPT Image 2026年9月4日 00_35_05.png`，经 `scripts/process-pet-frames.py` 切割。
 
-### 2.1 现有文件完整清单（14 个，可按名检索）
+### 2.1 原始素材清单（14 个，可按名检索）
 
 以下文件位于 **`feature/gpt-cat-sprites` 分支**的 `assets/sprites/` 目录（main 分支无 PNG 素材）：
 
@@ -56,25 +57,29 @@ animation: baby | kid | adult | walk-{0..6} | eat | sleep | happy | excited
 - `cat-walk-5.png`
 - `cat-walk-6.png`
 
-**状态帧（4 个，各 1 帧，自带表情脸）**
-- `cat-eat.png` — 吃饭（触发：喂食）
-- `cat-sleep.png` — 睡觉（触发：无聊值低）
-- `cat-happy.png` — 开心（触发：抚摸/玩耍）
-- `cat-big.png` — 兴奋（**注意文件名是 `cat-big`，不是 `cat-excited`**；游戏内 `excited` 和 `big` 两个表情键都映射到它）
+**状态底图（4 个，供阶段化管线派生）**
+- `cat-eat.png` — 吃饭低头饭碗底图
+- `cat-sleep.png` — 睡觉蜷卧底图
+- `cat-happy.png` — 开心跳跃底图
+- `cat-big.png` — 早期兴奋底图（当前运行时已由三阶段 `excited-0..2` 替代）
 
-**代码映射关系**（`src/app.js` 的 `PET_FRAMES`）：
+**代码映射结构**（`src/app.js` 的 `PET_FRAMES`）：
 ```js
-cat: { stage: { 1: 'cat-baby', 2: 'cat-kid', 3: 'cat-adult' },
-       expr: { eat: 'cat-eat', sleep: 'cat-sleep', happy: 'cat-happy',
-               excited: 'cat-big', big: 'cat-big' },
-       walk: 'cat-walk-' }
+cat: { stage: { 0: 'cat-egg', 1: 'cat-baby', 2: 'cat-kid', 3: 'cat-adult' },
+       expr: { idle: { 0: [...], 1: [...], 2: [...], 3: [...] },
+               eat: { 0: [...], 1: [...], 2: [...], 3: [...] },
+               sleep: { 0: [...], 1: [...], 2: [...], 3: [...] },
+               happy: { 0: [...], 1: [...], 2: [...], 3: [...] },
+               excited: { 0: [...], 1: [...], 2: [...], 3: [...] }, ... },
+       walk: { 1: 'cat-baby-walk-', 2: 'cat-kid-walk-', 3: 'cat-walk-' } }
 ```
 
-合计：**14 帧**。这些帧在游戏里**只在静态（走路除外）位置切换**，没有真正的逐帧动画——除了走路 7 帧循环。
+这 14 个是原始底图；运行时实际使用的阶段化帧由 `scripts/process-cat-idle.py`、
+`scripts/process-cat-states.py` 和 `scripts/process-cat-sleep-walk.py` 生成，均已登记到 `PET_FRAMES`。
 
 ---
 
-## 3. 完整帧清单（目标态）
+## 3. 完整帧清单（当前态）
 
 P0/P1/P2 分级，与功能缺口对应。
 
@@ -106,14 +111,14 @@ P0/P1/P2 分级，与功能缺口对应。
 
 | 动画 | 帧数 | 用途 |
 |---|---|---|
-| `cat-baby-walk-0..5` | 6 | 奶猫走路侧影（小步幅） |
-| `cat-kid-walk-0..5` | 6 | 猫崽走路侧影 |
+| `cat-baby-walk-0..6` | 7 | 奶猫走路侧影（阶段缩放） |
+| `cat-kid-walk-0..6` | 7 | 猫崽走路侧影（阶段缩放） |
 
 > 当前 `cat-walk-*` 是成年猫的侧影，奶猫/猫崽走路时直接使用成年走路帧，比例略显违和。
 
 ---
 
-## 4. 帧汇总表
+## 4. 逻辑帧汇总表
 
 | 类别 | 帧数 | 累计 |
 |---|---|---|
@@ -129,8 +134,8 @@ P0/P1/P2 分级，与功能缺口对应。
 | 难过 | 2 | 27 |
 | 搓澡 | 2 | 29 |
 | 用力 | 2 | 31 |
-| 走路（奶猫） | 6 | 37 |
-| 走路（猫崽） | 6 | **43** |
+| 走路（奶猫） | 7 | 38 |
+| 走路（猫崽） | 7 | **45** |
 
 **P0 子集（当前优先）**：成长阶段 3 + 待机 2 + 眨眼 1 + 走路 7 + 吃饭 3 + 睡觉 2 + 开心 3 = **21 帧**。
 
@@ -138,9 +143,12 @@ P0/P1/P2 分级，与功能缺口对应。
 
 ## 5. 当前缺口与建议生成顺序
 
-1. **P0（解决「没动画」）**：成长阶段、待机呼吸、眨眼、吃饭、睡觉、开心，共 **21 帧**
-2. **P1（补齐常驻状态）**：兴奋、没劲、难过，共 **6 帧**
-3. **P2（打磨）**：搓澡、用力、奶猫走路、猫崽走路，共 **16 帧**
+1. **已完成**：成长阶段、待机呼吸、眨眼、吃饭、睡觉、开心，共 **21 个逻辑帧**
+2. **已完成**：兴奋、没劲、难过，共 **6 个逻辑帧**
+3. **已完成**：搓澡、用力、奶猫走路、猫崽走路，共 **18 个逻辑帧**（走路按 7 帧循环）
+4. **可选打磨**：成人阶段的脸部差分仍可换成更夸张的美术稿，但不再是功能缺口。
+
+> **脸部保真约束**：猫的状态帧必须以对应阶段原 PNG 为底，保留原有复杂眼睛、鼻子、腮红和轮廓；不得套用蛋阶段的固定几何脸，也不得先清空整块脸部再重画。
 
 ---
 
