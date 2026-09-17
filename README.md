@@ -24,6 +24,54 @@ node scripts/fetch_words.js       # 抓单词 → data/words.json
 node scripts/build.js             # 打包 → pixel-pet-english.html
 ```
 
+## 本地预览与宠物动作测试
+
+数据和精灵已在仓库中；日常开发只需构建，无需重新抓取教材：
+
+```bash
+node scripts/build.js
+node scripts/serve-no-cache.js
+```
+
+终端会输出本地地址。打开根路径进入游戏，加上以下参数进入对应宠物的动作预览，也可在页面顶部切换宠物：
+
+| 宠物 | 入口参数 |
+|---|---|
+| 小猫 | `?pet-test=cat` |
+| 小狗 | `?pet-test=dog` |
+| 小狐狸 | `?pet-test=fox` |
+| 小龙 | `?pet-test=dragon` |
+
+每个宠物同时展示三个成长阶段的 11 种动作，支持播放、暂停和逐帧检查。测试入口不读写学习存档。
+
+设置中的“状态试验台 · 点了就看”提供“动作预览 →”链接，可直接打开当前宠物。狐狸和龙的透明像素及动画修复、重建命令见 [视觉修复记录](docs/sprites/HANDOFF-2026-09-17-visual-audit.md)；其中小狗部分是旧造型的历史记录，当前造型与重建流程见下方小狗交接文档。
+
+小猫使用 handoff 选定的三张 mmx 原图，量化、清理五官和生成 87 张正式精灵均可复现（Python 3 + Pillow）：
+
+```bash
+python3 scripts/cat-differential.py
+python3 scripts/test-cat-redraw.py
+python3 scripts/test-dog-redraw.py
+python3 scripts/test-sprite-contract.py
+node scripts/test-pet-preview.js
+node scripts/build.js
+```
+
+`--preview-only` 只输出基础图和表情对照图，不覆盖正式帧。详见 [小猫交接文档](docs/sprites/HANDOFF-2026-09-16-cat-mmx-base.md#10-2026-09-17-实现记录)；[表情对照图](docs/sprites/cat-mmx-preview.png) 可直接查看。旧的 `redraw-cat-local.py` 属于历史手绘方案，会覆盖当前精灵，请勿用于本轮重建。
+
+小狗以**金毛犬**为原型，参考猫对应阶段的体量与像素块风格，三阶段均为正面坐姿：baby 是浅金色、短前腿的小奶狗；kid 是暖金色圆脸幼犬，腿和尾巴更明显；adult 毛色更深，胸毛更宽、爪子更大，带蓬松侧尾。baby/kid 画布为 36×38，adult 为 44×48。三张参考图使用内置 imagegen，保存为 `assets/sprite-bases/dog-{baby,kid,adult}-source.png`，后续沿用量化与程序差分流程：
+
+```bash
+python3 scripts/prepare-dog-bases.py
+python3 scripts/dog-differential.py
+python3 scripts/test-dog-redraw.py
+python3 scripts/test-sprite-contract.py
+node scripts/test-pet-preview.js
+node scripts/build.js
+```
+
+差分生成 87 张正式精灵，沿用 `dog-{baby,kid,adult}-v2` 命名、11 种动作及共用蛋；走路仍为 7 帧整只蹦跳。`redraw-dog-local.py` 作为兼容入口委托新生成器。设计选择、[提示词](docs/sprites/dog-redesign-prompts.json)、[预览图](docs/sprites/dog-redesign-preview.png) 与本轮验证状态见 [小狗重做交接文档](docs/sprites/HANDOFF-2026-09-17-dog-redesign.md)。构建后打开 `?pet-test=dog` 检查三阶段。
+
 ## 数据来源与口径
 
 | 数据 | 来源 | 说明 |
