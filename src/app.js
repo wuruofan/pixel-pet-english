@@ -860,8 +860,8 @@
   var PET_FRAMES = {
     cat: { stage: { 0: 'cat-egg-v2', 1: 'cat-baby-v2', 2: 'cat-kid-v2', 3: 'cat-adult-v2' },
            expr: { idle:    { 0: ['cat-egg-v2-idle-0', 'cat-egg-v2-idle-1'],
-                              /* 站姿/idle/blink/全部状态用本地像素重绘 v2 帧（每阶段独立锚点，
-                                 见 docs/sprites/HANDOFF-2026-09-06-cat-animation.md）；
+                              /* 站姿及全部动作来自选定 mmx 图量化后的 v2 帧（每阶段独立锚点，
+                                 见 docs/sprites/HANDOFF-2026-09-16-cat-mmx-base.md）；
                                  蛋壳斑点仍由 EGG_SPOTS 运行时叠加 */
                               1: ['cat-baby-v2-idle-0', 'cat-baby-v2-idle-1'],
                               2: ['cat-kid-v2-idle-0',  'cat-kid-v2-idle-1'],
@@ -872,7 +872,7 @@
                               2: ['cat-kid-v2-blink'],
                               3: ['cat-adult-v2-blink'] },
                    eat:     { 0: ['cat-egg-v2-eat'],
-                              /* 低头咬 / 闭嘴嚼 / 抬头咽，饭盆按阶段贴合 */
+                              /* 闭嘴 / 张嘴 / 带碎屑咀嚼，五官随整只猫同步起伏 */
                               1: ['cat-baby-v2-eat-0', 'cat-baby-v2-eat-1', 'cat-baby-v2-eat-2'],
                               2: ['cat-kid-v2-eat-0', 'cat-kid-v2-eat-1', 'cat-kid-v2-eat-2'],
                               3: ['cat-adult-v2-eat-0', 'cat-adult-v2-eat-1', 'cat-adult-v2-eat-2'] },
@@ -1115,6 +1115,8 @@
         if (cv.width !== 48) { cv.width = 48; cv.height = 48; }   // 设宽即清屏
         ctx.imageSmoothingEnabled = false;
         var eggX = Math.round((48 - el.width) / 2);
+        // 小奶猫的右伸尾巴拉宽了素材边界；统一校正主体中心，避免各动作左右跳。
+        if (species === 'cat' && stage === 1) eggX += 2;
         var eggY = 48 - el.height;
         ctx.drawImage(el, eggX, eggY);
         /* 蛋阶段：斑点按当前宠物主色运行时叠加（PNG 蛋身无斑点，便于多宠物定制） */

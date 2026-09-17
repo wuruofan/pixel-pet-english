@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Contract checks for the local pixel-redrawn cat base samples."""
+"""Read-only contracts for approved cat sprites and the shared, unchanged egg.
+
+These checks inspect the exported PNGs, not the generator's implementation.
+The old hand-drawn cat's exact coordinates and side-view walk no longer apply.
+"""
+import hashlib
 from pathlib import Path
 
 from PIL import Image
@@ -7,661 +12,189 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SPRITES = ROOT / "assets" / "sprites"
-INK = (57, 38, 43, 255)
-WHITE = (255, 253, 247, 255)
-TEAR = (159, 183, 255, 255)
-BOWL = (74, 127, 193, 255)
-
-# Egg stage 0 silhouette, row by row: the redrawn shell must match the
-# legacy egg per row, or the runtime EGG_SPOTS overlay lands off the shell.
-EGG_ROWS = [(11, 17), (9, 19), (8, 20), (7, 21), (6, 22), (5, 23), (4, 24),
-            (4, 24), (3, 25), (3, 25), (2, 26), (2, 26), (1, 27), (1, 27),
-            (1, 27), (1, 27), (0, 28), (0, 28), (0, 28), (0, 28), (0, 28),
-            (0, 28), (0, 28), (0, 28), (0, 28), (0, 28), (1, 27), (1, 27),
-            (1, 27), (2, 26), (2, 26), (3, 25), (4, 24), (5, 23), (7, 21),
-            (9, 20)]
-LIGHT = (255, 190, 70, 255)
-FUR = (244, 157, 55, 255)
-PINK = (244, 132, 145, 255)
-NOSE = (207, 82, 105, 255)
-# tail region exempted from shift-equality (it wags); tail tip at
-# tail_lift=0 with its color; droop tip; excited paw-lift regions
-TAIL_BOX = {"baby": (18, 18, 28, 32), "kid": (26, 17, 34, 38), "adult": (30, 22, 44, 48)}
-TAIL_TIP0 = {"baby": ((23, 22), LIGHT), "kid": ((29, 20), INK), "adult": ((36, 28), LIGHT)}
-DROOP_TIP = {"baby": ((21, 31), INK), "kid": ((24, 37), INK), "adult": ((31, 47), INK)}
-PAW_BOX = {"baby": (13, 26, 20, 32), "kid": (17, 32, 25, 38), "adult": (26, 42, 35, 48)}
-PAW_PAD = {"baby": (16, 28), "kid": (20, 34), "adult": (30, 44)}
-
-EXPECTED_SIZES = {
-    "baby": (30, 32),
-    "kid": (36, 38),
-    "adult": (44, 48),
+SIZES = {"baby": (36, 38), "kid": (36, 38), "adult": (44, 48)}
+GROUPS = {
+    "idle": 2, "eat": 3, "sleep": 2, "happy": 3, "excited": 3,
+    "grunt": 2, "sad": 2, "wash": 2, "walk": 7,
 }
+POSES = ("blink", "droopy") + tuple(
+    f"{group}-{i}" for group, count in GROUPS.items() for i in range(count)
+)
+WALK_Y = (0, -2, -1, 0, 1, -1, 0)
+EAT_Y = (0, -1, 1)
+
+# Independently reviewed opaque face areas on the approved, cleaned artwork.
+# Kept here rather than imported from the rendering code so a misplaced face
+# cannot silently move the acceptance region along with it.
+FACE_REGIONS = {
+    "baby": (9, 14, 21, 22),
+    "kid": (10, 15, 25, 22),
+    "adult": (13, 17, 26, 27),
+}
+
+# Decoded RGBA pixels, ordered by filename, from the shared egg before this
+# cat-only change. Compression may change; its artwork and frame set may not.
+EGG_PIXEL_DIGEST = "96151c8ef420ca4403e4e2857a797c96ef724839c49786c48d87f7c6c2142de3"
+
+
+def load(name, size, sprites=SPRITES):
+    path = sprites / f"{name}.png"
+    assert path.is_file(), f"missing sprite: {path.name}"
+    with Image.open(path) as source:
+        assert source.mode == "RGBA", f"{name}: expected RGBA, got {source.mode}"
+        image = source.copy()
+    assert image.size == size, f"{name}: {image.size}, expected {size}"
+    alpha = image.getchannel("A")
+    assert alpha.getbbox(), f"{name}: empty sprite"
+    assert set(alpha.getdata()) == {0, 255}, f"{name}: requires crisp transparent/opaque pixels"
+    w, h = size
+    assert all(alpha.getpixel(p) == 0 for p in ((0, 0), (w-1, 0), (0, h-1), (w-1, h-1))), (
+        f"{name}: background must be transparent"
+    )
+    return image
+
+
+def opaque_pixels(image):
+    return {(x, y) for y in range(image.height) for x in range(image.width)
+            if image.getpixel((x, y))[3] == 255}
+
+
+def content(image):
+    return image.crop(image.getchannel("A").getbbox())
+
+
+def aligned_face(image, box, dy=0):
+    left, top, right, bottom = box
+    assert 0 <= top + dy < bottom + dy <= image.height, "face moved out of canvas"
+    return image.crop((left, top + dy, right, bottom + dy))
+
+
+def best_vertical_offset(base_pixels, frame_pixels):
+    """Align silhouettes independently of the generator's pose parameters."""
+    return max(range(-3, 4), key=lambda dy: (
+        len({(x, y + dy) for x, y in base_pixels} & frame_pixels), -abs(dy)
+    ))
+
+
+def check_face(image, box, name, dy=0):
+    face = aligned_face(image, box, dy)
+    pixels = list(face.getdata())
+    assert all(p[3] == 255 for p in pixels), f"{name}: face has transparent holes"
+    dark = sum(r < 135 and g < 110 and b < 110 for r, g, b, _ in pixels)
+    assert 4 <= dark < len(pixels) // 2, f"{name}: face must contain readable features and a solid backing"
+
+
+def components(points):
+    pending = set(points)
+    result = []
+    while pending:
+        seed = pending.pop()
+        component, queue = {seed}, [seed]
+        while queue:
+            x, y = queue.pop()
+            for neighbor in ((x-1, y), (x+1, y), (x, y-1), (x, y+1)):
+                if neighbor in pending:
+                    pending.remove(neighbor)
+                    component.add(neighbor)
+                    queue.append(neighbor)
+        result.append(component)
+    return result
+
+
+def blue_pixels(image):
+    return {(x, y) for y in range(image.height) for x in range(image.width)
+            for r, g, b, a in [image.getpixel((x, y))]
+            if a == 255 and r < 200 and g >= r + 15 and b >= g + 15}
+
+
+def check_walk(stage, base, frames):
+    base_box = base.getchannel("A").getbbox()
+    baseline = content(base)
+    pixel_count = len(opaque_pixels(base))
+    for i, dy in enumerate(WALK_Y):
+        name = f"{stage} walk-{i}"
+        frame = frames[f"walk-{i}"]
+        bbox = frame.getchannel("A").getbbox()
+        assert bbox == (base_box[0], base_box[1]+dy, base_box[2], base_box[3]+dy), (
+            f"{name}: whole sprite must hop by {dy}px without changing its silhouette"
+        )
+        assert len(opaque_pixels(frame)) == pixel_count, f"{name}: moving clipped the sprite"
+        cropped = content(frame)
+        assert cropped.size == baseline.size and cropped.tobytes() == baseline.tobytes(), (
+            f"{name}: face and body must move together; no leg edits or lost pixels"
+        )
+
+
+def check_wash(stage, base, frames):
+    base_pixels = opaque_pixels(base)
+    for phase, side in ((0, "right"), (1, "left")):
+        frame = frames[f"wash-{phase}"]
+        bubbles = blue_pixels(frame)
+        clusters = components(bubbles)
+        assert len([c for c in clusters if len(c) >= 2]) >= 5, (
+            f"{stage} wash-{phase}: needs at least five separate blue bubbles"
+        )
+        assert all((x >= frame.width / 2) if side == "right" else (x < frame.width / 2)
+                   for x, _ in bubbles), f"{stage} wash-{phase}: bubbles belong on the {side}"
+        dy = best_vertical_offset(base_pixels, opaque_pixels(frame))
+        moved_body = {(x, y + dy) for x, y in base_pixels}
+        assert not bubbles & moved_body, f"{stage} wash-{phase}: bubbles overlap the cat/ears"
+
+
+def check_egg(sprites=SPRITES):
+    paths = sorted(sprites.glob("cat-egg-v2*.png"))
+    assert len(paths) == 18, "the shared egg must retain its base and 17 poses"
+    digest = hashlib.sha256()
+    for path in paths:
+        image = load(path.stem, (29, 44), sprites)
+        digest.update(path.name.encode() + b"\0" + image.tobytes())
+    assert digest.hexdigest() == EGG_PIXEL_DIGEST, "cat redraw changed the shared egg artwork"
+
+
+def check_cat_sprites(sprites=SPRITES):
+    assert len(POSES) == 28
+    bases = []
+    for stage, size in SIZES.items():
+        prefix = f"cat-{stage}-v2"
+        base = load(prefix, size, sprites)
+        frames = {pose: load(f"{prefix}-{pose}", size, sprites) for pose in POSES}
+        bases.append(base.tobytes())
+        base_pixels = opaque_pixels(base)
+        box = FACE_REGIONS[stage]
+        check_face(base, box, stage)
+        assert base.tobytes() == frames["idle-0"].tobytes(), f"{stage}: idle-0 must be the approved stance"
+        base_box = base.getchannel("A").getbbox()
+        assert base_box[1] >= 2 and base_box[3] <= base.height - 2, (
+            f"{stage}: stance needs two clear rows above/below for animation"
+        )
+        for pose, frame in frames.items():
+            frame_pixels = opaque_pixels(frame)
+            dy = best_vertical_offset(base_pixels, frame_pixels)
+            check_face(frame, box, f"{stage} {pose}", dy)
+            if not pose.startswith(("wash-", "sleep-", "sad-")):
+                assert frame_pixels == {(x, y + dy) for x, y in base_pixels}, (
+                    f"{stage} {pose}: animation must preserve the cat silhouette without clipping"
+                )
+        for group, count in GROUPS.items():
+            if group != "walk":
+                assert len({frames[f"{group}-{i}"].tobytes() for i in range(count)}) == count, (
+                    f"{stage} {group}: every animation frame must visibly differ"
+                )
+        assert aligned_face(base, box).tobytes() != aligned_face(frames["blink"], box).tobytes(), (
+            f"{stage}: blinking must change the face"
+        )
+        eating_faces = [aligned_face(frames[f"eat-{i}"], box, dy).tobytes()
+                        for i, dy in enumerate(EAT_Y)]
+        assert len(set(eating_faces)) == 3, f"{stage}: eat must have three expressions, not just three positions"
+        check_walk(stage, base, frames)
+        check_wash(stage, base, frames)
+    assert len(set(bases)) == 3, "the three growth stages must have distinct artwork"
+    check_egg(sprites)
 
 
 def main():
-    def is_ink(pixel):
-        r, g, b, a = pixel
-        return a > 0 and r < 100 and g < 80 and b < 90
-
-    frames = []
-    for stage, size in EXPECTED_SIZES.items():
-        path = SPRITES / f"cat-{stage}-v2.png"
-        assert path.exists(), f"missing local redraw: {path.name}"
-        image = Image.open(path).convert("RGBA")
-        assert image.size == size, f"{path.name} has size {image.size}, expected {size}"
-        alpha = image.getchannel("A")
-        bbox = alpha.getbbox()
-        assert bbox, f"{path.name} is empty"
-        assert bbox[1] >= 0 and bbox[3] <= size[1]
-        assert bbox[3] == size[1], f"{path.name} feet must touch the canvas floor"
-        assert alpha.getpixel((0, 0)) == 0, f"{path.name} needs transparent padding"
-        frames.append(path.read_bytes())
-
-    assert len(set(frames)) == 3, "the three redraw stages must be visually distinct"
-
-    def longest_ink_run(image, x0, x1, y0, y1):
-        longest = 0
-        for y in range(y0, y1):
-            run = 0
-            for x in range(x0, x1):
-                r, g, b, a = image.getpixel((x, y))
-                if is_ink((r, g, b, a)):
-                    run += 1
-                    longest = max(longest, run)
-                else:
-                    run = 0
-        return longest
-
-    # The new face must live inside the head, not drift into the ears or chest.
-    face_regions = {
-        "baby": (8, 12, 22, 24),
-        "kid": (9, 13, 27, 27),
-        "adult": (11, 14, 34, 30),
-    }
-    for stage, (left, top, right, bottom) in face_regions.items():
-        image = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-        ink_pixels = 0
-        for y in range(top, bottom):
-            for x in range(left, right):
-                r, g, b, a = image.getpixel((x, y))
-                if is_ink((r, g, b, a)):
-                    ink_pixels += 1
-        assert ink_pixels >= 8, f"{stage} redraw has no readable face construction"
-
-    baby = Image.open(SPRITES / "cat-baby-v2.png").convert("RGBA")
-    # The kitten's crown is framed by its round ears: two visible ear tips
-    # above a short dome between them; no long straight cap may close the top.
-    ear_tips = [(6, 4), (19, 4), (6, 5), (19, 5)]
-    assert all(is_ink(baby.getpixel(p)) for p in ear_tips), (
-        "baby ear tips must stay visible above the crown"
-    )
-
-    # The mouth sits directly below the nose and must remain readable at 1x.
-    def face_run(image, x0, x1, y0, y1):
-        return longest_ink_run(image, x0, x1, y0, y1)
-
-    baby_mouth = face_run(baby, 9, 17, 14, 18)
-    adult = Image.open(SPRITES / "cat-adult-v2.png").convert("RGBA")
-    adult_mouth = face_run(adult, 15, 30, 22, 27)
-    assert 1 <= baby_mouth <= 2, f"baby mouth should be small but readable: run={baby_mouth}"
-    baby_mouth_pixels = [(11, 16), (12, 17), (13, 16)]
-    assert all(baby.getpixel(point) == INK for point in baby_mouth_pixels), (
-        "baby mouth should be a separated shallow arc, not a central black clump"
-    )
-    kid_mouth_pixels = [(14, 19), (15, 20), (16, 19)]
-    kid = Image.open(SPRITES / "cat-kid-v2.png").convert("RGBA")
-    assert all(kid.getpixel(point) == INK for point in kid_mouth_pixels), (
-        "kid mouth should use a compact feline point shape"
-    )
-    adult_mouth_pixels = [(17, 24), (18, 25), (19, 24), (20, 25), (21, 24)]
-    assert all(adult.getpixel(point) == INK for point in adult_mouth_pixels), (
-        "adult mouth should use the shifted compact feline point shape"
-    )
-    assert baby.getpixel((10, 16)) != INK
-    assert baby.getpixel((14, 16)) != INK
-
-    # The nose-to-mouth gap must stay clean; leftover pixels from the old
-    # canonical mouth read as a stray black line beside the nose.
-    for stage, row, x0, x1 in (("baby", 14, 9, 16), ("kid", 17, 12, 21)):
-        image = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-        assert all(
-            image.getpixel((x, row)) != INK
-            for x in range(x0, x1)
-        ), f"{stage} nose-to-mouth gap contains a stray black line"
-
-    # The top contour is stage-specific. A short, broken kitten contour is
-    # required, while the older cats keep their naturally stepped silhouette;
-    # a long post-fill line makes all three heads look mechanically capped.
-    dome = longest_ink_run(baby, 8, 14, 7, 8)
-    assert 4 <= dome <= 7, f"baby crown dome should be a short visible arc: run={dome}"
-    assert longest_ink_run(baby, 3, 25, 3, 9) <= 7, (
-        "baby top outline should keep its stepped ear/dome contour"
-    )
-    for stage, box in (("kid", (8, 26, 3, 9)), ("adult", (8, 36, 4, 10))):
-        image = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-        assert longest_ink_run(image, *box) <= 10, (
-            f"{stage} top outline should keep its natural stepped contour"
-        )
-
-    # The central face column moves up slightly with the redraw revision.
-    nose_limits = {"baby": 13, "kid": 16, "adult": 21}
-    for stage, limit in nose_limits.items():
-        image = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-        nose_y = [
-            y for y in range(image.height) for x in range(image.width)
-            if image.getpixel((x, y)) == NOSE
-        ]
-        assert nose_y and min(nose_y) <= limit, f"{stage} nose was not moved up"
-
-    # Eyes are calibrated on the final canvas so reduction cannot make one
-    # side heavier than the other.
-    eye_specs = {
-        "baby": {"left": (6, 11, 8, 13), "right": (15, 11, 17, 13), "glints": ((7, 11), (16, 11))},
-        "kid": {"left": (7, 12, 10, 15), "right": (19, 12, 22, 15), "glints": ((8, 12), (20, 12))},
-        "adult": {"left": (10, 15, 14, 19), "right": (25, 15, 29, 19), "glints": ((11, 15), (26, 15))},
-    }
-    for stage, spec in eye_specs.items():
-        image = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-        glints = set(spec["glints"])
-        for side in ("left", "right"):
-            x0, y0, x1, y1 = spec[side]
-            for y in range(y0, y1 + 1):
-                for x in range(x0, x1 + 1):
-                    if (x, y) in glints:
-                        continue
-                    assert image.getpixel((x, y)) == INK, (
-                        f"{stage} {side} eye is not a calibrated dark block"
-                    )
-        for point in spec["glints"]:
-            assert image.getpixel(point) == WHITE, (
-                f"{stage} eye is missing its one-pixel glint"
-            )
-
-    # Each front paw gets a light one-pixel side edge so it reads as a paw,
-    # without turning the whole hand into a heavy black block.
-    # Front paws are outlined stubs: INK rims with light pads, never a solid
-    # black block. Each stage pins its own paw coordinates.
-    paw_specs = {
-        "baby": {"rims": [(6, 30), (12, 30), (14, 30), (19, 30)],
-                 "pads": [(8, 30), (16, 30)]},
-        "kid": {"rims": [(8, 36), (14, 36), (18, 36), (24, 36)],
-                "pads": [(10, 36), (21, 36)]},
-        "adult": {"rims": [(10, 46), (17, 46), (27, 46), (34, 46)],
-                  "pads": [(12, 46), (30, 46)]},
-    }
-    for stage, spec in paw_specs.items():
-        image = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-        assert all(image.getpixel(p) == INK for p in spec["rims"]), (
-            f"{stage} front paws need visible outlined rims"
-        )
-        assert all(image.getpixel(p) == LIGHT for p in spec["pads"]), (
-            f"{stage} paw pads must stay light, not solid black"
-        )
-
-    # Derived idle/blink frames (hand-off §5 phase B). Each stage derives its
-    # own frames from its own v2 base; face geometry is never shared across
-    # stages.
-    CREAM = (255, 242, 213, 255)
-    eye_sockets = {
-        "baby": ((6, 11, 8, 13), (15, 11, 17, 13)),
-        "kid": ((7, 12, 10, 15), (19, 12, 22, 15)),
-        "adult": ((10, 15, 14, 19), (25, 15, 29, 19)),
-    }
-    for stage, size in EXPECTED_SIZES.items():
-        base = Image.open(SPRITES / f"cat-{stage}-v2.png").convert("RGBA")
-
-        # idle-0 must be the approved base stance byte-for-byte, so the
-        # section-4 face anchors stay exact.
-        idle0_path = SPRITES / f"cat-{stage}-v2-idle-0.png"
-        assert idle0_path.exists(), f"missing v2 idle frame: {idle0_path.name}"
-        idle0 = Image.open(idle0_path).convert("RGBA")
-        assert idle0.size == size, f"{idle0_path.name} has size {idle0.size}, expected {size}"
-        assert idle0.tobytes() == base.tobytes(), (
-            f"{idle0_path.name} must stay identical to the approved base stance"
-        )
-
-        # idle-1 dips one pixel and sways the tail tip; everything outside
-        # the tail region follows the dip exactly.
-        idle1_path = SPRITES / f"cat-{stage}-v2-idle-1.png"
-        assert idle1_path.exists(), f"missing v2 idle frame: {idle1_path.name}"
-        idle1 = Image.open(idle1_path).convert("RGBA")
-        assert idle1.size == size, f"{idle1_path.name} has size {idle1.size}, expected {size}"
-        tb0, tb1 = TAIL_BOX[stage][:2], TAIL_BOX[stage][2:]
-        for y in range(size[1]):
-            for x in range(size[0]):
-                if tb0[0] <= x < tb1[0] and tb0[1] <= y < tb1[1]:
-                    continue
-                expected = base.getpixel((x, y - 1)) if y > 0 else (0, 0, 0, 0)
-                assert idle1.getpixel((x, y)) == expected, (
-                    f"{idle1_path.name} is not a clean one-pixel breath at ({x}, {y})"
-                )
-        idle1_tip = TAIL_TIP0[stage]
-        assert idle1.getpixel((idle1_tip[0][0], idle1_tip[0][1] + 1)) == idle1_tip[1], (
-            f"{stage} idle breath must sway the tail"
-        )
-
-        # blink may only replace the two eye sockets with symmetric closed
-        # lids; nose, mouth, cheeks and outline stay exactly on the base.
-        blink_path = SPRITES / f"cat-{stage}-v2-blink.png"
-        assert blink_path.exists(), f"missing v2 blink frame: {blink_path.name}"
-        blink = Image.open(blink_path).convert("RGBA")
-        assert blink.size == size, f"{blink_path.name} has size {blink.size}, expected {size}"
-        sockets = eye_sockets[stage]
-        for y in range(size[1]):
-            for x in range(size[0]):
-                if any(sx0 <= x <= sx1 and sy0 <= y <= sy1 for sx0, sy0, sx1, sy1 in sockets):
-                    continue
-                assert blink.getpixel((x, y)) == base.getpixel((x, y)), (
-                    f"{blink_path.name} changed pixels outside the eye sockets at ({x}, {y})"
-                )
-        for sx0, sy0, sx1, sy1 in sockets:
-            for y in range(sy0, sy1 + 1):
-                for x in range(sx0, sx1 + 1):
-                    expected = INK if y == sy1 else CREAM
-                    assert blink.getpixel((x, y)) == expected, (
-                        f"{blink_path.name} closed lid must fill the eye socket at ({x}, {y})"
-                    )
-
-    # ------------------------------------------------------------------
-    # State frames: every pose changes only what it claims to change, on
-    # its own stage base. Whole-body offsets must be pixel-exact shifts.
-    def load(name):
-        return Image.open(SPRITES / name).convert("RGBA")
-
-    base_nose = {"baby": (11, 13), "kid": (14, 16), "adult": (19, 21)}
-    for stage, size in EXPECTED_SIZES.items():
-        base = load(f"cat-{stage}-v2.png")
-        sockets = eye_sockets[stage]
-        nx, ny = base_nose[stage]
-
-        # happy/excited hops shift the whole body while the tail wags;
-        # excited-1 also lifts a paw. Pixels outside the tail/paw regions
-        # must be exact shifted copies of the base.
-        hop_spec = (("happy-0", 1, 1), ("happy-1", -2, -1), ("happy-2", 0, -1),
-                    ("excited-0", -1, 1), ("excited-1", -2, -1))
-        for pose, dy, lift in hop_spec:
-            img = load(f"cat-{stage}-v2-{pose}.png")
-            assert img.size == size, f"{stage} {pose} wrong canvas"
-            tb0, tb1 = TAIL_BOX[stage][:2], TAIL_BOX[stage][2:]
-            paw_up_pose = pose == "excited-1"
-            pb0, pb1 = PAW_BOX[stage][:2], PAW_BOX[stage][2:]
-            for y in range(size[1]):
-                sy = y - dy
-                for x in range(size[0]):
-                    if tb0[0] <= x < tb1[0] and tb0[1] <= y < tb1[1]:
-                        continue
-                    if paw_up_pose and pb0[0] <= x < pb1[0] and pb0[1] <= y < pb1[1]:
-                        continue
-                    expected = base.getpixel((x, sy)) if 0 <= sy < size[1] else (0, 0, 0, 0)
-                    assert img.getpixel((x, y)) == expected, (
-                        f"{stage} {pose} must be a clean {dy:+d}px body shift at ({x}, {y})"
-                    )
-            (tx, ty0), tcol = TAIL_TIP0[stage]
-            assert img.getpixel((tx, ty0 - lift + dy)) == tcol, (
-                f"{stage} {pose} tail must wag"
-            )
-            if paw_up_pose:
-                px_, py_ = PAW_PAD[stage]
-                assert img.getpixel((px_, py_ - 2)) == LIGHT, (
-                    f"{stage} {pose} lifted paw pad must rise with the hop"
-                )
-                assert img.getpixel((px_, py_ + 2)) == (0, 0, 0, 0), (
-                    f"{stage} {pose} paws must leave the floor clear"
-                )
-
-        # excited-2 swaps the sockets for star eyes, lifts a paw and wags
-        # the tail; pixels outside those regions stay on the base.
-        star = load(f"cat-{stage}-v2-excited-2.png")
-        tb0, tb1 = TAIL_BOX[stage][:2], TAIL_BOX[stage][2:]
-        pb0, pb1 = PAW_BOX[stage][:2], PAW_BOX[stage][2:]
-        for y in range(size[1]):
-            for x in range(size[0]):
-                in_socket = any(sx0 <= x <= sx1 and sy0 <= y <= sy1 for sx0, sy0, sx1, sy1 in sockets)
-                in_tail = tb0[0] <= x < tb1[0] and tb0[1] <= y < tb1[1]
-                in_paw = pb0[0] <= x < pb1[0] and pb0[1] <= y < pb1[1]
-                if in_socket or in_tail or in_paw:
-                    continue
-                assert star.getpixel((x, y)) == base.getpixel((x, y)), (
-                    f"{stage} excited-2 changed pixels outside sockets/tail/paw at ({x},{y})"
-                )
-        for sx0, sy0, sx1, sy1 in sockets:
-            assert star.getpixel((sx0 + 1, sy1 - 1)) == LIGHT, (
-                f"{stage} star eyes must glow light inside the ink rim"
-            )
-            if sx1 - sx0 >= 4 and sy1 - sy0 >= 4:
-                assert star.getpixel(((sx0 + sx1) // 2, (sy0 + sy1) // 2)) == WHITE
-        px_, py_ = PAW_PAD[stage]
-        assert star.getpixel((px_, py_)) == LIGHT, (
-            f"{stage} excited-2 lifted paw must show its light pad"
-        )
-        assert star.getpixel((px_, py_ + 2)) == INK, (
-            f"{stage} excited-2 pad must hover right above the grounded rim"
-        )
-        (tx, ty0), tcol = TAIL_TIP0[stage]
-        assert star.getpixel((tx, ty0 - 1)) == tcol, (
-            f"{stage} excited-2 tail must wag up"
-        )
-
-        # eating: the whole face pitches while a trapezoid dish with a
-        # domed kibble heap sits in front — ~2/3 of the body width so the
-        # silhouettes don't fuse, and the pitched face keeps a clear gap to
-        # the heap outline.
-        dish_spec = {"baby": (7, 28, 18, 31), "kid": (9, 34, 24, 37),
-                     "adult": (12, 44, 32, 47)}[stage]
-        dx0, dy0, dx1, dy1 = dish_spec
-        rim_y = {"baby": 28, "kid": 34, "adult": 44}[stage]
-        cx = (dx0 + dx1) // 2
-        pitch = 2 if stage == "baby" else 3
-        for pose, dy, eyes in (("eat-0", pitch, "open"), ("eat-1", pitch, "closed"), ("eat-2", -2, "open")):
-            img = load(f"cat-{stage}-v2-{pose}.png")
-            assert img.getpixel((nx, ny + dy)) == NOSE, (
-                f"{stage} {pose} nose must follow the pitched head"
-            )
-            assert img.getpixel((dx0 + 2, rim_y)) == INK and img.getpixel((dx1 - 3, rim_y)) == INK, (
-                f"{stage} {pose} is missing its dish rim"
-            )
-            assert img.getpixel((cx, rim_y + 1)) == BOWL, (
-                f"{stage} {pose} dish must be the blue bowl, not fur-colored"
-            )
-            assert img.getpixel((cx - 2, rim_y - 2)) == LIGHT and img.getpixel((cx + 2, rim_y - 2)) == LIGHT, (
-                f"{stage} {pose} kibble heap must rise above the rim"
-            )
-            assert img.getpixel((cx, rim_y - 2)) == WHITE, (
-                f"{stage} {pose} heap needs a bright glint"
-            )
-            assert img.getpixel((cx, rim_y - 3)) == INK, (
-                f"{stage} {pose} heap needs its ink outline to read against the fur"
-            )
-            if eyes == "closed":
-                for sx0, sy0, sx1, sy1 in sockets:
-                    assert img.getpixel((sx0, sy1 + dy)) == INK, (
-                        f"{stage} eat-1 must close both eyes while chewing"
-                    )
-            lift = 1 if pose == "eat-0" else (-1 if pose == "eat-1" else 0)
-            # the adult's pitched head covers its tail tip, so its wag is
-            # asserted on the visible lower curl instead
-            (tx, ty0), tcol = {"baby": ((23, 22), LIGHT), "kid": ((29, 20), INK),
-                               "adult": ((42, 31), INK)}[stage]
-            assert img.getpixel((tx, ty0 - lift)) == tcol, (
-                f"{stage} {pose} tail must sway while eating"
-            )
-
-        # sleep is its own lying silhouette: grounded, closed eye, crisp Z.
-        for phase in (0, 1):
-            img = load(f"cat-{stage}-v2-sleep-{phase}.png")
-            assert img.size == size and img.getbbox()[3] == size[1], (
-                f"{stage} sleep-{phase} must fill its canvas down to the floor"
-            )
-        zz = {"baby": (21, 8, 5), "kid": (25, 8, 5), "adult": (30, 10, 5)}[stage]
-        for phase in (0, 1):
-            img = load(f"cat-{stage}-v2-sleep-{phase}.png")
-            zy = zz[1] + phase
-            x0, s = zz[0], zz[2]
-            assert all(img.getpixel((x, zy)) == INK for x in range(x0, x0 + s)), (
-                f"{stage} sleep-{phase} Z glyph needs its top bar"
-            )
-            assert all(img.getpixel((x, zy + s - 1)) == INK for x in range(x0, x0 + s)), (
-                f"{stage} sleep-{phase} Z glyph needs its bottom bar"
-            )
-            for i in range(1, s - 1):
-                diag_x = x0 + s - 1 - i
-                assert img.getpixel((diag_x, zy + i)) == INK, (
-                    f"{stage} sleep-{phase} Z glyph needs its diagonal"
-                )
-                strays = [x for x in range(x0, x0 + s)
-                          if x != diag_x and img.getpixel((x, zy + i)) == INK]
-                assert not strays, (
-                    f"{stage} sleep-{phase} Z middle rows must stay a thin diagonal"
-                )
-        # the sleeping muzzle keeps its nose (per-stage scaled coordinates)
-        nose_px = {"baby": (6, 19), "kid": (8, 23), "adult": (9, 29)}[stage]
-        assert load(f"cat-{stage}-v2-sleep-0.png").getpixel(nose_px) == NOSE, (
-            f"{stage} sleeping face lost its muzzle nose"
-        )
-
-        # sad/droopy drop heavy lids over the sockets, let the tail sag to
-        # the floor; sad adds a blue tear hanging from the left eye, one
-        # pixel further down on sad-1.
-        tear_xy = {"baby": (7, 14), "kid": (8, 16), "adult": (12, 20)}[stage]
-        for pose, roll in (("sad-0", 0), ("sad-1", 1), ("droopy", None)):
-            img = load(f"cat-{stage}-v2-{pose}.png")
-            for sx0, sy0, sx1, sy1 in sockets:
-                assert img.getpixel((sx0, sy0)) == FUR and img.getpixel((sx0, sy1)) == INK, (
-                    f"{stage} {pose} must shade heavy lids over the eyes"
-                )
-            dtip, dcol = DROOP_TIP[stage]
-            assert img.getpixel(dtip) == dcol, (
-                f"{stage} {pose} tail must droop to the floor"
-            )
-            if roll is not None:
-                for dy in (0, 1):
-                    assert img.getpixel((tear_xy[0], tear_xy[1] + roll + dy)) == TEAR, (
-                        f"{stage} {pose} is missing its tear"
-                    )
-            else:
-                assert img.getpixel(tear_xy) != TEAR, (
-                    f"{stage} droopy must not show a tear"
-                )
-
-        # washing sways the head and shows a cluster of bubbles.
-        for pose, dx, side in (("wash-0", 1, "r"), ("wash-1", -1, "l")):
-            img = load(f"cat-{stage}-v2-{pose}.png")
-            assert img.getpixel((nx + dx, ny)) == NOSE, (
-                f"{stage} {pose} nose must sway with the head"
-            )
-            bcn = {"baby": (23, 9), "kid": (29, 10), "adult": (38, 12)}[stage]
-            if side == "l":
-                # left-side spots are authored separately (a mirror would
-                # land the big bubble on the face)
-                bcn = {"baby": (0, 5), "kid": (0, 5), "adult": (0, 8)}[stage]
-            assert img.getpixel((bcn[0], bcn[1] + 1)) == INK and img.getpixel((bcn[0] + 1, bcn[1] + 1)) == TEAR, (
-                f"{stage} {pose} is missing its soap bubble"
-            )
-            b2 = {"baby": (26, 16), "kid": (32, 18), "adult": (40, 22)}[stage]
-            if side == "l":
-                b2 = {"baby": (0, 21), "kid": (0, 25), "adult": (0, 30)}[stage]
-            assert img.getpixel((b2[0], b2[1] + 1)) == INK and img.getpixel((b2[0] + 1, b2[1] + 1)) == TEAR, (
-                f"{stage} {pose} should show a cluster of bubbles"
-            )
-
-        # grunting squeezes the eyes and shows blush under BOTH eyes (the
-        # patch offset is per stage — a fixed offset landed mid-face).
-        blush_px = {"baby": [(6, 17), (15, 17)], "kid": [(8, 18), (20, 18)],
-                    "adult": [(11, 25), (26, 25)]}[stage]
-        for pose, dy in (("grunt-0", 0), ("grunt-1", 1)):
-            img = load(f"cat-{stage}-v2-{pose}.png")
-            for bx, by in blush_px:
-                assert img.getpixel((bx, by + dy)) == PINK, (
-                    f"{stage} {pose} must blush under both eyes"
-                )
-            for sx0, sy0, sx1, sy1 in sockets:
-                assert img.getpixel((sx0, sy0 + 1 + dy)) == INK, (
-                    f"{stage} {pose} must squeeze its eyes shut"
-                )
-
-        # walk: a side-view cycle where legs/tail move but the head never
-        # drifts; every frame keeps its side eye and grounded legs.
-        walks = [load(f"cat-{stage}-v2-walk-{f}.png") for f in range(7)]
-        assert len({w.tobytes() for w in walks}) == 7, (
-            f"{stage} walk frames must be seven distinct pictures"
-        )
-        eye_px = {"baby": (21, 10), "kid": (26, 12), "adult": (35, 15)}[stage]
-        tail_win = {"baby": ((0, 8), (6, 20)), "kid": ((0, 10), (7, 25)),
-                    "adult": ((0, 14), (9, 31))}[stage]
-        for f, img in enumerate(walks):
-            assert img.size == size, f"{stage} walk-{f} wrong canvas"
-            assert img.getpixel(eye_px) == INK, f"{stage} walk-{f} side eye missing"
-            assert img.getbbox()[3] == size[1], (
-                f"{stage} walk-{f} legs must touch the canvas floor"
-            )
-        (tx0, ty0), (tx1, ty1) = tail_win
-        assert any(
-            walks[0].getpixel((x, y)) != walks[1].getpixel((x, y))
-            for y in range(ty0, ty1) for x in range(tx0, tx1)
-        ), f"{stage} walk tail must sway between frames"
-
-    # ------------------------------------------------------------------
-    # Egg stage 0: locally redrawn shell + face. The silhouette must match
-    # the legacy egg row by row, or the runtime EGG_SPOTS overlay lands
-    # off the shell.
-    stance = load("cat-egg-v2.png")
-    assert stance.size == (29, 40)
-    # Strip the 2px top/bottom canvas padding to get the 29x36 egg content.
-    stance = stance.crop((0, 2, 29, 38))
-    for y, (ex0, ex1) in enumerate(EGG_ROWS):
-        row = [x for x in range(29) if stance.getpixel((x, y))[3] > 0]
-        assert row and min(row) == ex0 and max(row) == ex1, (
-            f"egg silhouette drifted from the shell at row {y}"
-        )
-    egg_poses = ["idle-0", "idle-1", "blink", "eat", "sleep-0", "sleep-1",
-                 "happy", "excited-0", "excited-1", "excited-2", "droopy",
-                 "sad-0", "sad-1", "wash-0", "wash-1", "grunt-0", "grunt-1"]
-    egg_frames = {"idle-0": stance}
-    for p in egg_poses:
-        if p != "idle-0":
-            path = SPRITES / f"cat-egg-v2-{p}.png"
-            assert path.exists(), f"missing egg frame: {path.name}"
-            img = load(f"cat-egg-v2-{p}.png")
-            assert img.size == (29, 40), f"{path.name} wrong canvas"
-            egg_frames[p] = img.crop((0, 2, 29, 38))
-    assert len({f.tobytes() for f in egg_frames.values()}) == 17, (
-        "all 17 egg frames must be distinct pictures"
-    )
-
-    # base face anchors: dark eyes with white glints, smile arc, pink cheeks
-    egg_sockets = ((7, 14, 9, 16), (18, 14, 20, 16))
-    for sx0, sy0, sx1, sy1, gx in ((7, 14, 9, 16, 8), (18, 14, 20, 16, 19)):
-        for y in range(sy0, sy1 + 1):
-            for x in range(sx0, sx1 + 1):
-                expected = WHITE if x == gx and y == sy0 else INK
-                assert stance.getpixel((x, y)) == expected, "egg eye anchor"
-    for x, y in ((12, 19), (16, 19), (13, 20), (14, 20), (15, 20)):
-        assert stance.getpixel((x, y)) == INK, "egg smile anchor"
-    for bx in (5, 21):
-        for y in (17, 18):
-            assert stance.getpixel((bx, y)) == PINK, "egg cheek anchor"
-
-    # idle-0 is the stance itself; idle-1 dips one pixel, width unchanged
-    assert egg_frames["idle-0"].tobytes() == stance.tobytes()
-    e1 = egg_frames["idle-1"]
-    b0, b1 = stance.getchannel("A").getbbox(), e1.getchannel("A").getbbox()
-    assert b0[0] == b1[0] and b0[2] == b1[2], "egg breath must keep its width"
-    for y in range(36):
-        for x in range(29):
-            expected = stance.getpixel((x, y - 1)) if y > 0 else (0, 0, 0, 0)
-            assert e1.getpixel((x, y)) == expected, "egg idle-1 must be a 1px dip"
-
-    def egg_closed(img):
-        for sx0, sy0, sx1, sy1 in egg_sockets:
-            for y in range(sy0, sy1 + 1):
-                for x in range(sx0, sx1 + 1):
-                    expected = INK if y == sy1 else WHITE
-                    assert img.getpixel((x, y)) == expected, "egg closed eyes"
-
-    blink = egg_frames["blink"]
-    egg_closed(blink)
-    for x, y in ((12, 19), (16, 19), (13, 20), (14, 20), (15, 20)):
-        assert blink.getpixel((x, y)) == INK, "blink keeps the smile"
-
-    eat = egg_frames["eat"]
-    egg_closed(eat)
-    for x in range(12, 16):
-        for y in (19, 20):
-            expected = LIGHT if (x, y) in ((13, 19), (14, 19)) else INK
-            assert eat.getpixel((x, y)) == expected, "eat must show crumbs in an open mouth"
-
-    for p, mouth in (("sleep-0", [(14, 20)]), ("sleep-1", [(13, 20), (14, 20), (15, 20)])):
-        img = egg_frames[p]
-        egg_closed(img)
-        for x in range(11, 18):
-            for y in (19, 20):
-                expected = INK if (x, y) in mouth else WHITE
-                assert img.getpixel((x, y)) == expected, f"{p} mouth"
-
-    happy = egg_frames["happy"]
-    for sx0, sy0, sx1, sy1 in egg_sockets:
-        for y in range(sy0, sy1 + 1):
-            for x in range(sx0, sx1 + 1):
-                on_arc = (y == sy1 and x in (sx0, sx1)) or (y == sy0 and x == sx0 + 1)
-                expected = INK if on_arc else WHITE
-                assert happy.getpixel((x, y)) == expected, "happy arc eyes"
-    for x in range(12, 17):
-        for y in (19, 20):
-            expected = PINK if y == 20 and x in (13, 14, 15) else INK
-            assert happy.getpixel((x, y)) == expected, "happy laugh with tongue"
-
-    e0 = egg_frames["excited-0"]
-    for sx0, sy0, sx1, sy1, gx in ((7, 14, 9, 16, 8), (18, 14, 20, 16, 19)):
-        for y in range(sy0, sy1 + 1):
-            for x in range(sx0, sx1 + 1):
-                expected = WHITE if x == gx and y == sy0 else INK
-                assert e0.getpixel((x, y)) == expected, "excited-0 open eyes"
-    for x in range(12, 17):
-        for y in (19, 20):
-            expected = PINK if y == 20 and x in (13, 14, 15) else INK
-            assert e0.getpixel((x, y)) == expected, "excited-0 laugh"
-
-    for p in ("excited-1",):
-        img = egg_frames[p]
-        for sx0, sy0, sx1, sy1 in egg_sockets:
-            for y in range(sy0, sy1 + 1):
-                for x in range(sx0, sx1 + 1):
-                    expected = LIGHT if (x, y) == (sx0 + 1, sy0 + 1) else INK
-                    assert img.getpixel((x, y)) == expected, f"{p} star eyes"
-    e1x, e2x = egg_frames["excited-1"], egg_frames["excited-2"]
-    for y in range(35):
-        for x in range(29):
-            assert e2x.getpixel((x, y)) == e1x.getpixel((x, y + 1)), (
-                "excited-2 must be excited-1 bounced one pixel up"
-            )
-    for x in range(29):
-        assert e2x.getpixel((x, 35)) == (0, 0, 0, 0), "excited-2 bounce lifts off"
-
-    droopy = egg_frames["droopy"]
-    for sx0, sy0, sx1, sy1 in egg_sockets:
-        for y in range(sy0, sy1 + 1):
-            for x in range(sx0, sx1 + 1):
-                expected = INK if y == sy0 + 1 else WHITE
-                assert droopy.getpixel((x, y)) == expected, "droopy mid lids"
-    for x, y in ((12, 20), (16, 20), (13, 19), (14, 19), (15, 19)):
-        assert droopy.getpixel((x, y)) == INK, "droopy frown"
-    assert droopy.getpixel((5, 19)) != TEAR, "droopy must not show a tear"
-
-    for p, roll in (("sad-0", 0), ("sad-1", 1)):
-        img = egg_frames[p]
-        for sx0, sy0, sx1, sy1 in egg_sockets:
-            for y in range(sy0, sy1 + 1):
-                for x in range(sx0, sx1 + 1):
-                    expected = INK if y == sy0 + 1 else WHITE
-                    assert img.getpixel((x, y)) == expected, "sad lids"
-        for dy in (0, 1):
-            assert img.getpixel((5, 19 + roll + dy)) == TEAR, f"{p} tear"
-
-    for p, side in (("wash-0", "r"), ("wash-1", "l")):
-        img = egg_frames[p]
-        egg_closed(img)
-        assert img.getpixel((14, 20)) == INK, f"{p} tiny mouth"
-        main_b = (24, 1) if side == "r" else (1, 1)
-        mid_b = (25, 6) if side == "r" else (2, 6)
-        assert img.getpixel((main_b[0] + 1, main_b[1])) == INK, f"{p} main bubble"
-        assert img.getpixel((main_b[0] + 1, main_b[1] + 1)) == WHITE
-        assert img.getpixel((mid_b[0] + 1, mid_b[1])) == INK, f"{p} second bubble"
-        assert img.getpixel((mid_b[0] + 1, mid_b[1] + 1)) == WHITE
-
-    for p, dy in (("grunt-0", 0), ("grunt-1", 1)):
-        img = egg_frames[p]
-        for sx0, sy0, sx1, sy1 in egg_sockets:
-            squeeze_rows = (sy0 + 1 + dy, sy1 + dy)
-            for y in range(sy0, sy1 + 1 + dy):
-                for x in range(sx0, sx1 + 1):
-                    expected = INK if y in squeeze_rows else WHITE
-                    assert img.getpixel((x, y)) == expected, "grunt squeeze"
-        frown = ((12, 20 + dy), (16, 20 + dy), (13, 19 + dy), (14, 19 + dy), (15, 19 + dy))
-        for x, y in frown:
-            assert img.getpixel((x, y)) == INK, "grunt frown"
-
-    print("cat redraw contract: PASS")
+    check_cat_sprites()
+    print("cat redraw contract: PASS (87 cat frames; shared egg unchanged)")
 
 
 if __name__ == "__main__":

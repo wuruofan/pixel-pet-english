@@ -1,5 +1,7 @@
 # Cat 翻新・mmx 基础图已选定・差分难点交接
 
+> **2026-09-17 更新：已完成三阶段清理、独立五官锚点、87 张正式帧和测试入口。** 复现命令及实现决策见 [§10](#10-2026-09-17-实现记录)。下文 §1–§8 保留 9 月 16 日的诊断和方案背景，其中“等待”描述为当时状态。
+
 > 日期：2026-09-16 ｜ 项目：pixel-pet-english ｜ 主题：cat 三阶段 base 已由用户选定（mmx 出图），差分渲染尚未开始
 > 前置：fox /dragon 已定稿（流程见 
 >
@@ -229,12 +231,49 @@ mmx quota show
 
 4. **大圆眼（带眼白 / 高光）的擦除区要按量化后真实 bbox 定**，不能沿用 baby 的小擦除区
 
-## 9. 待用户拍板事项
+## 9. 本轮实现决策
 
+用户授权按 handoff 完成并提供测试入口后，采用以下方案供直接预览：
 
+* [x] 保留 kid #3 的浅灰项圈，作为阶段特征。
+* [x] adult #1 按实际像素范围清除眼白、红色边缘及旧五官，再按橙毛 / 奶油色口鼻区分别补色。
+* [x] 输出量化 base、无五官 clean base 和表情对照图；三阶段正式帧已接入，可在测试页逐帧查看。视觉偏好仍可根据用户反馈调整。
 
-* [ ] kid #3 项圈：保留 or 擦除？
+## 10. 2026-09-17 实现记录
 
-* [ ] adult #1 差分方案：走标准擦除重画（大擦除区）还是先试试只擦眼睛周围？
+### 输入与产物
 
-* [ ] 三张 base 是否需要先量化 + 清背景出对比图给用户过目，再进入差分？（建议：是）
+- 沿用 §1 的 baby #1、kid #3、adult #1，未使用旧 GPT base 或另一组 `COMPARE-selected-3.png`。
+- `scripts/prepare-cat-bases.py`：先移除浅蓝背景及阴影，再取最大主体连通区域，以 8× LANCZOS 中间尺寸和 NEAREST 落像素，统一到 13 色调色板。先清背景避免奶油脸与背景合色；保留足够上下边距。
+- `assets/sprite-bases/cat-{baby,kid,adult}-quantized.png`：量化底图；同目录 `*-clean.png`：按三阶段实际位置恢复毛色、去除原五官的底图。
+- `scripts/cat-differential.py`：独立眼、鼻、嘴、腮红锚点；baby / kid 为 36×38，adult 为 44×48。2px 眼睛和偶数宽嘴按半像素中心对齐；清理过程不挖透明脸孔。
+- `assets/sprites/cat-{baby,kid,adult}-v2*.png`：每阶段主帧 1 张 + 动作 28 张，共 87 张；共享 `cat-egg-v2*` 保持原样。
+- `docs/sprites/cat-mmx-preview.png`：三阶段关键表情对照图。
+- `src/app.js` 继续使用现有 `PET_FRAMES.cat` 帧名；构建文件已更新。
+
+### 动作与验收
+
+- 走路为 7 帧整只跳动，纵向位移 `[0, -2, -1, 0, 1, -1, 0]`；五官先画到猫身上再整体平移，不切腿、不裁耳朵或尾巴。
+- eat 三帧分别为闭嘴、张嘴、带碎屑咀嚼，五官随身体移动。
+- wash-0 右侧 5 颗、wash-1 左侧 5 颗蓝色泡泡，不覆盖耳朵和身体；sleep 的大小 Z 在脸外。
+- 猫帧测试验证尺寸、二值 alpha、透明边缘、脸部不透明、动作变化、平移守恒、吃饭三态、泡泡位置以及 18 张共享蛋的像素摘要不变。
+- 接线测试验证猫每阶段和每种表情的帧映射，保留狗和公共动画行为检查。独立测试页的 VM 测试覆盖存档隔离及帧切换。
+
+### 复现与测试入口
+
+需要 Node.js、Python 3 和 Pillow；无需重新调用出图服务。
+
+```bash
+python3 scripts/cat-differential.py
+python3 scripts/test-cat-redraw.py
+python3 scripts/test-dog-redraw.py
+python3 scripts/test-sprite-contract.py
+node scripts/test-pet-preview.js
+node --check src/app.js
+node scripts/build.js
+node scripts/serve-no-cache.js
+```
+
+打开服务输出的地址并添加 `?pet-test=cat`，例如 `http://127.0.0.1:57321/?pet-test=cat`。入口并列展示三阶段，提供 11 种动作、播放 / 暂停、上一帧 / 下一帧和返回游戏。测试模式不读写存档，也不启动学习计时、签到或宠物状态衰减。
+
+只想检查素材时可运行 `python3 scripts/cat-differential.py --preview-only`，它不会覆盖正式精灵。不要运行历史 `redraw-cat-local.py` 来重建当前猫素材。
