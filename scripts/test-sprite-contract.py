@@ -106,83 +106,40 @@ def main():
     # The bench must expose all four growth stages, including adult.
     assert "var TB_STAGES = [[0, '蛋'], [1, curSpecies().stages[0]], [2, curSpecies().stages[1]], [3, curSpecies().stages[2]]];" in APP
 
-    # ------------------ dog (小狗) ---------------------------
-    # The dog pipeline mirrors the cat's: 3 stage-distinct v2 stances,
-    # 21 differential frames per stage, and a 7-frame side-view walk loop.
-    # All wiring is local; the egg shell is shared with the cat and tinted
-    # at runtime by the species palette.
-    assert "1: 'dog-baby-v2', 2: 'dog-kid-v2', 3: 'dog-adult-v2'" in APP
-    assert "1: ['dog-baby-v2-idle-0', 'dog-baby-v2-idle-1']" in APP
-    assert "2: ['dog-kid-v2-idle-0',  'dog-kid-v2-idle-1']" in APP
-    assert "3: ['dog-adult-v2-idle-0','dog-adult-v2-idle-1']" in APP
-    assert "1: ['dog-baby-v2-blink']" in APP
-    assert "2: ['dog-kid-v2-blink']" in APP
-    assert "3: ['dog-adult-v2-blink']" in APP
-
-    dog_sizes = {"baby": (30, 32), "kid": (36, 38), "adult": (44, 48)}
-    for stage, size in dog_sizes.items():
-        for frame in ("idle-0", "idle-1", "blink"):
-            path = SPRITES / f"dog-{stage}-v2-{frame}.png"
-            assert path.exists(), f"missing dog v2 frame: {path.name}"
-            assert Image.open(path).size == size, (
-                f"{path.name} must stay on the {stage} v2 canvas {size}"
+    # The golden retriever keeps its public frame names and uses a whole-body hop.
+    # Image contracts own the dimensions, transparency and no-clipping checks;
+    # they inspect the exported artwork independently of the generator.
+    dog_contract = runpy.run_path(str(ROOT / "scripts" / "test-dog-redraw.py"))
+    dog_contract["check_dog_sprites"]()
+    dog_section = APP.split("var PET_FRAMES = {", 1)[1].split("dog: {", 1)[1].split("fox: {", 1)[0]
+    stage_block = re.search(r"stage:\s*\{([^}]+)\}", dog_section)
+    assert stage_block, "PET_FRAMES.dog needs its own stage map"
+    assert dict(re.findall(r"(\d+):\s*'([^']+)'", stage_block.group(1))) == {
+        "0": "cat-egg-v2", "1": "dog-baby-v2", "2": "dog-kid-v2", "3": "dog-adult-v2"
+    }, "PET_FRAMES.dog must retain the shared egg and three growth-stage bases"
+    for expr, count in expressions.items():
+        block = re.search(rf"\b{expr}:\s*\{{(.*?)\}}", dog_section, re.S)
+        assert block, f"PET_FRAMES.dog is missing {expr}"
+        mapping = {key: re.findall(r"'([^']+)'", values)
+                   for key, values in re.findall(r"(\d+):\s*\[([^\]]*)\]", block.group(1))}
+        for index, stage in enumerate(("baby", "kid", "adult"), 1):
+            pose = "excited" if expr == "big" else expr
+            prefix = f"dog-{stage}-v2-{pose}"
+            expected = [prefix] if count == 1 else [f"{prefix}-{i}" for i in range(count)]
+            assert mapping.get(str(index)) == expected, (
+                f"PET_FRAMES.dog {stage} {expr} must map every frame in order"
             )
-        # idle breath keeps the same horizontal silhouette (no jump on swap)
-        base = alpha_bbox(f"dog-{stage}-v2-idle-0.png")
-        breath = alpha_bbox(f"dog-{stage}-v2-idle-1.png")
-        assert base and breath and base[0] == breath[0] and base[2] == breath[2], (
-            f"{stage} dog v2 idle frames must keep the same horizontal silhouette: {base} vs {breath}"
+        assert mapping.get("0") and all(name.startswith("cat-egg-v2-") for name in mapping["0"]), (
+            f"PET_FRAMES.dog {expr} must use shared egg frames at stage 0"
         )
-        assert (
-            SPRITES.joinpath(f"dog-{stage}-v2-idle-0.png").read_bytes()
-            != SPRITES.joinpath(f"dog-{stage}-v2-idle-1.png").read_bytes()
-        ), f"{stage} dog v2 idle frames must be a real difference"
-
-        # All 18 differential poses must exist and live on the v2 canvas
-        dog_pose_specs = (
-            ("eat", 3), ("sleep", 2), ("happy", 3), ("excited", 3),
-            ("droopy", 1), ("sad", 2), ("wash", 2), ("grunt", 2),
+        assert all((SPRITES / f"{name}.png").is_file() for name in mapping["0"]), (
+            f"PET_FRAMES.dog {expr} references a missing shared egg frame"
         )
-        for expr, count in dog_pose_specs:
-            frames = []
-            for index in range(count):
-                if count == 1:
-                    path = SPRITES / f"dog-{stage}-v2-{expr}.png"
-                else:
-                    path = SPRITES / f"dog-{stage}-v2-{expr}-{index}.png"
-                assert path.exists(), f"missing dog {stage} {expr} frame: {path.name}"
-                assert Image.open(path).size == size
-                frames.append(path.read_bytes())
-            assert len(set(frames)) == count, (
-                f"dog {stage} {expr} frames must be unique ({count} distinct)"
-            )
-
-        # walk: 7 distinct side-view frames on the v2 canvas
-        walk_frames = []
-        for index in range(7):
-            path = SPRITES / f"dog-{stage}-v2-walk-{index}.png"
-            assert path.exists(), f"missing dog {stage} walk frame: {path.name}"
-            assert Image.open(path).size == size
-            walk_frames.append(path.read_bytes())
-        assert len(set(walk_frames)) == 7, (
-            f"dog {stage} walk frames must be 7 distinct pictures"
-        )
-
-    # PET_FRAMES.dog must wire every state and stage the same way cat does.
-    for expr, count in (("eat", 3), ("sleep", 2), ("happy", 3), ("excited", 3),
-                         ("droopy", 1), ("sad", 2), ("wash", 2), ("grunt", 2)):
-        for stage_idx, prefix in ((1, "dog-baby"), (2, "dog-kid"),
-                                  (3, "dog-adult")):
-            if count == 1:
-                assert f"{stage_idx}: ['{prefix}-v2-{expr}']" in APP, (
-                    f"{prefix}-v2-{expr} must be wired in PET_FRAMES.dog"
-                )
-            else:
-                joined = "', '".join(f"{prefix}-v2-{expr}-{i}" for i in range(count))
-                assert f"{stage_idx}: ['{joined}']" in APP, (
-                    f"{prefix} {expr} frames must all be wired in PET_FRAMES.dog"
-                )
-    assert "walk: { 1: 'dog-baby-v2-walk-', 2: 'dog-kid-v2-walk-', 3: 'dog-adult-v2-walk-' }" in APP
+    walk_block = re.search(r"walk:\s*\{([^}]+)\}", dog_section)
+    assert walk_block, "PET_FRAMES.dog needs a walk prefix for each grown stage"
+    assert dict(re.findall(r"(\d+):\s*'([^']+)'", walk_block.group(1))) == {
+        "1": "dog-baby-v2-walk-", "2": "dog-kid-v2-walk-", "3": "dog-adult-v2-walk-"
+    }, "PET_FRAMES.dog must select the current stage's seven-frame hop"
 
     print("sprite contract: PASS")
 

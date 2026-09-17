@@ -909,7 +909,7 @@
                               3: ['cat-adult-v2-grunt-0', 'cat-adult-v2-grunt-1'] } },
            walk: { 1: 'cat-baby-v2-walk-', 2: 'cat-kid-v2-walk-', 3: 'cat-adult-v2-walk-' } },
     /* 狗（dog）— 与猫共享蛋壳 cat-egg-v2-*（运行时按物种主色染斑点），
-       阶段站姿/全部差分表情/走路都来自本地像素重绘，每阶段独立锚点 */
+       金毛三阶段参考图量化后生成表情与整只蹦跳，每阶段独立五官锚点 */
     dog: { stage: { 0: 'cat-egg-v2', 1: 'dog-baby-v2', 2: 'dog-kid-v2', 3: 'dog-adult-v2' },
            expr: { idle:    { 0: ['cat-egg-v2-idle-0', 'cat-egg-v2-idle-1'],
                               1: ['dog-baby-v2-idle-0', 'dog-baby-v2-idle-1'],
