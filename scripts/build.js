@@ -116,9 +116,10 @@ ${css}
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="brand"><span class="logo">🐲</span><span>皮克学英语</span></div>
+    <div class="brand"><span class="logo" id="brand-logo">🦖</span><span>皮克学英语</span></div>
     <div class="spacer"></div>
     <div class="pill" id="book-pill">📗 一上</div>
+    <button class="pill pill-btn" id="btn-stats" title="统计">📊</button>
     <button class="pill pill-btn" id="btn-settings" title="设置">⚙️</button>
   </div>
   <div id="view"></div>

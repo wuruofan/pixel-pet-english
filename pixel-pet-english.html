@@ -877,9 +877,10 @@ canvas.fx, .pet-poop canvas { display: block; image-rendering: pixelated; }
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="brand"><span class="logo">🐲</span><span>皮克学英语</span></div>
+    <div class="brand"><span class="logo" id="brand-logo">🦖</span><span>皮克学英语</span></div>
     <div class="spacer"></div>
     <div class="pill" id="book-pill">📗 一上</div>
+    <button class="pill pill-btn" id="btn-stats" title="统计">📊</button>
     <button class="pill pill-btn" id="btn-settings" title="设置">⚙️</button>
   </div>
   <div id="view"></div>
@@ -928,7 +929,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   var DEFAULT_STATE = {
     words: {},          // word -> {box, due, seen, right, wrong}
     days: {},           // 'YYYY-MM-DD' -> {words, right, wrong, ms, lessons}
-    pet: { name: '小火龙', species: 'dragon', level: 1, xp: 0, sati: 70, mood: 80, clean: 80, food: 0, toy: 0, soap: 0, fedTotal: 0, lastTick: 0, lastPlay: 0, petsDate: '', petsToday: 0, poop: { t: 0, n: 0 } },
+    pet: { name: '小恐龙', species: 'dragon', level: 1, xp: 0, sati: 70, mood: 80, clean: 80, food: 0, toy: 0, soap: 0, fedTotal: 0, lastTick: 0, lastPlay: 0, petsDate: '', petsToday: 0, poop: { t: 0, n: 0 } },
     settings: { dailyGoal: 8, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
     hints: { swipe: 0 },   // 用过一次就记一笔：卡片可滑动这件事，提示两次就够了
     lastActive: null,
@@ -960,6 +961,8 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       if (m.pet && !m.pet.poop) m.pet.poop = { t: 0, n: 0 };
       /* v3: 小熊猫改名小狐狸 */
       if (m.pet && m.pet.species === 'panda') m.pet.species = 'fox';
+      /* 默认宠物名 "小火龙" 改为 "小恐龙"，老存档里名字仍是"小火龙"的同步替换 */
+      if (m.pet && m.pet.name === '小火龙') m.pet.name = '小恐龙';
       return m;
     } catch (e) {
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -1715,7 +1718,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   /* 物种：阶段 0 蛋、1 奶宝宝（共通身体+always 物种耳饰/尾巴）；2/3 各自独立剪影 art[k]。
      always 只在第 1 阶叠加（2/3 剪影已含特征）。 */
   var PET_SPECIES = {
-    dragon: { label: '小龙', emoji: '🐉', stages: ['小绒球', '小龙崽', '小火龙'],
+    dragon: { label: '小龙', emoji: '🦖', stages: ['小绒球', '小龙崽', '小火龙'],
       pals: ['baby', 'drake', 'dragon'], art: ['dragon-2', 'dragon-3'],
       always: { A: [[5, 0], [10, 0]],                     /* 角尖 */
                 S: [[3, 9], [12, 9]],                     /* 翼芽（贴住收窄后的脖颈） */
@@ -2568,8 +2571,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     { id: 'home', label: '首页', ic: '🏠' },
     { id: 'learn', label: '学单词', ic: '📖' },
     { id: 'phonics', label: '拼读', ic: '🔤' },
-    { id: 'play', label: '闯关', ic: '🎮' },
-    { id: 'stats', label: '统计', ic: '📊' }
+    { id: 'play', label: '闯关', ic: '🎮' }
   ];
   var tab = 'home';
 
@@ -2605,7 +2607,6 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     else if (tab === 'learn') renderLearn(v);
     else if (tab === 'phonics') renderPhonics(v);
     else if (tab === 'play') renderPlay(v);
-    else if (tab === 'stats') renderStats(v);
   }
 
   /* ---------- HOME（今日计划 + 宠物）---------- */
@@ -2636,23 +2637,20 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     var newCap = Math.min(goal, 8, unseen.length);
     var newDone = Math.min(d.newWords || 0, newCap);
     var phDone = Math.min(d.phonics || 0, 5);
-    var petNeed = (S.pet.sati < 50 && S.pet.food > 0) ? 'feed'
-      : (S.pet.sati < 15 ? 'food-missing'
-        : (S.pet.clean < 40 && S.pet.soap > 0) ? 'wash'
-          : (S.pet.clean < 15 ? 'soap-missing'
-            : (S.pet.mood < 50 ? 'play' : null)));
     return [
-      { ic: '🔁', title: '复习快忘的词', why: '快忘的时候复习，记得最牢（艾宾浩斯）',
-        badge: due.length ? due.length + ' 个' : '✓', done: due.length === 0, go: 'review' },
-      { ic: '📖', title: '学新词',
+      /* dailyPlan 现在和 tabs 一一对应：每个游戏 tab 都对应一项今日任务。
+         「学单词」一项合并了旧的「复习快忘的词」+「学新词」—— 因为这俩都走
+         learn tab（enterTodayMode 里已经把 due + 未见的 words 拼到同一个
+         今日队列里了），分开列只是同一个 tab 上的两个数据口径，徒增点击成本。
+         「闯关」一项也合并了「复习题」+「每日达标」—— 都是 play tab，只是
+         buildQueue('review') vs buildQueue('mixed') 的队列区别。
+         「照顾宠物」整项去掉：它本来就是首页宠物卡的三个按钮，再列一遍是重复。 */
+      { ic: '📖', title: '学单词',
+        why: due.length ? '有 ' + due.length + ' 个快忘了 + ' + (newCap - newDone) + ' 个新词' : '今天要学 ' + (newCap - newDone) + ' 个新词',
         badge: newCap === 0 ? '✓' : newDone + '/' + newCap,
         done: newCap === 0 || newDone >= newCap, go: 'new' },
       { ic: '🔤', title: '拼读练习', badge: phDone + '/5', done: phDone >= 5, go: 'phonics' },
-      { ic: '🎮', title: '每日闯关', badge: Math.min(answered, goal) + '/' + goal, done: answered >= goal, go: 'quiz' },
-      { ic: '🐾', title: '照顾宠物',
-        badge: petNeed === 'feed' ? '饿了 🍖' : petNeed === 'wash' ? '要洗澡 🛁' : petNeed === 'play' ? '想玩了'
-          : petNeed === 'food-missing' ? '没食物啦' : petNeed === 'soap-missing' ? '没香皂啦' : '✓',
-        done: !petNeed, go: petNeed || 'pet-ok' }
+      { ic: '🎮', title: '闯关', badge: Math.min(answered, goal) + '/' + goal, done: answered >= goal, go: 'quiz' }
     ];
   }
 
@@ -2717,9 +2715,15 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     var doneN = plan.filter(function (t) { return t.done; }).length;
     var c2 = el('div', 'card');
     c2.innerHTML =
-      '<div class="row" style="justify-content:space-between;align-items:baseline">' +
-      '<h2 class="section" style="margin:0">今天的任务</h2>' +
-      '<span class="pill">🔥 连续 <span class="n">' + (S.streak || 0) + '</span> 天 · ' + doneN + '/' + plan.length + '</span></div>' +
+      '<div class="row" style="justify-content:space-between;align-items:baseline;gap:8px">' +
+      '<h2 class="section" style="margin:0;font-size:19px;color:var(--ink)">今天的任务</h2>' +
+      /* 状态指标（正确率 / 学习时长）和打卡的指标（连续天数 / 任务进度）
+         性质相同，并排放在标题右侧更紧凑：左侧 muted 写"今天"的两项，
+         右侧 pill 写"打卡"的两项 */
+      '<div class="row" style="gap:8px;align-items:baseline">' +
+      '<span class="muted" style="font-size:13px">正确率 ' + acc + '% · 今日 ' + Math.round((d.ms || 0) / 60000) + ' 分钟</span>' +
+      '<span class="pill">🔥 连续 <span class="n">' + (S.streak || 0) + '</span> 天 · ' + doneN + '/' + plan.length + '</span>' +
+      '</div></div>' +
       '<div class="plan-list">' +
       plan.map(function (t, i) {
         return '<button class="plan-item' + (t.done ? ' done' : '') + '" data-pi="' + i + '">' +
@@ -2731,42 +2735,26 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       }).join('') +
       '</div>' +
       '<div class="row" style="margin-top:12px;gap:9px;align-items:center">' +
-      '<button class="btn big" id="btn-start">一键开练 🎮</button>' +
-      '<span class="muted">正确率 ' + acc + '% · 今日 ' + Math.round((d.ms || 0) / 60000) + ' 分钟</span></div>';
+      '<button class="btn big" id="btn-start">🎮 一键开练</button>' +
+      '</div>';
     v.appendChild(c2);
     $$('#view .plan-item').forEach(function (b) {
       b.onclick = function () {
         var t = plan[+b.dataset.pi];
-        if (t.go === 'review') {
-          if (!t.done) { buildQueue('review'); go('play'); }
-          else toast('今天的复习完成啦，明天再来～');
-        } else if (t.go === 'new') {
-          enterTodayMode();
-        } else if (t.go === 'phonics') {
-          go('phonics');
-        } else if (t.go === 'quiz') {
-          buildQueue('mixed'); go('play');
-        } else if (t.go === 'feed') {
-          feedPet();
-        } else if (t.go === 'wash') {
-          washPet();
-        } else if (t.go === 'soap-missing') {
-          toast('没有香皂了，先去闯关赚 🧼！');
-          buildQueue('mixed'); go('play');
-        } else if (t.go === 'play') {
-          playPet();
-        } else if (t.go === 'food-missing') {
-          toast('没有食物了，先去闯关赚 🍖！');
-          buildQueue('mixed'); go('play');
+        if (t.done) {
+          toast('今天的任务完成啦，明天再来～');
+          return;
         }
+        if (t.go === 'new') enterTodayMode();
+        else if (t.go === 'phonics') go('phonics');
+        else if (t.go === 'quiz') { buildQueue('mixed'); go('play'); }
       };
     });
     $('#btn-start').onclick = function () {
       var first = plan.filter(function (t) { return !t.done; })[0];
       if (!first) { buildQueue('mixed'); go('play'); return; }
-      if (first.go === 'new') { enterTodayMode(); }
-      else if (first.go === 'phonics') { go('phonics'); }
-      else if (first.go === 'review') { buildQueue('review'); go('play'); }
+      if (first.go === 'new') enterTodayMode();
+      else if (first.go === 'phonics') go('phonics');
       else { buildQueue('mixed'); go('play'); }
     };
   }
@@ -3578,7 +3566,9 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     save();
   }
 
-  var phMode = 'cards';       // cards | hear | see | build
+  var phMode = 'build';       // 默认进「拆词拼读」—— 是最像"今天该拼的词"的任务形态；
+                              // 字素表 / 听音选字母 / 见字选音 留作 segbar 二级入口
+                              // cards | hear | see | build
   var phQuiz = null;          // {item, options, answered}
   var phBuild = null;         // {word, parts, picked}
 
@@ -3821,6 +3811,22 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
 
     var q = quiz.queue[quiz.idx];
     var word = q.word;
+
+    /* 今日进度：让孩子知道"今天闯关还差几题达标"，避免底部一题孤零零像出题器。
+       进度算今日已答题（含本会话里 quiz.results 之外、之前已累过题的），用 dayStat(). */
+    var _d = dayStat();
+    var _answeredToday = (_d.right || 0) + (_d.wrong || 0);
+    var _goal = S.settings.dailyGoal;
+    var _dailyPct = Math.min(100, Math.round(_answeredToday / _goal * 100));
+    var _dailyHead = el('div', 'card tight');
+    _dailyHead.innerHTML =
+      '<div class="row" style="justify-content:space-between;font-size:13px;font-weight:800;margin-bottom:6px">' +
+      '<span class="muted">🎯 今日闯关</span>' +
+      '<span><b style="color:var(--brand-dk)">' + _answeredToday + '</b> / ' + _goal +
+      (_answeredToday >= _goal ? ' · 达标 🎉' : '') + '</span></div>' +
+      '<div class="bar"><i style="width:' + _dailyPct + '%"></i></div>';
+    v.appendChild(_dailyHead);
+
     var c = el('div', 'card');
     var prog = '<div class="q-progress">' + quiz.queue.map(function (_, i) {
       var r = quiz.results[i];
@@ -3966,6 +3972,34 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   }
 
   /* ---------- STATS ---------- */
+  /* 📊 统计入口挪出 tab 后，从顶栏按钮以 modal 形式呼出（与 ⚙️ 设置对称）：
+     用全屏 modal 而不是新 tab，避免和首页"今日任务"语义重叠；统计本身不
+     是任务，是数据看板。复用了 settings modal 的样式 token，无新 CSS。 */
+  function openStats() {
+    if ($('#stats-modal')) return;       // 防重复打开
+    abandonLearnMic(); stopAudio();
+    var ov = el('div', 'modal-ov');
+    ov.id = 'stats-modal';
+    var sheet = el('div', 'modal-sheet');
+    sheet.innerHTML =
+      '<div class="modal-head"><span style="font-size:20px;font-weight:900">📊 我的进度</span>' +
+      '<button class="modal-x" id="stats-x">✕</button></div>' +
+      '<div id="stats-body"></div>';
+    ov.appendChild(sheet);
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeStats(); });
+    $('#stats-x').onclick = closeStats;
+    renderStats($('#stats-body'));
+  }
+  function closeStats() {
+    var m = $('#stats-modal');
+    if (!m) return;
+    m.remove();
+    /* 关闭后若停在首页，重新刷新（renderStats 直接改的是 modal 里的 DOM，
+       与 #view 无关，但保险起见刷一次让首页统计面板也对齐） */
+    if (tab === 'home') renderHome();
+  }
+
   function renderStats(v) {
     v = v || $('#view');
     v.innerHTML = '';
@@ -4178,6 +4212,9 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       b.onclick = function () {
         S.pet.species = b.dataset.species;
         save();
+        /* 顶栏 logo 跟当前宠物走 —— 跟设置里"换着养"的视觉呼应 */
+        var blogo = $('#brand-logo');
+        if (blogo) blogo.textContent = PET_SPECIES[b.dataset.species].emoji;
         renderHome();
         renderSettings();
         toast('换成了' + PET_SPECIES[b.dataset.species].label + '！等级经验都还在');
@@ -4562,9 +4599,14 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   function boot() {
     if (PET_TEST_SPECIES) { bootPetTest(); return; }
     document.body.insertAdjacentHTML('beforeend', '<div class="toast" id="toast"></div>');
+    /* 顶栏 logo 用当前宠物 emoji：默认 🐉（dragon），换物种后 logo 跟着变 */
+    var blogo = $('#brand-logo');
+    if (blogo) blogo.textContent = (PET_SPECIES[petSpeciesKey()] || PET_SPECIES.dragon).emoji;
     renderTabs();
     var sb = $('#btn-settings');
     if (sb) sb.onclick = openSettings;
+    var stb = $('#btn-stats');
+    if (stb) stb.onclick = openStats;
     updateStreak();
 
     // pet stats decay since last visit (real-time, capped at 72h)
