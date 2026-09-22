@@ -97,6 +97,45 @@ function buildPhonics() {
 
 const phonics = buildPhonics();
 
+/* ------------------------------------------------------------------
+ * PHONEMES_BY_WORD — every word whose pindu maps cleanly to teachable
+ * graphemes. Words whose pindu contains any sticky grapheme that
+ * classify() drops (il/eye/nd/ao/dp/dn/es/wo/ne/pe) are absent here, so
+ * the build game's pool filter (2-5 phonemes AND every phoneme here)
+ * silently excludes them.
+ *
+ * IMPORTANT data shape: `phonics` is `{ groups: [{ id, label, tip,
+ * items: [...] }, ...], skipped: [...] }` — `phonics.groups.items` does
+ * NOT exist. Build a Map keyed by "letters|sound" first, then look up.
+ *
+ * Each entry is a shallow copy of a PHONICS.groups.items object so
+ * runtime never mutates the bundle's groups array.
+ *
+ * Invariant: PHONICS.groups.items[*].audio is f(sound) and read-only at
+ * runtime; the build-time audio is canonical. Verified empirically
+ * across all 359 pindu entries.
+ * ------------------------------------------------------------------ */
+const PHONEME_KEY = new Map();
+phonics.groups.forEach(function (g) {
+  g.items.forEach(function (it) {
+    PHONEME_KEY.set(it.letters + '|' + it.sound, it);
+  });
+});
+const PHONEMES_BY_WORD = {};
+for (const word of Object.keys(words.words)) {
+  const pd = words.words[word].pindu || [];
+  const items = [];
+  let bad = false;
+  for (const p of pd) {
+    const it = PHONEME_KEY.get((p.letters || '').toLowerCase() + '|' + p.sound);
+    if (!it) { bad = true; break; }
+    items.push({ letters: it.letters, sound: it.sound, audio: it.audio, kind: it.kind });
+  }
+  if (!bad && items.length >= 2 && items.length <= 5) {
+    PHONEMES_BY_WORD[word] = items;
+  }
+}
+
 // Drop the textbook lesson audio slice timings we don't need? No — keep, they
 // drive per-sentence playback. But drop the internal comment key of visuals.
 delete visuals._comment;
@@ -131,6 +170,7 @@ window.__TEXTBOOKS__ = ${JSON.stringify(textbooks)};
 window.__WORDS__ = ${JSON.stringify(words)};
 window.__VISUALS__ = ${JSON.stringify(visuals)};
 window.__PHONICS__ = ${JSON.stringify(phonics)};
+window.__PHONEMES_BY_WORD__ = ${JSON.stringify(PHONEMES_BY_WORD)};
 window.__PET_IMGS__ = ${JSON.stringify(petImgs)};
 </script>
 <script>
