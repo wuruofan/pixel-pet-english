@@ -18,7 +18,7 @@ const SPECIES = {
   cat: { label: '小猫', emoji: '🐱', stages: ['baby', 'kid', 'adult'], names: ['小奶猫', '猫崽', '大猫'] },
   dog: { label: '小狗', emoji: '🐶', stages: ['baby', 'kid', 'adult'], names: ['小奶狗', '狗崽', '大狗'] },
   fox: { label: '小狐狸', emoji: '🦊', stages: ['kid', 'teen', 'adult'], names: ['小奶狐', '小狐狸', '大尾巴狐'] },
-  dragon: { label: '小龙', emoji: '🐉', stages: ['kid', 'teen', 'adult'], names: ['小绒球', '小龙崽', '小火龙'] }
+  dragon: { label: '小龙', emoji: '🦖', stages: ['kid', 'teen', 'adult'], names: ['小绒球', '小龙崽', '小火龙'] }
 };
 const SPRITES = new Map(fs.readdirSync(path.join(ROOT, 'assets/sprites'))
   .filter(file => file.endsWith('.png'))
@@ -74,6 +74,8 @@ function harness(search, { legacy = false } = {}) {
         toggle: (name, force) => change(name, force == null ? !this.classList.contains(name) : force)
       };
     }
+    get id() { return this.attrs.id; }
+    set id(value) { this.attrs.id = String(value); }
     setAttribute(name, value) {
       this.attrs[name] = String(value);
       if (name === 'class') this.className = value;
@@ -138,7 +140,7 @@ function harness(search, { legacy = false } = {}) {
     }
   }
   const body = new Element('body');
-  body.innerHTML = '<div id="app"><div id="book-pill"></div><button id="btn-settings"></button>' +
+  body.innerHTML = '<div id="app"><div id="book-pill"></div><button id="btn-stats"></button><button id="btn-settings"></button>' +
     '<div id="view"></div></div><nav id="tabbar"></nav>';
   const document = Object.assign(eventTarget(), {
     readyState: 'loading', hidden: false, body, title: '',
@@ -271,7 +273,7 @@ function normalChecks(search, legacy = false) {
   assert(h.storageCalls.some(([op, key]) => op === 'get' && key === KEY));
   assert.equal(h.document.body.classList.contains('pet-test-mode'), false);
   assert.equal(h.all('[data-pet-test-stage]').length, 0);
-  assert.equal(h.query('#tabbar').children.length, 5);
+  assert.equal(h.query('#tabbar').children.length, 4);
   assert.equal(typeof h.query('#btn-settings').onclick, 'function');
   assert.equal(typeof h.query('#btn-start').onclick, 'function');
   assert(h.query('#view').textContent.includes('存档里的小狗'));
@@ -290,8 +292,8 @@ function normalChecks(search, legacy = false) {
     assert(h.storageCalls.some(([op, key]) => op === 'get' && key === OLD_KEY));
     assert.equal(h.storage.has(OLD_KEY), false, 'Normal legacy migration must still run');
   }
-  h.query('#tabbar').children[4].onclick();
-  assert(h.query('#view').textContent.includes('最近 28 天'), 'Normal tab navigation must still work');
+  h.query('#btn-stats').onclick();
+  assert(h.query('#stats-modal').textContent.includes('最近 28 天'), 'Normal stats modal must still work');
   console.log('PASS normal (' + (search || '/') + (legacy ? ', legacy save' : '') + '): saved pet, home/tabs, check-in, learning/pet timers, persistence');
 }
 
