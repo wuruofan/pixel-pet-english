@@ -2825,7 +2825,10 @@
         q.answered = true;
         var ok = b.dataset.l === q.item.letters;
         var chosen = q.options.filter(function (x) { return x.letters === b.dataset.l; })[0];
-        phPlay(chosen, b);
+        /* Play the correct item's audio. Do NOT also play the child's pick —
+         * playRange() starts with stopAudio() so a back-to-back second call
+         * would kill the first and the child would hear nothing. */
+        phPlay(q.item, b);
         pgrade(q.item.letters, ok);
         b.classList.add(ok ? 'right' : 'wrong');
         $$('#ph-opts .ph-opt').forEach(function (x) {
