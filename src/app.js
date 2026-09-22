@@ -2736,6 +2736,13 @@
     take(pool);
     return out.slice(0, n);
   }
+  function phPickReferenceWord(item) {
+    var bookWords = currentBookWords();
+    for (var i = 0; i < item.words.length; i++) {
+      if (bookWords.indexOf(item.words[i]) >= 0) return item.words[i];
+    }
+    return item.words[0] || null;
+  }
   function phPlay(item, btn) {
     playRange(item.audio);
     if (btn) {
@@ -2860,7 +2867,11 @@
       '<div class="muted center" style="margin:4px 0 14px">点一个喇叭听一听，选对的那个</div>' +
       '<div class="ph-grid" id="ph-opts">' +
       q.options.map(function (o) {
-        return '<button class="ph-opt" data-l="' + esc(o.letters) + '"><span class="sp">🔊</span></button>';
+        var ref = phPickReferenceWord(o);
+        return '<button class="ph-opt" data-l="' + esc(o.letters) + '">' +
+          '<span class="sp">🔊</span>' +
+          (ref ? '<span class="ph-ref">' + esc(ref) + '</span>' : '') +
+          '</button>';
       }).join('') + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
@@ -2871,6 +2882,8 @@
         var ok = b.dataset.l === q.item.letters;
         var chosen = q.options.filter(function (x) { return x.letters === b.dataset.l; })[0];
         phPlay(chosen, b);
+        var ref = phPickReferenceWord(q.item);
+        if (ref) setTimeout(function () { speakWord(ref); }, 280);
         pgrade(q.item.letters, ok);
         b.classList.add(ok ? 'right' : 'wrong');
         $$('#ph-opts .ph-opt').forEach(function (x) {

@@ -680,6 +680,8 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .ph-opt.playing { animation: pb-pop .55s; }
 .ph-opt.right { border-color: var(--green); background: #e9faf1; }
 .ph-opt.wrong { border-color: var(--red); background: #feecec; }
+.ph-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ph-opt .ph-ref { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-weight: 600; }
 
 .ph-build-slots { display: flex; justify-content: center; gap: 7px; margin: 4px 0 12px; flex-wrap: wrap; }
 .ph-build-slots .slot {
