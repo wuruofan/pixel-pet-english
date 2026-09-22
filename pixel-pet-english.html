@@ -3560,11 +3560,23 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     if (!S.phonics[letters]) S.phonics[letters] = { seen: 0, right: 0, wrong: 0 };
     return S.phonics[letters];
   }
-  function pgrade(letters, ok) {
+  /* Pure per-grapheme stats: no XP, no daily word counter. Shared by
+     hear/see (via pgrade) and build (direct call on completion). */
+  function phTrack(letters, ok) {
     var st = pstate(letters);
     st.seen++; if (ok) st.right++; else st.wrong++;
-    if (ok) { gainXp(1, 'toy'); dayStat().phonics = (dayStat().phonics || 0) + 1; }
     save();
+  }
+  function pgrade(letters, ok) {
+    phTrack(letters, ok);
+    if (ok) { gainXp(1, 'toy'); dayStat().phonics = (dayStat().phonics || 0) + 1; }
+  }
+  /* Single source of truth for "this letter has been seen and practiced enough".
+   * `right >= 3 && right >= wrong * 2` is the threshold; used by both the
+   * grapheme card's green-check and the build game's unmastered picker. */
+  function isPhMastered(letters) {
+    var st = S.phonics && S.phonics[letters];
+    return !!(st && st.right >= 3 && st.right >= st.wrong * 2);
   }
 
   var phMode = 'build';       // 默认进「拆词拼读」—— 是最像"今天该拼的词"的任务形态；
@@ -3634,8 +3646,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     PHONICS.groups.forEach(function (g) {
       var c = el('div', 'card');
       var chips = g.items.map(function (it) {
-        var st = S.phonics && S.phonics[it.letters];
-        var mastered = st && st.right >= 3 && st.right >= st.wrong * 2;
+        var mastered = isPhMastered(it.letters);
         return '<button class="ph-card' + (mastered ? ' done' : '') + '" data-l="' + esc(it.letters) + '">' +
           '<span class="l pb-tag-' + PB_TAG[g.id] + '">' + esc(it.letters) + '</span>' +
           '<span class="w">' + esc((it.words || [])[0] || '') + '</span></button>';
