@@ -18,8 +18,8 @@
 - Index field `dayStat().phonics` increments **once per build-word**, not per phoneme.
 - IPA characters only appear in build-game feedback text when `S.settings.showIpa === true` (default false).
 - All console output during build/serve must remain error-free.
-- Two test entry points already exist in the repo: `scripts/test-pet-preview.js` (vm sandbox over `src/app.js`) and `scripts/test-sprite-contract.js`; reuse their style for any new probe.
-- The local static server at `127.0.0.1:57321` (Python `http.server`) serves the bundle; open it in the in-app browser for visual checks.
+- One test entry point exists: `scripts/test-pet-preview.js` (vm sandbox over `src/app.js`); reuse its style for `scripts/probe-phonics.js`. There is no `scripts/test-sprite-contract.js` — that path was a hallucination in the earlier draft.
+- The local static server is `node scripts/serve-no-cache.js` (port 57321). Open `http://127.0.0.1:57321/pixel-pet-english.html` in the in-app browser for visual checks.
 
 ## File Structure
 
@@ -95,11 +95,12 @@ for (const w of STICKY_WORDS) {
   assert.equal(PHONEMES_BY_WORD[w], undefined, w + ' should be excluded from PHONEMES_BY_WORD');
 }
 
-// Words that should appear (sample check)
-const MUST_APPEAR = ['book', 'cat', 'dog', 'fish', 'face', 'mouth', 'pencil', 'crayon', 'papa', 'mama'];
-// pencil will fail; remove it from the must-appear list once we verify.
-const MUST_APPEAR_NO_STICKY = MUST_APPEAR.filter(w => !STICKY_WORDS.includes(w));
-for (const w of MUST_APPEAR_NO_STICKY) {
+// Words that should appear. All verified to live in words.json and be
+// assigned to at least one book (so they're reachable from
+// currentBookWords() at runtime). Avoid crayon/papa/mama/crayons/pen
+// which GLM review pointed out don't exist in words.json.
+const MUST_APPEAR = ['book', 'eraser', 'mother', 'sister', 'face', 'mouth', 'nose', 'eraser', 'ears', 'brother'];
+for (const w of MUST_APPEAR) {
   assert.ok(PHONEMES_BY_WORD[w], w + ' should appear in PHONEMES_BY_WORD');
 }
 
@@ -123,6 +124,10 @@ Edit `scripts/build.js`. After the existing `const phonics = buildPhonics();` li
  * the build game's pool filter (2-5 phonemes AND every phoneme here)
  * silently excludes them.
  *
+ * IMPORTANT data shape: `phonics` is `{ groups: [{ id, label, tip,
+ * items: [...] }, ...], skipped: [...] }` — `phonics.groups.items` does
+ * NOT exist. Build a Map keyed by "letters|sound" first, then look up.
+ *
  * Each entry is a shallow copy of a PHONICS.groups.items object so
  * runtime never mutates the bundle's groups array.
  *
@@ -130,18 +135,23 @@ Edit `scripts/build.js`. After the existing `const phonics = buildPhonics();` li
  * runtime; the build-time audio is canonical. Verified empirically
  * across all 359 pindu entries.
  * ------------------------------------------------------------------ */
+const PHONEME_KEY = new Map();
+phonics.groups.forEach(function (g) {
+  g.items.forEach(function (it) {
+    PHONEME_KEY.set(it.letters + '|' + it.sound, it);
+  });
+});
 const PHONEMES_BY_WORD = {};
 for (const word of Object.keys(words.words)) {
   const pd = words.words[word].pindu || [];
   const items = [];
-  let sticky = false;
+  let bad = false;
   for (const p of pd) {
-    const match = PHONICS.groups.items.find(it =>
-      it.letters === (p.letters || '').toLowerCase() && it.sound === p.sound);
-    if (!match) { sticky = true; break; }
-    items.push({ ...match });
+    const it = PHONEME_KEY.get((p.letters || '').toLowerCase() + '|' + p.sound);
+    if (!it) { bad = true; break; }
+    items.push({ letters: it.letters, sound: it.sound, audio: it.audio, kind: it.kind });
   }
-  if (!sticky && items.length >= 2 && items.length <= 5) {
+  if (!bad && items.length >= 2 && items.length <= 5) {
     PHONEMES_BY_WORD[word] = items;
   }
 }
@@ -221,7 +231,9 @@ function pgrade(letters, ok) {
 }
 ```
 
-Note: `phTrack` calls `save()` once. The old code didn't call `save()` from `pgrade`; `save()` ran separately. Verify by checking the call sites of `save()` in `renderPhHear` / `renderPhSee`: if they call `save()` immediately after `pgrade(...)`, the duplicate save is harmless. If they don't, `phTrack` calling `save()` is what they need.
+Note: `phTrack` calls `save()` once. The existing `pgrade` already calls `save()` directly (app.js:2669), so the new `pgrade` will end up calling `save()` twice per right-answer — once from `phTrack`, once from the body. The duplication is harmless because `save()` is debounced via `saveTimer` (app.js:81), but if you'd rather be explicit, drop the inner `save()` call from `phTrack` and rely on the original `save()` in the body. Either way, behavior is unchanged.
+
+`renderPhBuild`'s success branch (Task 6) calls `phTrack(p.letters, true)` directly; the build-game branch does not call the outer `pgrade()`, so `gainXp` / `dayStat().phonics++` must run separately there.
 
 - [ ] **Step 4: Build and verify**
 
@@ -262,12 +274,17 @@ In `src/app.js`, replace the body of `function phDistractors(item, n) { ... }` w
 
 ```js
 function phDistractors(item, n) {
-  var pool = allPhonemes().filter(function (x) { return x.letters !== item.letters; });
+  /* Floor: must differ in both letters AND sound. Reason for both:
+   * 26 sounds have multiple letter spellings (/s/←[s,ss,c],
+   * /k/←[ch,k,c,ck], etc.) — keeping only letters-not-equal lets the
+   * child answer /k/ by clicking `c` and be marked wrong even though
+   * the sound matches. The single-letter case forces a fall-through
+   * to tier 2 (tier 1 collapses to empty), which is expected. */
+  var pool = allPhonemes().filter(function (x) {
+    return x.letters !== item.letters && x.sound !== item.sound;
+  });
   /* Tier 1: same length; within tier, prefer items whose first letter
-   * matches the correct item's first letter. Single-letter items
-   * (item.letters.length === 1) collapse to an empty tier because the
-   * letters-not-equal floor already excludes them — falling through to
-   * tier 2 is the expected behavior, not a bug. */
+   * matches the correct item's first letter. */
   var sameLen = pool.filter(function (x) { return x.letters.length === item.letters.length; });
   sameLen.sort(function (a, b) {
     var am = a.letters[0] === item.letters[0] ? 0 : 1;
@@ -276,25 +293,33 @@ function phDistractors(item, n) {
   });
   /* Tier 2: same kind */
   var sameKind = pool.filter(function (x) { return x.kind === item.kind; });
-  var out = [];
-  var t1 = shuffle(sameLen.slice());
-  var t2 = shuffle(sameKind.slice());
-  var t3 = shuffle(pool.slice());
-  while (out.length < n && t1.length) out.push(t1.shift());
-  /* de-dup against out */
-  var seen = {}; out.forEach(function (x) { seen[x.letters + '|' + x.sound] = 1; });
-  [t1, t2, t3].forEach(function (tier) {
-    while (out.length < n && tier.length) {
-      var x = tier.shift();
-      if (!seen[x.letters + '|' + x.sound]) {
-        seen[x.letters + '|' + x.sound] = 1;
-        out.push(x);
-      }
-    }
+  sameKind.sort(function (a, b) {
+    var am = a.letters[0] === item.letters[0] ? 0 : 1;
+    var bm = b.letters[0] === item.letters[0] ? 0 : 1;
+    return am - bm;
   });
+  /* Tier 3: anything (sorted same way, last resort) */
+  pool.sort(function (a, b) {
+    var am = a.letters[0] === item.letters[0] ? 0 : 1;
+    var bm = b.letters[0] === item.letters[0] ? 0 : 1;
+    return am - bm;
+  });
+  var out = [];
+  var seen = {};
+  function take(tier) {
+    for (var i = 0; i < tier.length && out.length < n; i++) {
+      var k = tier[i].letters + '|' + tier[i].sound;
+      if (!seen[k]) { seen[k] = 1; out.push(tier[i]); }
+    }
+  }
+  take(sameLen);
+  take(sameKind);
+  take(pool);
   return out.slice(0, n);
 }
 ```
+
+The sort-based-within-tier bias works because we drain each sorted tier with `take()` in order — never re-shuffle after sort.
 
 - [ ] **Step 3: Build and probe by hand**
 
@@ -320,16 +345,18 @@ git commit -m "fix(phonics): phDistractors floor on letters-not-equal, 3-tier fa
 Run: `grep -n "phPlay(chosen, b)" src/app.js`
 Expected: a single hit inside `renderPhHear` (around line 2790). That's the wrong-answer audio; the right-answer audio is missing for both correct and incorrect outcomes.
 
-- [ ] **Step 2: Add right-answer playback to renderPhHear**
+- [ ] **Step 2: Replace chosen audio with correct-answer audio**
 
-Find the click handler in `renderPhHear` (after `var ok = b.dataset.l === q.item.letters;`). Replace the existing `phPlay(chosen, b)` with two calls:
+Find the click handler in `renderPhHear` (after `var ok = b.dataset.l === q.item.letters;`). Replace the existing `phPlay(chosen, b);` with a single call:
 
 ```js
-/* Always play the correct item's audio first so the child hears
- * the right sound whether or not their pick matched. */
-phPlay(q.item, null);
-phPlay(chosen, b);
+/* Play the correct item's audio. Do NOT also play the child's pick —
+ * playRange() starts with stopAudio() so a back-to-back second call
+ * would kill the first and the child would hear nothing. */
+phPlay(q.item, b);
 ```
+
+The optional second `phPlay(chosen, ...)` (visual feedback on the picked button) is dropped: the button's `playing` class already provides the visual cue, and a second playback would mask the correct answer's audio.
 
 - [ ] **Step 3: Build and verify**
 
@@ -369,21 +396,27 @@ function phPickReferenceWord(item) {
 }
 ```
 
-- [ ] **Step 2: Render reference word under each option**
+- [ ] **Step 2: Render reference word inside each option button**
 
-Find `q.options.map(function (o) { return phOptionCard(o); })` (or its equivalent). Change to:
+`renderPhSee` uses inline button HTML (not `phOptionCard`, which is reserved for `renderPhHear`). Locate the inline `.ph-opt` button template in `renderPhSee` — it's the `q.options.map(function (o) { ... })` block that produces buttons with `<span class="sp">🔊</span>`. Change it to:
 
 ```js
 q.options.map(function (o) {
   var ref = phPickReferenceWord(o);
-  return phOptionCard(o) + (ref ? '<div class="ph-ref">' + esc(ref) + '</div>' : '');
+  return '<button class="ph-opt" data-l="' + esc(o.letters) + '">' +
+    '<span class="sp">🔊</span>' +
+    (ref ? '<span class="ph-ref">' + esc(ref) + '</span>' : '') +
+    '</button>';
 }).join('')
 ```
 
-Add a single CSS rule at the bottom of `src/style.css`:
+Reference word goes **inside** the `<button>` because `.ph-grid` is CSS grid (style.css:656) — appending a sibling `<div>` would create a separate grid cell and break the four-column layout.
+
+Add to `src/style.css`:
 
 ```css
-.ph-ref { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.ph-opt .ph-ref { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-weight: 600; }
+.ph-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 ```
 
 - [ ] **Step 3: Auto-play reference word after answer**
@@ -424,20 +457,36 @@ git commit -m "feat(phonics): reference word + auto-play in see mode"
   - on wrong click: re-play the next-needed letter's audio as a hint
   - show color tags + classification label under each slot in the feedback block
 
-- [ ] **Step 1: Add pickBuildWord**
+- [ ] **Step 1: Wire PHONEMES_BY_WORD into app.js**
+
+At the top of `src/app.js`, near where `var PHONICS = window.__PHONICS__;` is declared (around line 12), add:
+
+```js
+var PHONEMES_BY_WORD = window.__PHONEMES_BY_WORD__ || {};
+```
+
+Without this, every other step in Task 6 hits `ReferenceError: PHONEMES_BY_WORD is not defined` at runtime.
+
+- [ ] **Step 2: Add pickBuildWord (with empty-pool guard) + reset counter**
 
 Just before `function renderPhBuild(v) {`, add:
 
 ```js
 /* Counter map used to enforce "no same letter shows up 3 words in a
- * row", preventing fatigue on a single grapheme. Resets when the
- * build game leaves or the day rolls. */
+ * row", preventing fatigue on a single grapheme. Reset explicitly:
+ *  - when the user navigates away from the build tab (call
+ *    resetBuildLetterRow() from `go()` when `id !== 'phonics'`)
+ *  - when the day rolls (call resetBuildLetterRow() from
+ *    dayStat() — see plan step 6 below) */
 var buildLetterRow = {};
+function resetBuildLetterRow() { buildLetterRow = {}; }
+
 function pickBuildWord() {
   var pool = currentBookWords().filter(function (w) {
     var ph = PHONEMES_BY_WORD[w];
     return ph && ph.length >= 2 && ph.length <= 5;
   });
+  if (!pool.length) return null;
   var unmastered = pool.filter(function (w) {
     return PHONEMES_BY_WORD[w].some(function (p) { return !isPhMastered(p.letters); });
   });
@@ -445,8 +494,8 @@ function pickBuildWord() {
     return PHONEMES_BY_WORD[w].some(function (p) { return !(buildLetterRow[p.letters] >= 3); });
   });
   var chosen = (fresh.length ? pick(fresh) : pick(unmastered.length ? unmastered : pool));
-  /* Increment counters for this word's letters; reset others. */
-  var letters = {}; PHONEMES_BY_WORD[chosen].forEach(function (p) { letters[p.letters] = 1; });
+  var letters = {};
+  PHONEMES_BY_WORD[chosen].forEach(function (p) { letters[p.letters] = 1; });
   Object.keys(buildLetterRow).forEach(function (k) { if (!letters[k]) delete buildLetterRow[k]; });
   PHONEMES_BY_WORD[chosen].forEach(function (p) {
     buildLetterRow[p.letters] = (buildLetterRow[p.letters] || 0) + 1;
@@ -455,27 +504,28 @@ function pickBuildWord() {
 }
 ```
 
-- [ ] **Step 2: Replace pool construction in renderPhBuild**
+- [ ] **Step 3: Replace pool construction in renderPhBuild**
 
-Replace the existing `var pool = currentBookWords().filter(function (w) { ... });` block with:
+Locate the existing `var pool = ...` and the `if (!phBuild) { ... }` block. Replace the entire initialization with:
 
 ```js
 if (!phBuild) {
   var w = pickBuildWord();
-  var parts = PHONEMES_BY_WORD[w];
+  if (!w) { v.appendChild(empty('这本课本暂时没有可拆的词')); return; }
+  /* Build parts in one pass: keep `kind` for the classification label,
+   * add `idx` so the slot data-idx attribute matches the parts index.
+   * The two cannot be done in separate `.map` calls because the
+   * phBuild assignment must hold parts WITH idx before the click
+   * handlers read `b.parts[idx]`. */
+  var rawPhs = PHONEMES_BY_WORD[w];
+  var parts = rawPhs.map(function (p, i) {
+    return { letters: p.letters, sound: p.sound, audio: p.audio, kind: p.kind, idx: i };
+  });
   phBuild = { word: w, parts: parts, picked: [], queue: shuffle(parts.slice()) };
 }
 ```
 
-The `parts` array now carries shallow copies of `PHONICS.groups.items`. The `idx` field used elsewhere (`b.parts[idx]`) needs to remain valid; add it back when constructing the parts:
-
-```js
-parts = parts.map(function (p, i) { return { letters: p.letters, sound: p.sound, audio: p.audio, idx: i }; });
-```
-
-(The existing `renderPhBuild` already rebuilds parts with `.map(function (p, i) { ... })` when reading from `WORDS[w].pindu`; keep that shape.)
-
-- [ ] **Step 3: Replace slot rendering for repeat-letter annotation**
+- [ ] **Step 4: Replace slot rendering for repeat-letter annotation**
 
 Find:
 ```js
@@ -500,15 +550,19 @@ Replace with:
 })()
 ```
 
-- [ ] **Step 4: Build feedback block**
+- [ ] **Step 5: Build feedback block (uses `p.kind`, NOT `phonicsTagOf`)**
 
 In the success branch (after `b.picked.length === b.parts.length`), replace the existing `<div class="feedback ok">` with:
 
 ```js
+/* KIND_LABEL maps the group id (which is what PHONICS.groups[i].id and
+ * `p.kind` carry) to a Chinese label. phonicsTagOf returns the PB_TAG
+ * one-letter code ('c'/'v'/'ct'/'vt'/'r'/'s') — do NOT use that here. */
+var KIND_LABEL = { cons: '辅音', vowel: '元音', cteam: '辅音组合', vteam: '元音组合', rctrl: 'r 控元音', silent: '不发音' };
 var lettersSeen = {};
 var colorRows = b.parts.map(function (p) {
   lettersSeen[p.letters] = (lettersSeen[p.letters] || 0) + 1;
-  var label = ({ cons: '辅音', vowel: '元音', cteam: '辅音组合', vteam: '元音组合', rctrl: 'r 控元音', silent: '不发音' })[phonicsTagOf(p.letters)] || '';
+  var label = KIND_LABEL[p.kind] || '';
   return '<span class="pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + ' ph-tag">' + esc(p.letters) +
     (lettersSeen[p.letters] > 1 ? '<sup>(' + lettersSeen[p.letters] + ')</sup>' : '') +
     '<em>' + label + '</em></span>';
@@ -517,9 +571,19 @@ var repeatNote = '';
 var letterCounts = {}; b.parts.forEach(function (p) { letterCounts[p.letters] = (letterCounts[p.letters] || 0) + 1; });
 var repeated = Object.keys(letterCounts).filter(function (k) { return letterCounts[k] > 1; });
 if (repeated.length) {
-  repeatNote = S.settings.showIpa
-    ? '<div class="muted" style="margin-top:6px">同一个 <b>' + repeated[0] + '</b> 在不同位置发不同的音（听一听）</div>'
-    : '<div class="muted" style="margin-top:6px">两个 <b>' + repeated[0] + '</b> 的读音不一样（听一听）</div>';
+  /* spec §4.5.4: gate the IPA-containing text on S.settings.showIpa.
+   * When the switch is on, surface the actual sound labels from the
+   * parts' sound field; when off, the child just hears that the same
+   * letter sounds different. */
+  if (S.settings.showIpa) {
+    var examples = repeated.map(function (l) {
+      var sounds = b.parts.filter(function (p) { return p.letters === l; }).map(function (p) { return p.sound; });
+      return '<b>' + l + '</b> → /' + sounds.join('/、/') + '/';
+    });
+    repeatNote = '<div class="muted" style="margin-top:6px">同一个字母在不同位置：' + examples.join('；') + '</div>';
+  } else {
+    repeatNote = '<div class="muted" style="margin-top:6px">两个 <b>' + repeated[0] + '</b> 的读音不一样（听一听）</div>';
+  }
 }
 $('#ph-fb').innerHTML =
   '<div class="feedback ok" style="margin-top:12px">' +
@@ -537,7 +601,21 @@ Add to `src/style.css`:
 .ph-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 ```
 
-- [ ] **Step 5: Wrong-click hint**
+- [ ] **Step 6: Wire counter reset on tab return**
+
+Open `src/app.js` `function go(id)`. Add at the very top of the function body:
+
+```js
+/* Leaving the build tab resets the consecutive-letter counter so a
+ * child returning after a break doesn't hit the 3-in-a-row cap mid-session. */
+if (tab === 'phonics' && id !== 'phonics' && typeof resetBuildLetterRow === 'function') {
+  resetBuildLetterRow();
+}
+```
+
+(The `typeof` check is defensive — `resetBuildLetterRow` is defined only after Task 6 Step 2 ships; if you somehow land in the build tab before that lands, this is a safe no-op.)
+
+- [ ] **Step 7: Wrong-click hint**
 
 In the wrong-click branch (`else if (b.picked.length && p.idx !== b.picked.length)`), replace `beep('no');` with:
 
@@ -546,9 +624,9 @@ beep('no');
 phPlay(b.parts[b.picked.length], null);
 ```
 
-This re-plays the audio for the letter that should have been picked (no visual hint text — the child hears the right sound again).
+This re-plays the audio for the letter that should have been picked.
 
-- [ ] **Step 6: Replace stats call**
+- [ ] **Step 8: Replace stats call (phTrack per unique letter)**
 
 In the success branch, replace:
 
@@ -563,21 +641,22 @@ with:
 gainXp(1, 'toy');
 dayStat().phonics = (dayStat().phonics || 0) + 1;
 /* Per-grapheme: call phTrack once per distinct letter to avoid double
- * counting same-letter repeats (e.g. panda has two `a` slots). */
+ * counting same-letter repeats (e.g. eraser has two `r` shapes). */
 var seenL = {};
 b.parts.forEach(function (p) {
   if (!seenL[p.letters]) { seenL[p.letters] = 1; phTrack(p.letters, true); }
 });
 ```
 
-- [ ] **Step 7: Build and verify**
+- [ ] **Step 9: Build and verify**
 
 Run: `node scripts/build.js`
 Open `127.0.0.1:57321/pixel-pet-english.html` → 拼读 → 拆词拼读. Confirm:
 - The 10 sticky-graph words never appear across 30+ rounds.
-- A word like `panda` (no sticky graphemes) shows up; the two `a` slots render with `(1)` / `(2)`; feedback includes the `same letter different sound` note.
-- The home screen's 拼读 x/5 counter increments by exactly 1 per round, NOT by 5 (i.e. opening devtools and stepping through `panda` should yield `+1` on the home counter).
+- `eraser` (g1a, 3 phonemes with two `r`s) is reachable and shows the repeat-letter annotation. Note: per GLM review, only `eraser` (and similar g1a words) are reachable as in-game repeats since `panda` and `seven` belong only to g1b; if you need to test the IPA branch on a same-letter word, set `S.settings.showIpa = true` via the settings sheet before opening the build game.
+- The home screen's 拼读 x/5 counter increments by exactly 1 per round, NOT by 5 (i.e. opening devtools and stepping through `eraser` should yield `+1` on the home counter, not `+3`).
 - After picking a previously-unmastered grapheme correctly 3 times across build / hear / see games, the 字素表 shows the green-check on it.
+- console: 0 errors.
 
 - [ ] **Step 8: Commit**
 
@@ -610,8 +689,9 @@ Specifically:
 1. Trigger the build game 20 times; observe no sticky-graph letters in any slot text.
 2. Verify the sticky-graph 10 words never show up.
 4. Run the see mode; confirm every option has a reference word (or that the absence is rare enough to ignore in this manual pass).
+8. In the default textbook (g1a), play the build game until `eraser` appears (3 phonemes, with two `r` shapes). Verify the two `r` slots render with `(1)` / `(2)`. Per GLM review, `panda` and `seven` are NOT in g1a, so they only validate the data layer (`scripts/probe-phonics.js` confirms they're in `PHONEMES_BY_WORD`), not the game flow.
 9. Pick any `a|ɪ` question (orange's a, if it appears) and confirm all four distractors have letters that are NOT `a`.
-10. Toggle `S.settings.showIpa` via the settings sheet; rebuild by switching to another tab and back; confirm the build-game feedback switches between "读音不一样（听一听）" and "第一个 /ɪ/、第二个 /..." text.
+10. Toggle `S.settings.showIpa` via the settings sheet; rebuild by switching to another tab and back; in the build game, the same-letter feedback text switches between "读音不一样（听一听）" (off) and a sound-list like "r → /r/、/ər/" (on).
 
 - [ ] **Step 4: Final commit (if any doc tweaks)**
 

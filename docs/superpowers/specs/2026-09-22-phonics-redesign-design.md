@@ -129,7 +129,7 @@ build 时只做"所有音素可分类"的过滤；长度过滤（2-5 段）只�
 5. 听音选字母 / 见字选音判分后自动播放正确答案的音
 6. 拆词拼读拼对后展示字素分类标签（6 色）
 7. 抽词策略优先抽含未掌握字素的词（手动构造 right=0 验证）
-8. 同字母不同音的词（如 panda `a / æ / ə`、seven `e / e / ə`、eraser `er / ɪr / ər`）拼对后，slot 标注 `(1)` / `(2)` 区分
+8. 同字母不同音的词（如 eraser（g1a 唯一游戏内用例）：`er / ɪr / ər`）拼对后，slot 标注 `(1)` / `(2)` 区分。`panda` / `seven` 仅在 g1b 课本里，不在默认课本 g1a 范围内，因此只作为数据层验证（probe script 确认它们在 PHONEMES_BY_WORD 中），不参与游戏内手动验收
 9. **干扰项过滤 letters 不等**：手动构造正确项 `letters='a'/sound='ɪ'`（orange 的 a）场景，验证 4 个干扰项 letters 全不为 `a`（含其它 sound 的 item：/ɑː/、/æ/、/eɪ/、/ə/）
 10. **同字母不同音反馈文本 gate 在 showIpa**：默认 `S.settings.showIpa = false` 时，反馈显示"两个 `a` 的读音不一样（听一听）"；打开 IPA 开关后显示完整 IPA 文本
 11. 干扰项凑不齐时 fallback 到下一层：手动构造极端场景（如 item letters='x' 单字母小池子）验证第二层兜底
