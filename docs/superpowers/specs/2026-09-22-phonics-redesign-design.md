@@ -43,11 +43,10 @@
 - **build.js**：在原 PHONICS.groups 基础上新增导出 `PHONEMES_BY_WORD` —— 一个 `{ word → [phonemeItem, ...] }` 字典。phonemeItem 用 **浅拷贝**（spread `{...item}`）从 `PHONICS.groups.items` 里挑，避免引用共享导致运行时修改污染 PHONICS.groups。浅拷贝依赖的不变式：`PHONICS.groups.items[*].audio` 在 build 阶段已确定且永不变化（实际数据验证：359 条 pindu 的 `audio` 恒等于 `f(sound)`，0 例外）；运行时只读 audio 字段、不修改它，因此浅拷贝安全。
 - **app.js**：4 个子游戏统一通过 `PHONICS.groups.items`（题池+干扰项池）和 `PHONEMES_BY_WORD`（拆词游戏词池）取数据。**绕过 `WORDS[w].pindu` 字面字段**。
 - **统计**：拆词拼对时，对**每个去重后的**字素调一次 `phTrack(letters, true)`（纯统计），词级调一次 `gainXp(1, 'toy')` 和 `dayStat().phonics++`。这样字素表绿勾反映拆词练习、但首页"拼读 x/5"按词计数语义不被破坏。
-- **统计拆分**（解决 P0-1）：把 `pgrade(letters, ok)` 拆成两层：
+- **统计拆分**：把 `pgrade(letters, ok)` 拆成两层：
   - `phTrack(letters, ok)`：纯 per-grapheme 统计（S.phonics[letters].right/wrong）
   - `pgrade(letters, ok)`：调 phTrack + gainXp + dayStat（保留原 hear/see 的"答对 1 个字素 = +1 XP + 1 次练习"语义）
-- **掌握度判定统一**（解决 P1-1）：抽 `isPhMastered(letters)` helper，单一事实来源 = `S.phonics[letters].right >= 3 && S.phonics[letters].right >= S.phonics[letters].wrong * 2`。字素表绿勾（`renderPhCards` 的 mastered 判定）和拆词游戏抽词时的未掌握判定都调用这个 helper。
-- **app.js**：4 个子游戏统一通过 `PHONICS.groups.items`（题池+干扰项池）和 `PHONEMES_BY_WORD`（拆词游戏词池）取数据。**绕过 `WORDS[w].pindu` 字面字段**。
+- **掌握度判定统一**：抽 `isPhMastered(letters)` helper，单一事实来源 = `S.phonics[letters].right >= 3 && S.phonics[letters].right >= S.phonics[letters].wrong * 2`。字素表绿勾（`renderPhCards` 的 mastered 判定）和拆词游戏抽词时的未掌握判定都调用这个 helper。
 
 ### §4.2 Data Flow
 
@@ -55,12 +54,14 @@
 build 时                                       runtime
 ─────────                                      ──────
 WORDS[w].pindu (原始对齐数据)         ↓                     PHONEMES_BY_WORD[w] = [...]
-  ↓                                       ↓ 过滤: 2-5 段 + 所有音素可分类
+  ↓                                       ↓ runtime 过滤: 2-5 段
 classify() 过滤粘合块                  ↓
   ↓                                       → renderPhBuild 词池
 PHONICS.groups.items                  → renderPhHear / renderPhSee 题池
                                       → renderPhCards 浏览
 ```
+
+build 时只做"所有音素可分类"的过滤；长度过滤（2-5 段）只在 runtime 这一层。
 
 ### §4.3 听音选字母 (renderPhHear)
 
@@ -70,9 +71,14 @@ PHONICS.groups.items                  → renderPhHear / renderPhSee 题池
 
 ### §4.4 见字选音 (renderPhSee)
 
-1. **每个喇叭下方显示一个参考词**（从 phonemeItem.words 数组里挑第一个**当前课本里**有的）。**Fallback**：如果 `phonemeItem.words` 里没有当前课本词（数据源每个字素只挂 4 个词，可能都不在当前课本），用 PHONICS.groups.items 里其它 sound 相同但 letters 不同的项的 words 数组兜底；再兜不住则隐藏参考词（喇叭旁边只显示字素类型标签）。
+1. **每个喇叭下方显示一个参考词**。Fallback 链：
+   - 第一优先：phonemeItem.words 里第一个**当前课本里**有的词
+   - 兜底：phonemeItem.words[0]（即该字素挂的任意一个词，不管是否在当前课本）
+   - 兜不住（words 数组为空）：隐藏参考词，喇叭旁只显示字素类型标签
 2. **判分后播放正确答案参考词的整体发音**（`speakWord(referenceWord)`），强化"字素→词"连接。
 3. 反馈区"是 X"旁边也显示参考词。
+
+设计取舍：不再做"sound 相同但 letters 不同的字素的 words"中间层兜底 —— 这种跨字素兜底会让参考词不属于当前字素，反而削弱 §4.4.2 要强化的"字素→词"连接，且是低频场景。
 
 ### §4.5 拆词拼读 (renderPhBuild) — 核心重做
 
@@ -85,19 +91,21 @@ PHONICS.groups.items                  → renderPhHear / renderPhSee 题池
    - **连续上限**：同一字素连续出现 ≤3 次后，下一词强制跳过含该字素的词（避免孩子连拼同一字素的 5 个词）
 4. **拼对反馈**（教学时刻）：
    - 每个 slot 亮起颜色（蓝/粉/紫/橙/青/灰）+ 分类标签（"辅音"/"元音"/"辅音组合"/"元音组合"/"r 控元音"/"不发音"）
-   - 同字母不同音标注 `(1)` / `(2)`，反馈里说明"两个 `a` 都发 a，但第一个 /æ/、第二个 /ɑː/"
-5. **拼错 hint**：回放下一个该点的字素的音
+   - 同字母不同音标注 `(1)` / `(2)`，反馈文本 **gate 在 `S.settings.showIpa` 后面**：默认显示"两个 `a` 的读音不一样（听一听）"；开关打开时显示完整 IPA 文本（如"第一个 /æ/、第二个 /ɑː/"）。复用现有 IPA 开关作为单一事实来源。
+5. **拼错 hint**：回放下一个应点的字素的音
 6. **拼对统计**：对**去重后的**字素集合调 `phTrack(letters, true)`（纯统计，避免 panda 双 `a` 重复 +2）；词级调一次 `gainXp(1, 'toy')` 和 `dayStat().phonics++`（保留首页"拼读 x/5"的按词计数语义）
 
 ### §4.6 干扰项策略 (phDistractors) — 分层
 
 | 优先级 | 选法 |
 |---|---|
-| 1 | 同长度 + 同首字母的字素（如 `gr` 优先 `gl / br / dr`） |
+| 1 | 同长度的字素（长度优先；候选内按"与正确项共享首字母"降序排序作为 tier 内权重） |
 | 2 | 同 kind（保留原行为） |
 | 3 | 全池（兜底） |
 
-**所有层必须满足 `x.letters !== item.letters`**。原因：PHONICS.groups.items 里同一 letters 拥有多个 sound（如 `a` 有 /æ/、/ɑː/、/ə/、/eɪ/、/ɒ/ 五个音），原实现只过滤 `sound !==` 不过滤 `letters !==`，导致听音/见字游戏里点同字母异音的干扰项会被判对。第 1 层"同长度+同首字母"对单字母字素会必然选中其它 4 个 `a` 音，恰好放大这个 bug —— 必须全层加 letters 不等过滤。
+例：`gr`（长度 2）的 tier-1 候选 = 所有长度 2 的字素（`gl / br / dr / cl / cr / fl / fr / pl / pr / tr / ch / sh / th / ph / ...`），其中与 `gr` 同首字母的 `gl` 排前面，凑不齐 3 个退回 tier-2。
+
+**所有层必须满足 `x.letters !== item.letters`**。原因：PHONICS.groups.items 里同一 letters 拥有多个 sound（如 `a` 有 /ɑː/、/æ/、/eɪ/、/ə/、/ɪ/ 五个音），原实现只过滤 `sound !==` 不过滤 `letters !==`，导致听音/见字游戏里点同字母异音的干扰项会被判对。注意：对单字母字素，tier-1 候选集因 letters 已被排除而可能为空，直接落到 tier-2，这是预期行为（不是 bug）。
 
 ### §4.7 教学时刻协议（统一）
 
@@ -108,21 +116,22 @@ PHONICS.groups.items                  → renderPhHear / renderPhSee 题池
 | 听音选字母判分 | 自动播放正确答案的音 |
 | 见字选音判分 | 播放正确答案参考词的整体发音 |
 | 拆词拼对 | 字素色 + 分类标签 + 同字母不同音对比 + 整词发音 |
-| 拆词拼错 | 回放下一个该点字素的音（hint） |
+| 拆词拼错 | 回放下一个应点字素的音（hint） |
 
 ## 5. Verification (Acceptance Criteria)
 
 每条独立可验：
 
-1. 拆词拼读里**绝不再出现** `il eye / nd / ao / dp / dn / es / wo / ne / pe` 伪字素
-2. 拆词拼读里**绝不再出现** 10 个粘合块词（pencil / eyes / grandma / jiaozi / grandpa / wednesday / two / nine / grapes / noodles），其中 9 个笔（86 → 77 词池）会从游戏中消失；验证池大小
+1. 拆词拼读里**绝不再出现** `il / eye / nd / ao / dp / dn / es / wo / ne / pe` 伪字素
+2. 拆词拼读里**绝不再出现** 10 个粘合块词（pencil / eyes / grandma / jiaozi / grandpa / wednesday / two / nine / grapes / noodles），其中 9 个词（86 → 77 词池）会从游戏中消失；验证池大小
 3. 拆词拼读拼对调 `phTrack()`，字素表绿勾会因拆词游戏而更新；首页"拼读 x/5"按词计数（每词 +1，不按字素重计）
-4. 见字选音每个选项下方显示参考词；当前课本无对应参考词时 fallback 到全局池，再兜不住时隐藏
+4. 见字选音每个选项下方显示参考词；当前课本无对应参考词时 fallback 到 words[0]，再兜不住时隐藏（不跨字素兜底）
 5. 听音选字母 / 见字选音判分后自动播放正确答案的音
 6. 拆词拼读拼对后展示字素分类标签（6 色）
 7. 抽词策略优先抽含未掌握字素的词（手动构造 right=0 验证）
 8. 同字母不同音的词（如 panda `a / æ / ə`、seven `e / e / ə`、eraser `er / ɪr / ər`）拼对后，slot 标注 `(1)` / `(2)` 区分
-9. **干扰项过滤 letters 不等**：手动构造正确项 `letters='a'/sound='ɒ'` 场景，验证 4 个干扰项 letters 全不为 `a`（含其它 sound 的 item）
+9. **干扰项过滤 letters 不等**：手动构造正确项 `letters='a'/sound='ɪ'`（orange 的 a）场景，验证 4 个干扰项 letters 全不为 `a`（含其它 sound 的 item：/ɑː/、/æ/、/eɪ/、/ə/）
+10. **同字母不同音反馈文本 gate 在 showIpa**：默认 `S.settings.showIpa = false` 时，反馈显示"两个 `a` 的读音不一样（听一听）"；打开 IPA 开关后显示完整 IPA 文本
 11. 干扰项凑不齐时 fallback 到下一层：手动构造极端场景（如 item letters='x' 单字母小池子）验证第二层兜底
 12. console 无新增报错
 13. build 后单文件可双击运行
@@ -145,7 +154,6 @@ PHONICS.groups.items                  → renderPhHear / renderPhSee 题池
 
 - **PHONEMES_BY_WORD 与 PHONICS.groups 的同步**：浅拷贝只读 audio 不修改，依赖 §4.1 写明的不变式。运行时禁止修改 `PHONICS.groups.items` 或 `PHONEMES_BY_WORD` 的元素。
 - **pgrade / phTrack 拆分后的语义**：拆词游戏只调 `phTrack`，词级 `gainXp` 和 `dayStat().phonics` 调一次。如果未来 hear/see 也只调 `phTrack` 不调 `pgrade`，需要单独评估首页"拼读 x/5"的指标是否还合理。
-- **同字母不同音的对比文本**："两个 `a` 都发 a，但第一个 /æ/、第二个 /ɑː/" —— 用了音标字符但 README 说"一二年级不学音标"。需要权衡：是否简化成"两个 a 发的音不一样"（不显示音标），还是保留音标但加 ⓘ 提示。
 
 ## 8. Follow-ups (out of scope for this spec)
 
