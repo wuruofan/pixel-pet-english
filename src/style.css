@@ -682,6 +682,9 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .ph-opt.wrong { border-color: var(--red); background: #feecec; }
 .ph-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .ph-opt .ph-ref { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-weight: 600; }
+.ph-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; margin: 2px; background: var(--pc, var(--brand)); color: #fff; font-weight: 800; }
+.ph-tag em { font-size: 11px; opacity: .85; font-style: normal; }
+.ph-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .ph-build-slots { display: flex; justify-content: center; gap: 7px; margin: 4px 0 12px; flex-wrap: wrap; }
 .ph-build-slots .slot {
