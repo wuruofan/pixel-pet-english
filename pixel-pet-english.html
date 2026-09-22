@@ -3591,11 +3591,48 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     return out;
   }
   function phDistractors(item, n) {
-    var pool = allPhonemes().filter(function (x) { return x.sound !== item.sound; });
+    /* Floor: must differ in both letters AND sound. Reason for both:
+     * 26 sounds have multiple letter spellings (/s/←[s,ss,c],
+     * /k/←[ch,k,c,ck], etc.) — keeping only letters-not-equal lets the
+     * child answer /k/ by clicking `c` and be marked wrong even though
+     * the sound matches. The single-letter case forces a fall-through
+     * to tier 2 (tier 1 collapses to empty), which is expected. */
+    var pool = allPhonemes().filter(function (x) {
+      return x.letters !== item.letters && x.sound !== item.sound;
+    });
+    /* Tier 1: same length; within tier, prefer items whose first letter
+     * matches the correct item's first letter. */
+    var sameLen = pool.filter(function (x) { return x.letters.length === item.letters.length; });
+    sameLen.sort(function (a, b) {
+      var am = a.letters[0] === item.letters[0] ? 0 : 1;
+      var bm = b.letters[0] === item.letters[0] ? 0 : 1;
+      return am - bm;
+    });
+    /* Tier 2: same kind */
     var sameKind = pool.filter(function (x) { return x.kind === item.kind; });
-    var out = shuffle(sameKind).slice(0, n);
-    if (out.length < n) out = out.concat(shuffle(pool.filter(function (x) { return out.indexOf(x) < 0; })).slice(0, n - out.length));
-    return shuffle(out);
+    sameKind.sort(function (a, b) {
+      var am = a.letters[0] === item.letters[0] ? 0 : 1;
+      var bm = b.letters[0] === item.letters[0] ? 0 : 1;
+      return am - bm;
+    });
+    /* Tier 3: anything (sorted same way, last resort) */
+    pool.sort(function (a, b) {
+      var am = a.letters[0] === item.letters[0] ? 0 : 1;
+      var bm = b.letters[0] === item.letters[0] ? 0 : 1;
+      return am - bm;
+    });
+    var out = [];
+    var seen = {};
+    function take(tier) {
+      for (var i = 0; i < tier.length && out.length < n; i++) {
+        var k = tier[i].letters + '|' + tier[i].sound;
+        if (!seen[k]) { seen[k] = 1; out.push(tier[i]); }
+      }
+    }
+    take(sameLen);
+    take(sameKind);
+    take(pool);
+    return out.slice(0, n);
   }
   function phPlay(item, btn) {
     playRange(item.audio);
