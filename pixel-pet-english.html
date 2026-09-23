@@ -3878,10 +3878,16 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
             (got ? '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(got.letters)] + '">' + esc(got.letters) + idxTag + '</span>' : (i + 1)) + '</span>';
         }).join('');
       })() + '</div>' +
-      (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点喇叭听读音，按顺序点对就填进格子</div>') +
+      (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点字母块听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-grid" id="ph-pool">' +
-      (done ? '' : b.queue.map(function (p) {
-        return '<button class="ph-opt" data-idx="' + p.idx + '"><span class="sp">🔊</span></button>';
+      /* Each option shows its letters (color-coded like the hear-mode options)
+       * plus the speaker, so the child can SEE what to pick instead of
+       * guessing between identical icons; already-placed phonemes disappear
+       * from the pool so the remaining choices shrink as the word is built. */
+      (done ? '' : b.queue.filter(function (p) { return b.picked.indexOf(p) === -1; }).map(function (p) {
+        return '<button class="ph-opt" data-idx="' + p.idx + '">' +
+          '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + '">' + esc(p.letters) + '</span>' +
+          '<span class="sp">' + SPK + '</span></button>';
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
@@ -3912,9 +3918,16 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
              * the hint disappear, and the teaching feedback renders cleanly
              * (the else-branch below). */
             renderPhBuild(v);
-          } else if (b.picked.length && p.idx !== b.picked.length) {
+          } else if (p.idx !== b.picked.length) {
+            /* A wrong tap should teach, not frustrate — even on the very first
+             * tap of a round (previously guarded on b.picked.length, which made
+             * the first wrong tap silent): beep, flash the button of the sound
+             * that actually comes next and play it, so the child sees and
+             * hears what to find. */
             beep('no');
-            phPlay(b.parts[b.picked.length], null);
+            var need = b.parts[b.picked.length];
+            var needBtn = $$('#ph-pool .ph-opt').filter(function (x) { return +x.dataset.idx === need.idx; })[0];
+            phPlay(need, needBtn || null);
           }
         };
       });
