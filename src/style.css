@@ -659,7 +659,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .ph-pool-row .ph-opt { min-width: 84px; }
 /* IPA-mode build options: the phoneme symbol is the main label, color-coded
    by phoneme kind like the letter blocks */
-.ph-pool-row .ph-opt.ipa { min-width: 88px; border-color: var(--pc, var(--line)); }
+.ph-pool-row .ph-opt.ipa { min-width: 88px; padding: 12px 14px; border-color: var(--pc, var(--line)); }
 .ph-pool-row .ph-opt.ipa .ph-sound { font-size: 20px; font-weight: 900; color: #fff; background: var(--pc, var(--brand)); border-radius: 8px; padding: 3px 9px; }
 .ph-opt .ph-sound { font-size: 12px; color: var(--ink-soft); font-weight: 800; }
 .ph-card {
