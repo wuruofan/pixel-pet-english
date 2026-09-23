@@ -3854,6 +3854,10 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
         return { letters: p.letters, sound: p.sound, audio: p.audio, kind: p.kind, idx: i };
       });
       phBuild = { word: w, parts: parts, picked: [], queue: shuffle(parts.slice()) };
+      /* Speak the whole word when a round starts, so the child knows what
+       * sounds they are about to build (same pattern as the hear question's
+       * auto-play). A fast tap on a speaker stops it via playRange() — harmless. */
+      setTimeout(function () { speakWord(phBuild.word); }, 350);
     }
     var b = phBuild;
     var done = b.picked.length === b.parts.length;
@@ -3874,6 +3878,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
             (got ? '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(got.letters)] + '">' + esc(got.letters) + idxTag + '</span>' : (i + 1)) + '</span>';
         }).join('');
       })() + '</div>' +
+      (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点喇叭听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-grid" id="ph-pool">' +
       (done ? '' : b.queue.map(function (p) {
         return '<button class="ph-opt" data-idx="' + p.idx + '"><span class="sp">🔊</span></button>';
@@ -3889,7 +3894,6 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
           phPlay(p, btn);
           if (p.idx === b.picked.length) {
             b.picked.push(p);
-            btn.remove();
             if (b.picked.length === b.parts.length) {
               gainXp(1, 'toy');
               dayStat().phonics = (dayStat().phonics || 0) + 1;
@@ -3900,47 +3904,14 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
                 if (!seenL[p.letters]) { seenL[p.letters] = 1; phTrack(p.letters, true); }
               });
               beep('ok');
-              /* KIND_LABEL maps the group id (which is what PHONICS.groups[i].id and
-               * `p.kind` carry) to a Chinese label. phonicsTagOf returns the PB_TAG
-               * one-letter code ('c'/'v'/'ct'/'vt'/'r'/'s') — do NOT use that here. */
-              var KIND_LABEL = { cons: '辅音', vowel: '元音', cteam: '辅音组合', vteam: '元音组合', rctrl: 'r 控元音', silent: '不发音' };
-              var lettersSeen = {};
-              var colorRows = b.parts.map(function (p) {
-                lettersSeen[p.letters] = (lettersSeen[p.letters] || 0) + 1;
-                var label = KIND_LABEL[p.kind] || '';
-                return '<span class="pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + ' ph-tag">' + esc(p.letters) +
-                  (lettersSeen[p.letters] > 1 ? '<sup>(' + lettersSeen[p.letters] + ')</sup>' : '') +
-                  '<em>' + label + '</em></span>';
-              }).join(' ');
-              var repeatNote = '';
-              var letterCounts = {}; b.parts.forEach(function (p) { letterCounts[p.letters] = (letterCounts[p.letters] || 0) + 1; });
-              var repeated = Object.keys(letterCounts).filter(function (k) { return letterCounts[k] > 1; });
-              if (repeated.length) {
-                /* spec §4.5.4: gate the IPA-containing text on S.settings.showIpa.
-                 * When the switch is on, surface the actual sound labels from the
-                 * parts' sound field; when off, the child just hears that the same
-                 * letter sounds different. */
-                if (S.settings.showIpa) {
-                  var examples = repeated.map(function (l) {
-                    var sounds = b.parts.filter(function (p) { return p.letters === l; }).map(function (p) { return p.sound; });
-                    return '<b>' + l + '</b> → /' + sounds.join('/、/') + '/';
-                  });
-                  repeatNote = '<div class="muted" style="margin-top:6px">同一个字母在不同位置：' + examples.join('；') + '</div>';
-                } else {
-                  repeatNote = '<div class="muted" style="margin-top:6px">两个 <b>' + repeated[0] + '</b> 的读音不一样（听一听）</div>';
-                }
-              }
-              $('#ph-fb').innerHTML =
-                '<div class="feedback ok" style="margin-top:12px">' +
-                '<span class="ic">🎉</span><span><b>' + esc(b.word) + '</b> 拼出来啦！+1 🎾</span></div>' +
-                '<div class="ph-tags" style="margin-top:8px">' + colorRows + '</div>' +
-                repeatNote +
-                '<button class="btn green big" id="ph-next" style="margin-top:10px">再拼一个 →</button>';
-              $('#ph-next').onclick = function () { phBuild = null; renderPhBuild($('#ph-body')); };
               speakWord(b.word);
-            } else {
-              renderPhBuild(v);
             }
+            /* Re-render the whole card on every correct click: an incomplete
+             * round refreshes the slots/pool, and the final click rebuilds the
+             * card so every slot shows its letter, the leftover 🔊 buttons and
+             * the hint disappear, and the teaching feedback renders cleanly
+             * (the else-branch below). */
+            renderPhBuild(v);
           } else if (b.picked.length && p.idx !== b.picked.length) {
             beep('no');
             phPlay(b.parts[b.picked.length], null);
@@ -3948,7 +3919,41 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
         };
       });
     } else {
-      $('#ph-fb').innerHTML = '<button class="btn green big" id="ph-next">再拼一个 →</button>';
+      /* Teaching moment: colored classification tags, same-letter note, +1.
+       * Also the resume path (returning to a completed round) shows the same. */
+      var KIND_LABEL = { cons: '辅音', vowel: '元音', cteam: '辅音组合', vteam: '元音组合', rctrl: 'r 控元音', silent: '不发音' };
+      var lettersSeen = {};
+      var colorRows = b.parts.map(function (p) {
+        lettersSeen[p.letters] = (lettersSeen[p.letters] || 0) + 1;
+        var label = KIND_LABEL[p.kind] || '';
+        return '<span class="pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + ' ph-tag">' + esc(p.letters) +
+          (lettersSeen[p.letters] > 1 ? '<sup>(' + lettersSeen[p.letters] + ')</sup>' : '') +
+          '<em>' + label + '</em></span>';
+      }).join(' ');
+      var repeatNote = '';
+      var letterCounts = {}; b.parts.forEach(function (p) { letterCounts[p.letters] = (letterCounts[p.letters] || 0) + 1; });
+      var repeated = Object.keys(letterCounts).filter(function (k) { return letterCounts[k] > 1; });
+      if (repeated.length) {
+        /* spec §4.5.4: gate the IPA-containing text on S.settings.showIpa.
+         * When the switch is on, surface the actual sound labels from the
+         * parts' sound field; when off, the child just hears that the same
+         * letter sounds different. */
+        if (S.settings.showIpa) {
+          var examples = repeated.map(function (l) {
+            var sounds = b.parts.filter(function (p) { return p.letters === l; }).map(function (p) { return p.sound; });
+            return '<b>' + l + '</b> → /' + sounds.join('/、/') + '/';
+          });
+          repeatNote = '<div class="muted" style="margin-top:6px">同一个字母在不同位置：' + examples.join('；') + '</div>';
+        } else {
+          repeatNote = '<div class="muted" style="margin-top:6px">两个 <b>' + repeated[0] + '</b> 的读音不一样（听一听）</div>';
+        }
+      }
+      $('#ph-fb').innerHTML =
+        '<div class="feedback ok" style="margin-top:12px">' +
+        '<span class="ic">🎉</span><span><b>' + esc(b.word) + '</b> 拼出来啦！+1 🎾</span></div>' +
+        '<div class="ph-tags" style="margin-top:8px">' + colorRows + '</div>' +
+        repeatNote +
+        '<button class="btn green big" id="ph-next" style="margin-top:10px">再拼一个 →</button>';
       $('#ph-next').onclick = function () { phBuild = null; renderPhBuild($('#ph-body')); };
     }
   }
