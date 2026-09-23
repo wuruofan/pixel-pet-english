@@ -1559,7 +1559,11 @@
   function dropPoop() {
     S.pet.poop.n = Math.min(3, (S.pet.poop.n || 0) + 1);
     toast(S.pet.name + ' 悄悄拉了粑粑，点它或洗澡清理吧');
-    renderHome();
+    /* Full tab switch (go sets tab, re-renders the tabbar and the home view).
+     * The poop can fire while the child is on another tab (the walk+poop
+     * animation spans ~3s), so a bare renderHome() left the bottom highlight
+     * stuck on the old tab. */
+    go('home');
     save();
   }
   function renderPoops() {
@@ -3479,7 +3483,7 @@
         /* 顶栏 logo 跟当前宠物走 —— 跟设置里"换着养"的视觉呼应 */
         var blogo = $('#brand-logo');
         if (blogo) blogo.textContent = PET_SPECIES[b.dataset.species].emoji;
-        renderHome();
+        go('home');
         renderSettings();
         toast('换成了' + PET_SPECIES[b.dataset.species].label + '！等级经验都还在');
       };
