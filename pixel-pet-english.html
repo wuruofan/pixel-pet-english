@@ -686,6 +686,13 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .speak-btn.big { width: 84px; height: 84px; font-size: 40px; margin: 4px auto 0; display: block; }
 .ph-ask-letter { display: inline-block; font-size: 40px; padding: 8px 22px; }
 .ph-ask-wrap { text-align: center; }
+.ph-ask-word {
+  display: inline-block; font-size: 38px; padding: 8px 18px;
+  font-weight: 700; letter-spacing: 1px;
+}
+.ph-ask-word .ph-word-hit {
+  padding: 2px 6px; border-radius: 8px; margin: 0 -1px;
+}
 
 .ph-opt {
   border: 2px solid var(--line); background: #fff; border-radius: 12px;
@@ -3774,41 +3781,106 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     });
   }
 
-  /* 见字选音：看字素 → 4 段声音里选对的 */
+  /* 见字选音：看词里字素 → 4 个 sound 里挑这个字素在该词里的读音
+   * 设计：题面是完整单词（含字素高亮），选项是"该字素的所有 sound"里挑 4 个。
+   * 教"同字母不同音"——phonics 里最难也最核心的东西。
+   * 抽题：letters 至少 2 个 sound + 至少一个 item 的 word 在当前课本里。 */
+  function pickMultiSoundItem() {
+    var bookWordsSet = new Set(currentBookWords());
+    var byLetters = {};
+    PHONICS.groups.forEach(function (g) {
+      g.items.forEach(function (it) {
+        if (!byLetters[it.letters]) byLetters[it.letters] = [];
+        byLetters[it.letters].push(it);
+      });
+    });
+    var pool = [];
+    Object.keys(byLetters).forEach(function (letters) {
+      var items = byLetters[letters];
+      if (items.length < 2) return;
+      var usable = items.some(function (it) {
+        return it.words.some(function (w) { return bookWordsSet.has(w); });
+      });
+      if (usable) pool.push({ letters: letters, items: items });
+    });
+    if (!pool.length) return null;
+    var chosen = pick(pool);
+    var correctItem = null, correctWord = null;
+    var shuffled = shuffle(chosen.items.slice());
+    for (var i = 0; i < shuffled.length && !correctItem; i++) {
+      var it = shuffled[i];
+      for (var w = 0; w < it.words.length; w++) {
+        if (bookWordsSet.has(it.words[w])) {
+          correctItem = it;
+          correctWord = it.words[w];
+          break;
+        }
+      }
+    }
+    return correctItem ? { letters: chosen.letters, sound: correctItem.sound, word: correctWord, item: correctItem } : null;
+  }
+
   function renderPhSee(v) {
     v.innerHTML = '';
     if (!phQuiz || phQuiz.mode !== 'see') {
-      var item = pick(allPhonemes());
-      phQuiz = { mode: 'see', item: item, options: shuffle([item].concat(phDistractors(item, 3))), answered: false };
+      var qz = pickMultiSoundItem();
+      if (!qz) { v.appendChild(empty('当前课本没有适合的题')); return; }
+      var sameLetters = [];
+      PHONICS.groups.forEach(function (g) {
+        g.items.forEach(function (it) { if (it.letters === qz.letters) sameLetters.push(it); });
+      });
+      var allSounds = sameLetters.map(function (it) { return it.sound; });
+      var distractorSounds = shuffle(allSounds.filter(function (s) { return s !== qz.sound; }));
+      var opts = shuffle([qz.sound].concat(distractorSounds.slice(0, 3))).slice(0, 4);
+      phQuiz = { mode: 'see', letters: qz.letters, sound: qz.sound, word: qz.word, item: qz.item, options: opts, answered: false };
     }
     var q = phQuiz;
     var c = el('div', 'card');
+    /* 题面：完整单词 + 字素字母高亮 phonics 类目色 */
+    var wordHtml = '';
+    var lower = q.word.toLowerCase();
+    var idx = lower.indexOf(q.letters.toLowerCase());
+    var tag = 'pb-tag-' + PB_TAG[phonicsTagOf(q.letters)];
+    for (var i = 0; i < q.word.length; i++) {
+      if (i === idx) {
+        wordHtml += '<span class="' + tag + ' ph-word-hit">' + esc(q.word.substr(i, q.letters.length)) + '</span>';
+        i += q.letters.length - 1;
+      } else {
+        wordHtml += esc(q.word[i]);
+      }
+    }
     c.innerHTML =
-      '<h2 class="section">这个字素读哪个音？</h2>' +
-      '<div class="ph-ask-wrap"><div class="ph-ask-letter pb-tag-' + PB_TAG[phonicsTagOf(q.item.letters)] + '">' + esc(q.item.letters) + '</div></div>' +
-      '<div class="muted center" style="margin:4px 0 14px">点一个喇叭听一听，选对的那个</div>' +
-      '<div class="ph-pool-row" id="ph-opts">' + q.options.map(function (o) { return phOptionCard(o); }).join('') + '</div>' +
+      '<h2 class="section">这个字读哪个音？</h2>' +
+      '<div class="ph-ask-wrap"><div class="ph-ask-word">' + wordHtml + '</div></div>' +
+      '<div class="muted center" style="margin:4px 0 14px">听一听，挑出 <b>' + esc(q.letters) + '</b> 在 ' + esc(q.word) + ' 里的读音</div>' +
+      '<div class="ph-pool-row" id="ph-opts">' +
+      q.options.map(function (snd) {
+        return '<button class="ph-opt" data-s="' + esc(snd) + '">' +
+          '<span class="l ' + tag + '">' + esc(q.letters) + '</span>' +
+          '<span class="ph-sound">/' + esc(snd) + '/</span>' +
+          '<span class="sp">' + SPK + '</span>' +
+          '</button>';
+      }).join('') + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
+    /* 自动播放整词发音——告诉孩子"看这个单词" */
+    setTimeout(function () { speakWord(q.word); }, 350);
     $$('#ph-opts .ph-opt').forEach(function (b) {
       b.onclick = function () {
         if (q.answered) return;
         q.answered = true;
-        var ok = b.dataset.l === q.item.letters;
-        var chosen = q.options.filter(function (x) { return x.letters === b.dataset.l; })[0];
-        phPlay(chosen, b);
-        var ref = phPickReferenceWord(q.item);
-        if (ref) setTimeout(function () { speakWord(ref); }, 280);
-        pgrade(q.item.letters, ok);
+        var ok = b.dataset.s === q.sound;
+        phPlay(q.item, b);
+        setTimeout(function () { speakWord(q.word); }, 280);
+        pgrade(q.letters, ok);
         b.classList.add(ok ? 'right' : 'wrong');
         $$('#ph-opts .ph-opt').forEach(function (x) {
-          if (x.dataset.l === q.item.letters) x.classList.add('right');
+          if (x.dataset.s === q.sound) x.classList.add('right');
         });
-        var ex = (q.item.words || []).slice(0, 3);
         $('#ph-fb').innerHTML =
           '<div class="feedback ' + (ok ? 'ok' : 'no') + '" style="margin-top:12px">' +
           '<span class="ic">' + (ok ? '🎉' : '💪') + '</span>' +
-          '<span><b>' + esc(q.item.letters) + '</b> 是第' + (q.options.indexOf(chosen) + 1) + '个音' + (ex.length ? ' · 如 ' + esc(ex.join(' / ')) : '') + '</span></div>' +
+          '<span><b>' + esc(q.letters) + '</b> 在 <b>' + esc(q.word) + '</b> 里读 <b>/' + esc(q.sound) + '/</b></span></div>' +
           '<button class="btn green big" id="ph-next" style="margin-top:10px">下一个 →</button>';
         $('#ph-next').onclick = function () { phQuiz = null; renderPhSee($('#ph-body')); };
       };

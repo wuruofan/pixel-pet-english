@@ -677,6 +677,13 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .speak-btn.big { width: 84px; height: 84px; font-size: 40px; margin: 4px auto 0; display: block; }
 .ph-ask-letter { display: inline-block; font-size: 40px; padding: 8px 22px; }
 .ph-ask-wrap { text-align: center; }
+.ph-ask-word {
+  display: inline-block; font-size: 38px; padding: 8px 18px;
+  font-weight: 700; letter-spacing: 1px;
+}
+.ph-ask-word .ph-word-hit {
+  padding: 2px 6px; border-radius: 8px; margin: 0 -1px;
+}
 
 .ph-opt {
   border: 2px solid var(--line); background: #fff; border-radius: 12px;
