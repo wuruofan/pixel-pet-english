@@ -667,7 +667,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
 }
 .ph-card.done { border-color: var(--green); background: #f0fbf5; }
-.ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l {
+.ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l, .ph-ask-word .ph-word-hit {
   font-weight: 900; background: var(--pc, var(--brand)); color: #fff;
   border-radius: 8px; padding: 3px 9px; letter-spacing: 1px;
 }
@@ -682,7 +682,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   font-weight: 700; letter-spacing: 1px;
 }
 .ph-ask-word .ph-word-hit {
-  padding: 2px 6px; border-radius: 8px; margin: 0 -1px;
+  margin: 0 -1px;  /* hug adjacent letters — padding/color comes from the shared rule above */
 }
 
 .ph-opt {
