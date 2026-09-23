@@ -3019,15 +3019,10 @@
              * (the else-branch below). */
             renderPhBuild(v);
           } else if (p.idx !== b.picked.length) {
-            /* A wrong tap should teach, not frustrate — even on the very first
-             * tap of a round (previously guarded on b.picked.length, which made
-             * the first wrong tap silent): beep, flash the button of the sound
-             * that actually comes next and play it, so the child sees and
-             * hears what to find. */
+            /* Wrong tap: only the tapped button's sound plays (already started
+             * above) plus a wrong-beep — no hint of the correct answer, the
+             * child keeps exploring by ear. */
             beep('no');
-            var need = b.parts[b.picked.length];
-            var needBtn = $$('#ph-pool .ph-opt').filter(function (x) { return +x.dataset.idx === need.idx; })[0];
-            phPlay(need, needBtn || null);
           }
         };
       });
