@@ -2874,7 +2874,7 @@
     var c = el('div', 'card');
     c.innerHTML =
       '<h2 class="section">这个字素读哪个音？</h2>' +
-      '<div class="ph-ask-letter pb-tag-' + PB_TAG[phonicsTagOf(q.item.letters)] + '">' + esc(q.item.letters) + '</div>' +
+      '<div class="ph-ask-wrap"><div class="ph-ask-letter pb-tag-' + PB_TAG[phonicsTagOf(q.item.letters)] + '">' + esc(q.item.letters) + '</div></div>' +
       '<div class="muted center" style="margin:4px 0 14px">点一个喇叭听一听，选对的那个</div>' +
       '<div class="ph-pool-row" id="ph-opts">' +
       q.options.map(function (o) {
