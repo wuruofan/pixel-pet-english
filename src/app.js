@@ -2876,15 +2876,7 @@
       '<h2 class="section">这个字素读哪个音？</h2>' +
       '<div class="ph-ask-wrap"><div class="ph-ask-letter pb-tag-' + PB_TAG[phonicsTagOf(q.item.letters)] + '">' + esc(q.item.letters) + '</div></div>' +
       '<div class="muted center" style="margin:4px 0 14px">点一个喇叭听一听，选对的那个</div>' +
-      '<div class="ph-pool-row" id="ph-opts">' +
-      q.options.map(function (o) {
-        var ref = phPickReferenceWord(o);
-        return '<button class="ph-opt" data-l="' + esc(o.letters) + '">' +
-          '<span class="sp">' + SPK + '</span>' +
-          (S.settings.showIpa && o.sound ? '<span class="ph-sound">/' + esc(o.sound) + '/</span>' : '') +
-          (ref ? '<span class="ph-ref">' + esc(ref) + '</span>' : '') +
-          '</button>';
-      }).join('') + '</div>' +
+      '<div class="ph-pool-row" id="ph-opts">' + q.options.map(function (o) { return phOptionCard(o); }).join('') + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
     $$('#ph-opts .ph-opt').forEach(function (b) {
@@ -2899,7 +2891,7 @@
         pgrade(q.item.letters, ok);
         b.classList.add(ok ? 'right' : 'wrong');
         $$('#ph-opts .ph-opt').forEach(function (x) {
-          if (x.dataset.l === q.item.letters) { x.classList.add('right'); x.innerHTML = '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(x.dataset.l)] + '">' + esc(x.dataset.l) + '</span>'; }
+          if (x.dataset.l === q.item.letters) x.classList.add('right');
         });
         var ex = (q.item.words || []).slice(0, 3);
         $('#ph-fb').innerHTML =
