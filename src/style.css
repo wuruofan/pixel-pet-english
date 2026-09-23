@@ -659,8 +659,8 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .ph-pool-row .ph-opt { min-width: 84px; }
 /* IPA-mode build options: the phoneme symbol is the main label, color-coded
    by phoneme kind like the letter blocks */
-.ph-pool-row .ph-opt.ipa { min-width: 96px; min-height: 78px; border-color: var(--pc, var(--line)); }
-.ph-pool-row .ph-opt.ipa .ph-sound { font-size: 27px; font-weight: 900; color: #fff; background: var(--pc, var(--brand)); border-radius: 10px; padding: 3px 10px; }
+.ph-pool-row .ph-opt.ipa { min-width: 88px; border-color: var(--pc, var(--line)); }
+.ph-pool-row .ph-opt.ipa .ph-sound { font-size: 20px; font-weight: 900; color: #fff; background: var(--pc, var(--brand)); border-radius: 8px; padding: 3px 9px; }
 .ph-opt .ph-sound { font-size: 12px; color: var(--ink-soft); font-weight: 800; }
 .ph-card {
   border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 4px 8px;
