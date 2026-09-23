@@ -2759,6 +2759,7 @@
   function phOptionCard(it, extraCls) {
     return '<button class="ph-opt ' + (extraCls || '') + '" data-l="' + esc(it.letters) + '">' +
       '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(it.letters)] + '">' + esc(it.letters) + '</span>' +
+      (S.settings.showIpa && it.sound ? '<span class="ph-sound">/' + esc(it.sound) + '/</span>' : '') +
       '<span class="sp">' + SPK + '</span></button>';
   }
 
@@ -2875,7 +2876,8 @@
       q.options.map(function (o) {
         var ref = phPickReferenceWord(o);
         return '<button class="ph-opt" data-l="' + esc(o.letters) + '">' +
-          '<span class="sp">🔊</span>' +
+          '<span class="sp">' + SPK + '</span>' +
+          (S.settings.showIpa && o.sound ? '<span class="ph-sound">/' + esc(o.sound) + '/</span>' : '') +
           (ref ? '<span class="ph-ref">' + esc(ref) + '</span>' : '') +
           '</button>';
       }).join('') + '</div>' +
@@ -2976,7 +2978,7 @@
         }).join('');
       })() + '</div>' +
       (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点字母块听读音，按顺序点对就填进格子</div>') +
-      '<div class="ph-grid" id="ph-pool">' +
+      '<div class="ph-pool-row" id="ph-pool">' +
       /* Each option shows its letters (color-coded like the hear-mode options)
        * plus the speaker, so the child can SEE what to pick instead of
        * guessing between identical icons; already-placed phonemes disappear
@@ -2984,6 +2986,7 @@
       (done ? '' : b.queue.filter(function (p) { return b.picked.indexOf(p) === -1; }).map(function (p) {
         return '<button class="ph-opt" data-idx="' + p.idx + '">' +
           '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + '">' + esc(p.letters) + '</span>' +
+          (S.settings.showIpa && p.sound ? '<span class="ph-sound">/' + esc(p.sound) + '/</span>' : '') +
           '<span class="sp">' + SPK + '</span></button>';
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';

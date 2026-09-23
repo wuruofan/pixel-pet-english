@@ -352,9 +352,9 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   min-width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center;
   border: 3px solid #fff;
 }
-.wc-word { font-size: 42px; font-weight: 900; letter-spacing: .5px; line-height: 1.1; word-break: break-word; }
-.wc-ipa { color: var(--ink-soft); font-size: 16px; font-weight: 700; margin-top: 2px; }
-.wc-cn { font-size: 22px; font-weight: 800; color: var(--brand-dk); margin-top: 8px; }
+.wc-word { font-size: 42px; font-weight: 900; letter-spacing: .5px; line-height: 1.1; word-break: break-word; text-align: center; }
+.wc-ipa { color: var(--ink-soft); font-size: 16px; font-weight: 700; margin-top: 2px; text-align: center; }
+.wc-cn { font-size: 22px; font-weight: 800; color: var(--brand-dk); margin-top: 8px; text-align: center; }
 
 .speak-btn {
   width: 62px; height: 62px; border-radius: 50%; border: 0; cursor: pointer;
@@ -663,6 +663,10 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 @keyframes pb-pop { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
 
 .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 9px; margin-top: 10px; }
+/* build game answer row: content-sized buttons centered under the slots */
+.ph-pool-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 10px; }
+.ph-pool-row .ph-opt { min-width: 84px; }
+.ph-opt .ph-sound { font-size: 12px; color: var(--ink-soft); font-weight: 800; }
 .ph-card {
   border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 4px 8px;
   display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
@@ -3662,6 +3666,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   function phOptionCard(it, extraCls) {
     return '<button class="ph-opt ' + (extraCls || '') + '" data-l="' + esc(it.letters) + '">' +
       '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(it.letters)] + '">' + esc(it.letters) + '</span>' +
+      (S.settings.showIpa && it.sound ? '<span class="ph-sound">/' + esc(it.sound) + '/</span>' : '') +
       '<span class="sp">' + SPK + '</span></button>';
   }
 
@@ -3778,7 +3783,8 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       q.options.map(function (o) {
         var ref = phPickReferenceWord(o);
         return '<button class="ph-opt" data-l="' + esc(o.letters) + '">' +
-          '<span class="sp">🔊</span>' +
+          '<span class="sp">' + SPK + '</span>' +
+          (S.settings.showIpa && o.sound ? '<span class="ph-sound">/' + esc(o.sound) + '/</span>' : '') +
           (ref ? '<span class="ph-ref">' + esc(ref) + '</span>' : '') +
           '</button>';
       }).join('') + '</div>' +
@@ -3879,7 +3885,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
         }).join('');
       })() + '</div>' +
       (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点字母块听读音，按顺序点对就填进格子</div>') +
-      '<div class="ph-grid" id="ph-pool">' +
+      '<div class="ph-pool-row" id="ph-pool">' +
       /* Each option shows its letters (color-coded like the hear-mode options)
        * plus the speaker, so the child can SEE what to pick instead of
        * guessing between identical icons; already-placed phonemes disappear
@@ -3887,6 +3893,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       (done ? '' : b.queue.filter(function (p) { return b.picked.indexOf(p) === -1; }).map(function (p) {
         return '<button class="ph-opt" data-idx="' + p.idx + '">' +
           '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + '">' + esc(p.letters) + '</span>' +
+          (S.settings.showIpa && p.sound ? '<span class="ph-sound">/' + esc(p.sound) + '/</span>' : '') +
           '<span class="sp">' + SPK + '</span></button>';
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';
