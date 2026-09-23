@@ -2832,7 +2832,7 @@
       '<h2 class="section">听一听，是哪个字母组合？</h2>' +
       '<button class="speak-btn big" id="ph-ask">' + SPK + '</button>' +
       '<div class="muted center" style="margin:6px 0 14px">点喇叭再听一遍</div>' +
-      '<div class="ph-grid" id="ph-opts">' + q.options.map(function (o) { return phOptionCard(o); }).join('') + '</div>' +
+      '<div class="ph-pool-row" id="ph-opts">' + q.options.map(function (o) { return phOptionCard(o); }).join('') + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
     $('#ph-ask').onclick = function () { phPlay(q.item, $('#ph-ask')); };
@@ -2876,7 +2876,7 @@
       '<h2 class="section">这个字素读哪个音？</h2>' +
       '<div class="ph-ask-letter pb-tag-' + PB_TAG[phonicsTagOf(q.item.letters)] + '">' + esc(q.item.letters) + '</div>' +
       '<div class="muted center" style="margin:4px 0 14px">点一个喇叭听一听，选对的那个</div>' +
-      '<div class="ph-grid" id="ph-opts">' +
+      '<div class="ph-pool-row" id="ph-opts">' +
       q.options.map(function (o) {
         var ref = phPickReferenceWord(o);
         return '<button class="ph-opt" data-l="' + esc(o.letters) + '">' +
@@ -2965,8 +2965,11 @@
       phBuild = { word: w, parts: parts, soundParts: soundParts, picked: [], queue: shuffle(soundParts.slice()) };
       /* Speak the whole word when a round starts, so the child knows what
        * sounds they are about to build (same pattern as the hear question's
-       * auto-play). A fast tap on a speaker stops it via playRange() — harmless. */
-      setTimeout(function () { speakWord(phBuild.word); }, 350);
+       * auto-play). A fast tap on a speaker stops it via playRange() — harmless.
+       * Guard on phBuild: switching mode/tab inside this 350ms window nulls
+       * it (phBuild = null in the seg handler), so read the word from the
+       * closure's w and only speak if this round is still the live one. */
+      setTimeout(function () { if (phBuild && phBuild.word === w) speakWord(w); }, 350);
     }
     var b = phBuild;
     var done = b.picked.length === b.soundParts.length;
