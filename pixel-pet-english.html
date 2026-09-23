@@ -676,7 +676,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
 }
 .ph-card.done { border-color: var(--green); background: #f0fbf5; }
-.ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l, .ph-ask-word .ph-word-hit {
+.ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l {
   font-weight: 900; background: var(--pc, var(--brand)); color: #fff;
   border-radius: 8px; padding: 3px 9px; letter-spacing: 1px;
 }
@@ -686,13 +686,6 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .speak-btn.big { width: 84px; height: 84px; font-size: 40px; margin: 4px auto 0; display: block; }
 .ph-ask-letter { display: inline-block; font-size: 40px; padding: 8px 22px; }
 .ph-ask-wrap { text-align: center; }
-.ph-ask-word {
-  display: inline-block; font-size: 38px; padding: 8px 18px;
-  font-weight: 700; letter-spacing: 1px;
-}
-.ph-ask-word .ph-word-hit {
-  margin: 0 -1px;  /* hug adjacent letters — padding/color comes from the shared rule above */
-}
 
 .ph-opt {
   border: 2px solid var(--line); background: #fff; border-radius: 12px;
@@ -3609,9 +3602,8 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     return !!(st && st.right >= 3 && st.right >= st.wrong * 2);
   }
 
-  var phMode = 'build';       // 默认进「拆词拼读」—— 是最像"今天该拼的词"的任务形态；
-                              // 字素表 / 听音选字母 / 见字选音 留作 segbar 二级入口
-                              // cards | hear | see | build
+  var phMode = null;          // 进拼读 tab 时随机选 hear / build；每次"下一个"也随机换
+                              // null = 还没选（首次进 tab 时初始化）
   var phQuiz = null;          // {item, options, answered}
   var phBuild = null;         // {word, parts, picked}
 
@@ -3680,8 +3672,8 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   }
   function phOptionCard(it, extraCls) {
     return '<button class="ph-opt ' + (extraCls || '') + '" data-l="' + esc(it.letters) + '">' +
-      '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(it.letters)] + '">' + esc(it.letters) + '</span>' +
-      (S.settings.showIpa && it.sound ? '<span class="ph-sound">/' + esc(it.sound) + '/</span>' : '') +
+      '<span class="l pb-tag-' + phonicsTagOf(it.letters) + '">' + esc(it.letters) + '</span>' +
+      (it.sound ? '<span class="ph-sound">/' + esc(it.sound) + '/</span>' : '') +
       '<span class="sp">' + SPK + '</span></button>';
   }
 
@@ -3690,25 +3682,53 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     v.innerHTML = '';
     if (!PHONICS.groups.length) { v.appendChild(empty('拼读数据还没生成')); return; }
 
-    /* 模式选择 + 子视图容器（子玩法重渲染只刷 ph-body，不刷 segbar） */
-    var seg = el('div', 'segbar');
-    seg.innerHTML = [
-      ['cards', '🗂 字素表'], ['hear', '👂 听音选字母'], ['see', '👀 见字选音'], ['build', '🧩 拆词拼读']
-    ].map(function (m) {
-      return '<button class="seg' + (phMode === m[0] ? ' on' : '') + '" data-m="' + m[0] + '">' + m[1] + '</button>';
-    }).join('');
-    v.appendChild(seg);
-    $$('.seg', seg).forEach(function (b) {
-      b.onclick = function () {
-        stopAudio(); phMode = b.dataset.m; phQuiz = null; phBuild = null; renderPhonics(v);
-      };
-    });
-    v.appendChild(el('div', '', '<div id="ph-body"></div>'));
+    /* 顶部：今日总进度条 —— 与 dailyPlan() 里 phonics 的目标保持一致（5 题）。
+       进度统一用 d.phonics（不分 hear/build）。 */
+    var pd = dayStat();
+    var phDone = Math.min(pd.phonics || 0, 5);
+    var phPct = Math.round(phDone / 5 * 100);
+    var banner = el('div', 'card');
+    banner.innerHTML =
+      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<span class="muted" style="font-size:13px">🔤 拼读 · 今日 ' + phDone + ' / 5</span>' +
+        '<span class="muted" style="font-size:12px">' + phPct + '%</span>' +
+      '</div>' +
+      '<div class="bar"><i style="width:' + phPct + '%"></i></div>';
+    v.appendChild(banner);
 
-    if (phMode === 'cards') renderPhCards($('#ph-body'));
-    else if (phMode === 'hear') renderPhHear($('#ph-body'));
-    else if (phMode === 'see') renderPhSee($('#ph-body'));
+    /* 随机选题型 —— 孩子不用点切换器，每次新题自动换。
+       renderPhHear/renderPhBuild 各自答对完点"下一个"时会再 randomPick 一次。 */
+    if (!phMode) phMode = pick(['hear', 'build']);
+    v.appendChild(el('div', '', '<div id="ph-body"></div>'));
+    if (phMode === 'hear') renderPhHear($('#ph-body'));
     else renderPhBuild($('#ph-body'));
+
+    /* 底部：字素表浏览入口（不算任务，进度不计数） */
+    var cardsLink = el('div', 'card');
+    cardsLink.style.cursor = 'pointer';
+    cardsLink.innerHTML =
+      '<div class="row" style="justify-content:space-between;align-items:center">' +
+        '<span>🗂 字素表 <span class="muted" style="font-weight:600">· ' + allPhonemes().length + ' 个字素 · 按类目分组浏览</span></span>' +
+        '<span class="muted" style="font-size:18px">›</span>' +
+      '</div>';
+    v.appendChild(cardsLink);
+    cardsLink.onclick = function () { stopAudio(); renderPhCardsView(v); };
+  }
+
+  /* 单独的字素表浏览入口（不走 segbar / phMode） */
+  function renderPhCardsView(v) {
+    v = v || $('#view');
+    v.innerHTML = '';
+    var top = el('div', 'row');
+    top.style.justifyContent = 'space-between';
+    top.style.alignItems = 'center';
+    top.style.margin = '4px 0 10px';
+    top.innerHTML = '<button class="btn ghost xs" id="ph-back">‹ 返回拼读</button>' +
+      '<span class="muted" style="font-size:13px">🗂 字素表</span><span></span>';
+    v.appendChild(top);
+    v.appendChild(el('div', '', '<div id="ph-cards-body"></div>'));
+    $('#ph-back').onclick = function () { renderPhonics(v); };
+    renderPhCards($('#ph-cards-body'));
   }
 
   /* 字素表：按组浏览点读 */
@@ -3749,7 +3769,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     c.innerHTML =
       '<h2 class="section">听一听，是哪个字母组合？</h2>' +
       '<button class="speak-btn big" id="ph-ask">' + SPK + '</button>' +
-      '<div class="muted center" style="margin:6px 0 14px">点喇叭再听一遍</div>' +
+      '<div class="muted center" style="padding:10px 0 14px">点喇叭再听一遍</div>' +
       '<div class="ph-pool-row" id="ph-opts">' + q.options.map(function (o) { return phOptionCard(o); }).join('') + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
@@ -3776,113 +3796,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
           '<span class="ic">' + (ok ? '🎉' : '💪') + '</span>' +
           '<span>是 <b>' + esc(q.item.letters) + '</b>' + (ex.length ? ' · 如 ' + esc(ex.join(' / ')) : '') + '</span></div>' +
           '<button class="btn green big" id="ph-next" style="margin-top:10px">下一个 →</button>';
-        $('#ph-next').onclick = function () { phQuiz = null; renderPhHear($('#ph-body')); };
-      };
-    });
-  }
-
-  /* 见字选音：看词里字素 → 4 个 sound 里挑这个字素在该词里的读音
-   * 设计：题面是完整单词（含字素高亮），选项是"该字素的所有 sound"里挑 4 个。
-   * 教"同字母不同音"——phonics 里最难也最核心的东西。
-   * 抽题：letters 至少 2 个 sound + 至少一个 item 的 word 在当前课本里。 */
-  function pickMultiSoundItem() {
-    var bookWordsSet = new Set(currentBookWords());
-    var byLetters = {};
-    PHONICS.groups.forEach(function (g) {
-      g.items.forEach(function (it) {
-        if (!byLetters[it.letters]) byLetters[it.letters] = [];
-        byLetters[it.letters].push(it);
-      });
-    });
-    var pool = [];
-    Object.keys(byLetters).forEach(function (letters) {
-      var items = byLetters[letters];
-      if (items.length < 2) return;
-      var usable = items.some(function (it) {
-        return it.words.some(function (w) { return bookWordsSet.has(w); });
-      });
-      if (usable) pool.push({ letters: letters, items: items });
-    });
-    if (!pool.length) return null;
-    var chosen = pick(pool);
-    var correctItem = null, correctWord = null;
-    var shuffled = shuffle(chosen.items.slice());
-    for (var i = 0; i < shuffled.length && !correctItem; i++) {
-      var it = shuffled[i];
-      for (var w = 0; w < it.words.length; w++) {
-        if (bookWordsSet.has(it.words[w])) {
-          correctItem = it;
-          correctWord = it.words[w];
-          break;
-        }
-      }
-    }
-    return correctItem ? { letters: chosen.letters, sound: correctItem.sound, word: correctWord, item: correctItem } : null;
-  }
-
-  function renderPhSee(v) {
-    v.innerHTML = '';
-    if (!phQuiz || phQuiz.mode !== 'see') {
-      var qz = pickMultiSoundItem();
-      if (!qz) { v.appendChild(empty('当前课本没有适合的题')); return; }
-      var sameLetters = [];
-      PHONICS.groups.forEach(function (g) {
-        g.items.forEach(function (it) { if (it.letters === qz.letters) sameLetters.push(it); });
-      });
-      var allSounds = sameLetters.map(function (it) { return it.sound; });
-      var distractorSounds = shuffle(allSounds.filter(function (s) { return s !== qz.sound; }));
-      var opts = shuffle([qz.sound].concat(distractorSounds.slice(0, 3))).slice(0, 4);
-      phQuiz = { mode: 'see', letters: qz.letters, sound: qz.sound, word: qz.word, item: qz.item, options: opts, answered: false };
-    }
-    var q = phQuiz;
-    var c = el('div', 'card');
-    /* 题面：完整单词 + 字素字母高亮 phonics 类目色 */
-    var wordHtml = '';
-    var lower = q.word.toLowerCase();
-    var idx = lower.indexOf(q.letters.toLowerCase());
-    var tag = 'pb-tag-' + PB_TAG[phonicsTagOf(q.letters)];
-    for (var i = 0; i < q.word.length; i++) {
-      if (i === idx) {
-        wordHtml += '<span class="' + tag + ' ph-word-hit">' + esc(q.word.substr(i, q.letters.length)) + '</span>';
-        i += q.letters.length - 1;
-      } else {
-        wordHtml += esc(q.word[i]);
-      }
-    }
-    c.innerHTML =
-      '<h2 class="section">这个字读哪个音？</h2>' +
-      '<div class="ph-ask-wrap"><div class="ph-ask-word">' + wordHtml + '</div></div>' +
-      '<div class="muted center" style="margin:4px 0 14px">听一听，挑出 <b>' + esc(q.letters) + '</b> 在 ' + esc(q.word) + ' 里的读音</div>' +
-      '<div class="ph-pool-row" id="ph-opts">' +
-      q.options.map(function (snd) {
-        return '<button class="ph-opt" data-s="' + esc(snd) + '">' +
-          '<span class="l ' + tag + '">' + esc(q.letters) + '</span>' +
-          '<span class="ph-sound">/' + esc(snd) + '/</span>' +
-          '<span class="sp">' + SPK + '</span>' +
-          '</button>';
-      }).join('') + '</div>' +
-      '<div id="ph-fb"></div>';
-    v.appendChild(c);
-    /* 自动播放整词发音——告诉孩子"看这个单词" */
-    setTimeout(function () { speakWord(q.word); }, 350);
-    $$('#ph-opts .ph-opt').forEach(function (b) {
-      b.onclick = function () {
-        if (q.answered) return;
-        q.answered = true;
-        var ok = b.dataset.s === q.sound;
-        phPlay(q.item, b);
-        setTimeout(function () { speakWord(q.word); }, 280);
-        pgrade(q.letters, ok);
-        b.classList.add(ok ? 'right' : 'wrong');
-        $$('#ph-opts .ph-opt').forEach(function (x) {
-          if (x.dataset.s === q.sound) x.classList.add('right');
-        });
-        $('#ph-fb').innerHTML =
-          '<div class="feedback ' + (ok ? 'ok' : 'no') + '" style="margin-top:12px">' +
-          '<span class="ic">' + (ok ? '🎉' : '💪') + '</span>' +
-          '<span><b>' + esc(q.letters) + '</b> 在 <b>' + esc(q.word) + '</b> 里读 <b>/' + esc(q.sound) + '/</b></span></div>' +
-          '<button class="btn green big" id="ph-next" style="margin-top:10px">下一个 →</button>';
-        $('#ph-next').onclick = function () { phQuiz = null; renderPhSee($('#ph-body')); };
+        $('#ph-next').onclick = function () { phQuiz = null; phMode = pick(['hear', 'build']); renderPhonics($('#view')); };
       };
     });
   }
@@ -3961,7 +3875,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
           seen[p.letters] = (seen[p.letters] || 0) + 1;
           var idxTag = seen[p.letters] > 1 ? '<sup>(' + seen[p.letters] + ')</sup>' : '';
           return '<span class="slot' + (got ? ' filled' : '') + '">' +
-            (got ? '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + '">' + esc(p.letters) + idxTag + '</span>' : (i + 1)) + '</span>';
+            (got ? '<span class="l pb-tag-' + phonicsTagOf(p.letters) + '">' + esc(p.letters) + idxTag + '</span>' : (i + 1)) + '</span>';
         }).join('');
       })() + '</div>' +
       (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点一个听读音，按顺序点对就填进格子</div>') +
@@ -3977,12 +3891,12 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
          * the word above — they must recognize the sound symbols. With the
          * switch off (default for grade 1-2) the letter block remains. */
         if (S.settings.showIpa) {
-          return '<button class="ph-opt ipa pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + '" data-idx="' + p.idx + '">' +
+          return '<button class="ph-opt ipa pb-tag-' + phonicsTagOf(p.letters) + '" data-idx="' + p.idx + '">' +
             '<span class="ph-sound">/' + esc(p.sound) + '/</span>' +
             '<span class="sp">' + SPK + '</span></button>';
         }
         return '<button class="ph-opt" data-idx="' + p.idx + '">' +
-          '<span class="l pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + '">' + esc(p.letters) + '</span>' +
+          '<span class="l pb-tag-' + phonicsTagOf(p.letters) + '">' + esc(p.letters) + '</span>' +
           '<span class="sp">' + SPK + '</span></button>';
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';
@@ -4030,7 +3944,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       var colorRows = b.parts.map(function (p) {
         lettersSeen[p.letters] = (lettersSeen[p.letters] || 0) + 1;
         var label = KIND_LABEL[p.kind] || '';
-        return '<span class="pb-tag-' + PB_TAG[phonicsTagOf(p.letters)] + ' ph-tag">' + esc(p.letters) +
+        return '<span class="pb-tag-' + phonicsTagOf(p.letters) + ' ph-tag">' + esc(p.letters) +
           (lettersSeen[p.letters] > 1 ? '<sup>(' + lettersSeen[p.letters] + ')</sup>' : '') +
           '<em>' + label + '</em></span>';
       }).join(' ');
@@ -4058,7 +3972,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
         '<div class="ph-tags" style="margin-top:8px">' + colorRows + '</div>' +
         repeatNote +
         '<button class="btn green big" id="ph-next" style="margin-top:10px">再拼一个 →</button>';
-      $('#ph-next').onclick = function () { phBuild = null; renderPhBuild($('#ph-body')); };
+      $('#ph-next').onclick = function () { phBuild = null; phMode = pick(['hear', 'build']); renderPhonics($('#view')); };
     }
   }
 

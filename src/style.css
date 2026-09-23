@@ -667,7 +667,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
 }
 .ph-card.done { border-color: var(--green); background: #f0fbf5; }
-.ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l, .ph-ask-word .ph-word-hit {
+.ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l {
   font-weight: 900; background: var(--pc, var(--brand)); color: #fff;
   border-radius: 8px; padding: 3px 9px; letter-spacing: 1px;
 }
@@ -677,13 +677,6 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .speak-btn.big { width: 84px; height: 84px; font-size: 40px; margin: 4px auto 0; display: block; }
 .ph-ask-letter { display: inline-block; font-size: 40px; padding: 8px 22px; }
 .ph-ask-wrap { text-align: center; }
-.ph-ask-word {
-  display: inline-block; font-size: 38px; padding: 8px 18px;
-  font-weight: 700; letter-spacing: 1px;
-}
-.ph-ask-word .ph-word-hit {
-  margin: 0 -1px;  /* hug adjacent letters — padding/color comes from the shared rule above */
-}
 
 .ph-opt {
   border: 2px solid var(--line); background: #fff; border-radius: 12px;
