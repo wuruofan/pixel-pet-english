@@ -2665,6 +2665,9 @@
   });
   var PB_TAG = { cons: 'c', vowel: 'v', cteam: 'ct', vteam: 'vt', rctrl: 'r', silent: 's' };
   function phonicsTagOf(letters) { return PB_TAG[PHONIC_MAP[letters]] || 'c'; }
+  /* Used by the build game to label each filled slot and the teaching
+   * tag row — module-level so the slot renderer can read it on every render. */
+  var KIND_LABEL = { cons: '辅音', vowel: '元音', cteam: '辅音组合', vteam: '元音组合', rctrl: 'r 控元音', silent: '不发音' };
 
   /* per-grapheme 练习统计 */
   function pstate(letters) {
@@ -2787,7 +2790,9 @@
 
     /* 随机选题型 —— 孩子不用点切换器，每次新题自动换。
        renderPhHear/renderPhBuild 各自答对完点"下一个"时会再 randomPick 一次。 */
-    if (!phMode) phMode = pick(['hear', 'build']);
+    if (!phMode) {
+      phMode = pick(['hear', 'build']);
+    }
     v.appendChild(el('div', '', '<div id="ph-body"></div>'));
     if (phMode === 'hear') renderPhHear($('#ph-body'));
     else renderPhBuild($('#ph-body'));
@@ -2952,12 +2957,16 @@
     var b = phBuild;
     var done = b.picked.length === b.soundParts.length;
     var c = el('div', 'card');
-    c.innerHTML =
-      '<h2 class="section">把这个词的音按顺序点出来</h2>' +
-      '<div class="wc-visual">' + visualHtml(b.word, 64) + '</div>' +
-      '<div class="wc-word">' + b.word + '</div>' +
-      '<div class="ph-build-slots" id="ph-slots">' +
-      (function () {
+    /* While the child is still building (done=false), the slots row sits in
+     * the card between the word and the phoneme-pool, and each slot fills
+     * as they tap options. Once the word is complete, the empty/hint slots
+     * and the pool disappear; the FINAL slot row (every cell filled with
+     * its letter + kind label) is rendered into the green feedback box
+     * below, so the answer reads as a single "word built" unit instead of
+     * sitting orphaned above the celebration. */
+    var slotsHtml = '';
+    if (!done) {
+      slotsHtml = (function () {
         var seen = {};
         return b.soundParts.map(function (p, i) {
           var got = b.picked.length > i;
@@ -2966,26 +2975,24 @@
           return '<span class="slot' + (got ? ' filled' : '') + '">' +
             (got ? '<span class="l pb-tag-' + phonicsTagOf(p.letters) + '">' + esc(p.letters) + idxTag + '</span>' : (i + 1)) + '</span>';
         }).join('');
-      })() + '</div>' +
+      })();
+    }
+    c.innerHTML =
+      '<h2 class="section">把这个词的音按顺序点出来</h2>' +
+      '<div class="wc-visual">' + visualHtml(b.word, 64) + '</div>' +
+      '<div class="wc-word">' + b.word + '</div>' +
+      (done ? '' : '<div class="ph-build-slots" id="ph-slots">' + slotsHtml + '</div>') +
       (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点一个听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-pool-row" id="ph-pool">' +
-      /* Each option shows its letters (color-coded like the hear-mode options)
-       * plus the speaker, so the child can SEE what to pick instead of
-       * guessing between identical icons; already-placed phonemes disappear
+      /* Each option shows its IPA sound (color-coded by kind) plus the speaker.
+       * Showing the letters would defeat the training goal: the child would
+       * just letter-match the word above instead of identifying the phoneme by
+       * sound. the alert above and the answer feedback below still anchor
+       * the answer in the word's letters; already-placed phonemes disappear
        * from the pool so the remaining choices shrink as the word is built. */
       (done ? '' : b.queue.filter(function (p) { return b.picked.indexOf(p) === -1; }).map(function (p) {
-        /* The training goal is matching the phoneme to its symbol: with the
-         * IPA switch on, the symbol is the main label (color-coded by kind)
-         * and the letter is dropped, so the child cannot just letter-match
-         * the word above — they must recognize the sound symbols. With the
-         * switch off (default for grade 1-2) the letter block remains. */
-        if (S.settings.showIpa) {
-          return '<button class="ph-opt ipa pb-tag-' + phonicsTagOf(p.letters) + '" data-idx="' + p.idx + '">' +
-            '<span class="ph-sound">/' + esc(p.sound) + '/</span>' +
-            '<span class="sp">' + SPK + '</span></button>';
-        }
-        return '<button class="ph-opt" data-idx="' + p.idx + '">' +
-          '<span class="l pb-tag-' + phonicsTagOf(p.letters) + '">' + esc(p.letters) + '</span>' +
+        return '<button class="ph-opt ipa pb-tag-' + phonicsTagOf(p.letters) + '" data-idx="' + p.idx + '">' +
+          '<span class="ph-sound">/' + esc(p.sound) + '/</span>' +
           '<span class="sp">' + SPK + '</span></button>';
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';
@@ -3026,39 +3033,51 @@
         };
       });
     } else {
-      /* Teaching moment: colored classification tags, same-letter note, +1.
-       * Also the resume path (returning to a completed round) shows the same. */
-      var KIND_LABEL = { cons: '辅音', vowel: '元音', cteam: '辅音组合', vteam: '元音组合', rctrl: 'r 控元音', silent: '不发音' };
-      var lettersSeen = {};
-      var colorRows = b.parts.map(function (p) {
-        lettersSeen[p.letters] = (lettersSeen[p.letters] || 0) + 1;
-        var label = KIND_LABEL[p.kind] || '';
-        return '<span class="pb-tag-' + phonicsTagOf(p.letters) + ' ph-tag">' + esc(p.letters) +
-          (lettersSeen[p.letters] > 1 ? '<sup>(' + lettersSeen[p.letters] + ')</sup>' : '') +
-          '<em>' + label + '</em></span>';
-      }).join(' ');
+      /* Teaching moment: the answer row (every sound-part in its colored
+       * slot, with the kind label — 辅音 / 元音 / 元音组合 / ... — tucked
+       * under the letter) sits INSIDE the green feedback box, so the
+       * celebration + the built word + the next-step button read as one
+       * closed unit. Only the IPA-gated same-letter teaching note stays
+       * outside the green box, as a quieter follow-up line — and ONLY
+       * when the same letter actually carries different sounds in this
+       * word (e.g. c-cat/k vs ice/s-tice). For sister/word both s's are
+       * /s/, identical sounds, so no note would teach anything. */
       var repeatNote = '';
       var letterCounts = {}; b.parts.forEach(function (p) { letterCounts[p.letters] = (letterCounts[p.letters] || 0) + 1; });
-      var repeated = Object.keys(letterCounts).filter(function (k) { return letterCounts[k] > 1; });
-      if (repeated.length) {
-        /* spec §4.5.4: gate the IPA-containing text on S.settings.showIpa.
-         * When the switch is on, surface the actual sound labels from the
-         * parts' sound field; when off, the child just hears that the same
-         * letter sounds different. */
+      var diffRepeated = Object.keys(letterCounts).filter(function (k) {
+        if (letterCounts[k] < 2) return false;
+        var uniq = {}; b.parts.forEach(function (p) { if (p.letters === k && p.sound) uniq[p.sound] = 1; });
+        return Object.keys(uniq).length > 1;
+      });
+      if (diffRepeated.length) {
         if (S.settings.showIpa) {
-          var examples = repeated.map(function (l) {
+          var examples = diffRepeated.map(function (l) {
             var sounds = b.parts.filter(function (p) { return p.letters === l; }).map(function (p) { return p.sound ? '/' + p.sound + '/' : '不发音'; });
             return '<b>' + l + '</b> → ' + sounds.join('、');
           });
           repeatNote = '<div class="muted" style="margin-top:6px">同一个字母在不同位置：' + examples.join('；') + '</div>';
         } else {
-          repeatNote = '<div class="muted" style="margin-top:6px">两个 <b>' + repeated[0] + '</b> 的读音不一样（听一听）</div>';
+          repeatNote = '<div class="muted" style="margin-top:6px">两个 <b>' + diffRepeated[0] + '</b> 的读音不一样（听一听）</div>';
         }
       }
+      var answerSlots = (function () {
+        var seen = {};
+        return b.soundParts.map(function (p) {
+          seen[p.letters] = (seen[p.letters] || 0) + 1;
+          var idxTag = seen[p.letters] > 1 ? '<sup>(' + seen[p.letters] + ')</sup>' : '';
+          var kindLabel = KIND_LABEL[p.kind] ? '<em>' + KIND_LABEL[p.kind] + '</em>' : '';
+          return '<span class="ph-tag pb-tag-' + phonicsTagOf(p.letters) + '">' +
+            '<span class="ph-l">' + esc(p.letters) + idxTag + '</span>' +
+            (p.sound ? '<span class="ph-ipa">/' + esc(p.sound) + '/</span>' : '') +
+            kindLabel +
+            '</span>';
+        }).join('');
+      })();
       $('#ph-fb').innerHTML =
         '<div class="feedback ok" style="margin-top:12px">' +
-        '<span class="ic">🎉</span><span><b>' + esc(b.word) + '</b> 拼出来啦！+1 🎾</span></div>' +
-        '<div class="ph-tags" style="margin-top:8px">' + colorRows + '</div>' +
+        '<span class="ic">🎉</span><span><b>' + esc(b.word) + '</b> 拼出来啦！+1 🎾</span>' +
+        '<div class="ph-build-slots" style="margin-top:10px;margin-bottom:2px">' + answerSlots + '</div>' +
+        '</div>' +
         repeatNote +
         '<button class="btn green big" id="ph-next" style="margin-top:10px">再拼一个 →</button>';
       $('#ph-next').onclick = function () { phBuild = null; phMode = pick(['hear', 'build']); renderPhonics($('#view')); };
@@ -3080,13 +3099,15 @@
     var _d = dayStat();
     var _answeredToday = (_d.right || 0) + (_d.wrong || 0);
     var _goal = S.settings.dailyGoal;
-    var _dailyPct = Math.min(100, Math.round(_answeredToday / _goal * 100));
-    var _dailyHead = el('div', 'card tight');
+    var _done = Math.min(_answeredToday, _goal);
+    var _dailyPct = Math.round(_done / _goal * 100);
+    var _dailyHead = el('div', 'card');
     _dailyHead.innerHTML =
-      '<div class="row" style="justify-content:space-between;font-size:13px;font-weight:800;margin-bottom:6px">' +
-      '<span class="muted">🎯 今日闯关</span>' +
-      '<span><b style="color:var(--brand-dk)">' + _answeredToday + '</b> / ' + _goal +
-      (_answeredToday >= _goal ? ' · 达标 🎉' : '') + '</span></div>' +
+      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<span class="muted" style="font-size:13px">🎯 今日闯关</span>' +
+        '<span class="muted" style="font-size:12px"><b style="color:var(--brand-dk)">' + _done + '</b> / ' + _goal +
+          (_answeredToday >= _goal ? ' · 达标 🎉' : '') + ' · ' + _dailyPct + '%</span>' +
+      '</div>' +
       '<div class="bar"><i style="width:' + _dailyPct + '%"></i></div>';
     v.appendChild(_dailyHead);
 

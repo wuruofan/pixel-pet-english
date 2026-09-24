@@ -512,6 +512,7 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .feedback {
   margin-top: 14px; border-radius: 18px; padding: 13px 15px; font-weight: 800;
   display: flex; align-items: center; gap: 10px; font-size: 15px;
+  flex-wrap: wrap; row-gap: 6px;
 }
 .feedback.ok { background: #eafaf1; border: 2px solid var(--green); color: #14603c; }
 .feedback.no { background: #fdecea; border: 2px solid var(--red); color: #8d231c; }
@@ -690,8 +691,6 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
 .ph-opt.wrong { border-color: var(--red); background: #feecec; }
 .ph-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .ph-opt .ph-ref { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-weight: 600; }
-.ph-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; margin: 2px; background: var(--pc, var(--brand)); color: #fff; font-weight: 800; }
-.ph-tag em { font-size: 11px; opacity: .85; font-style: normal; }
 .ph-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .ph-build-slots { display: flex; justify-content: center; gap: 7px; margin: 4px 0 12px; flex-wrap: wrap; }
@@ -700,7 +699,25 @@ h2.section { font-size: 15px; margin: 0 0 10px; color: var(--ink-soft); font-wei
   display: inline-flex; align-items: center; justify-content: center;
   font-weight: 900; color: var(--ink-soft); font-size: 16px; background: #fafafa;
 }
-.ph-build-slots .slot.filled { border-style: solid; border-color: var(--pc, var(--brand)); }
+/* Filled slot is just a transparent wrapper — the .ph-tag pill inside carries
+   the visual (colored bg + IPA + letter + kind label, all vertically centered). */
+.ph-build-slots .slot.filled {
+  border: none; background: transparent; min-width: 0; height: auto;
+}
+/* ph-tag = one filled-slot pill: [letter] [IPA] [kindLabel], restored from the
+   pre-b8de4f1 teaching-moment design — taller padding + line-height:1 so the
+   letter and Chinese label sit on the same centered baseline.
+   vertical-align:middle on the inlines overrides font-baseline differences
+   between Latin letters, IPA slashes, and CJK glyphs. */
+.ph-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 8px; margin: 2px;
+  background: var(--pc, var(--brand)); color: #fff; font-weight: 800;
+  font-size: 14px; line-height: 1;
+}
+.ph-tag .ph-l   { font-size: 15px; font-weight: 900; letter-spacing: 1px; vertical-align: middle; }
+.ph-tag .ph-ipa { font-size: 12px; opacity: .85; font-weight: 700; vertical-align: middle; }
+.ph-tag em      { font-size: 12px; opacity: .85; font-style: normal; font-weight: 700; vertical-align: middle; }
 
 /* ---------- home 今日任务清单 ---------- */
 .plan-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
