@@ -533,6 +533,11 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .opt .em { font-size: var(--icon-lg); line-height: 1; }
 .opt .tx { font-weight: 900; font-size: var(--fs-h2); }
 .opt .sub { font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 700; }
+/* After answering, `.sub` carries the revealed layer (Chinese under a word, the
+   spelling under a gloss), so tint it with the option's own verdict instead of
+   leaving four identical grey captions. */
+.opt.right .sub { color: var(--green-dk); font-weight: 800; }
+.opt.wrong .sub { color: #a5372a; }
 .opt .glyph-badge {
   background: var(--purple); color: #fff; font-weight: 900; font-size: var(--fs-body);
   min-width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center;
@@ -549,22 +554,6 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .feedback.ok { background: #eafaf1; border: 2px solid var(--green); color: #14603c; }
 .feedback.no { background: #fdecea; border: 2px solid var(--red); color: #8d231c; }
 .feedback .ic { font-size: var(--icon-md); }
-
-/* 作答后才揭晓的「图 + 词形 + 词义」对照卡 */
-.reveal {
-  margin-top: var(--sp-3); padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2);
-  border: 2px dashed var(--line); border-radius: var(--r-md); background: #fffdf9;
-}
-.rv-row {
-  display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); cursor: pointer;
-  background: #fff; border: 2px solid var(--line); border-radius: var(--r-md); font-weight: 800;
-}
-.rv-row:active { transform: translateY(2px); }
-.rv-row.on { border-color: var(--green); background: #eafaf1; }
-.rv-row .em { font-size: var(--icon-md); line-height: 1; }
-.rv-row .w { font-size: var(--fs-h2); }
-.rv-row .m { font-size: var(--fs-sub); color: var(--ink-soft); font-weight: 700; }
-.rv-row .rv-sp { font-size: var(--fs-body); opacity: .55; }
 
 /* ---------- sentences ---------- */
 .unit-chips { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-1); margin-bottom: var(--sp-3); }

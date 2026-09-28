@@ -542,6 +542,11 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .opt .em { font-size: var(--icon-lg); line-height: 1; }
 .opt .tx { font-weight: 900; font-size: var(--fs-h2); }
 .opt .sub { font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 700; }
+/* After answering, `.sub` carries the revealed layer (Chinese under a word, the
+   spelling under a gloss), so tint it with the option's own verdict instead of
+   leaving four identical grey captions. */
+.opt.right .sub { color: var(--green-dk); font-weight: 800; }
+.opt.wrong .sub { color: #a5372a; }
 .opt .glyph-badge {
   background: var(--purple); color: #fff; font-weight: 900; font-size: var(--fs-body);
   min-width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center;
@@ -558,22 +563,6 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .feedback.ok { background: #eafaf1; border: 2px solid var(--green); color: #14603c; }
 .feedback.no { background: #fdecea; border: 2px solid var(--red); color: #8d231c; }
 .feedback .ic { font-size: var(--icon-md); }
-
-/* 作答后才揭晓的「图 + 词形 + 词义」对照卡 */
-.reveal {
-  margin-top: var(--sp-3); padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2);
-  border: 2px dashed var(--line); border-radius: var(--r-md); background: #fffdf9;
-}
-.rv-row {
-  display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); cursor: pointer;
-  background: #fff; border: 2px solid var(--line); border-radius: var(--r-md); font-weight: 800;
-}
-.rv-row:active { transform: translateY(2px); }
-.rv-row.on { border-color: var(--green); background: #eafaf1; }
-.rv-row .em { font-size: var(--icon-md); line-height: 1; }
-.rv-row .w { font-size: var(--fs-h2); }
-.rv-row .m { font-size: var(--fs-sub); color: var(--ink-soft); font-weight: 700; }
-.rv-row .rv-sp { font-size: var(--fs-body); opacity: .55; }
 
 /* ---------- sentences ---------- */
 .unit-chips { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-1); margin-bottom: var(--sp-3); }
@@ -4188,6 +4177,18 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       if (q.opts[bi] === word) b.classList.add('right');
       else if (bi === i) b.classList.add('wrong');
       else b.classList.add('dim');
+      /* An option only ever shows the ONE layer the question is testing (see the
+       * note where options are built). Now that the answer is in, the missing
+       * layer is folded back into the same button — Chinese under an English
+       * word, or the spelling under a Chinese gloss. That used to be a separate
+       * 4-row "图 + 词形 + 词义" card below; inlining it keeps the answer and
+       * its explanation in one place, so the child never has to look away from
+       * the option they just tapped. */
+      var missing = q.mode === 'en2cn' ? q.opts[bi] : meaningOf(q.opts[bi]);
+      b.insertAdjacentHTML('beforeend', '<span class="sub">' + esc(missing) + '</span>');
+      /* Tapping any option now speaks it — the reading that the removed card
+       * used to provide by making each of its rows clickable. */
+      b.onclick = function () { speakWord(q.opts[bi]); };
     });
     grade(word, ok);
     if (ok) { gainXp(5, 'soap'); beep('ok'); }
@@ -4202,21 +4203,9 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       '<span class="spacer"></span>' +
       '<button class="speak-btn sm" id="fb-sp">' + SPK + '</button>' +
       '</div>' +
-      // 中文释义在这里才揭晓：图 + 词形 + 词义 三个一起出现，把词义钉回词形上
-      '<div class="reveal" id="rv">' + q.opts.map(function (o) {
-        return '<div class="rv-row' + (o === word ? ' on' : '') + '" data-w="' + o + '">' +
-          '<span class="em">' + visualOf(o).emoji + '</span>' +
-          '<span class="w">' + o + '</span>' +
-          '<span class="m">' + meaningOf(o) + '</span>' +
-          '<span class="spacer"></span><span class="rv-sp">' + SPK + '</span>' +
-          '</div>';
-      }).join('') + '</div>' +
-      '<button class="btn green big" id="fb-next" style="margin-top:var(--sp-3)">' +
+      '<button class="btn green big next-round" id="fb-next" style="margin-top:var(--sp-3)">' +
       (quiz.idx + 1 >= quiz.queue.length ? '看看成绩 🏁' : '下一题 →') + '</button>';
     $('#fb-sp').onclick = function () { speakWord(word); };
-    $$('#rv .rv-row').forEach(function (r) {
-      r.onclick = function () { speakWord(r.dataset.w); };
-    });
     if (!ok) setTimeout(function () { speakWord(word); }, 260);
     $('#fb-next').onclick = function () {
       timeTick(Date.now() - (quiz._t || Date.now()));

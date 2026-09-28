@@ -3206,6 +3206,18 @@
       if (q.opts[bi] === word) b.classList.add('right');
       else if (bi === i) b.classList.add('wrong');
       else b.classList.add('dim');
+      /* An option only ever shows the ONE layer the question is testing (see the
+       * note where options are built). Now that the answer is in, the missing
+       * layer is folded back into the same button — Chinese under an English
+       * word, or the spelling under a Chinese gloss. That used to be a separate
+       * 4-row "图 + 词形 + 词义" card below; inlining it keeps the answer and
+       * its explanation in one place, so the child never has to look away from
+       * the option they just tapped. */
+      var missing = q.mode === 'en2cn' ? q.opts[bi] : meaningOf(q.opts[bi]);
+      b.insertAdjacentHTML('beforeend', '<span class="sub">' + esc(missing) + '</span>');
+      /* Tapping any option now speaks it — the reading that the removed card
+       * used to provide by making each of its rows clickable. */
+      b.onclick = function () { speakWord(q.opts[bi]); };
     });
     grade(word, ok);
     if (ok) { gainXp(5, 'soap'); beep('ok'); }
@@ -3220,21 +3232,9 @@
       '<span class="spacer"></span>' +
       '<button class="speak-btn sm" id="fb-sp">' + SPK + '</button>' +
       '</div>' +
-      // 中文释义在这里才揭晓：图 + 词形 + 词义 三个一起出现，把词义钉回词形上
-      '<div class="reveal" id="rv">' + q.opts.map(function (o) {
-        return '<div class="rv-row' + (o === word ? ' on' : '') + '" data-w="' + o + '">' +
-          '<span class="em">' + visualOf(o).emoji + '</span>' +
-          '<span class="w">' + o + '</span>' +
-          '<span class="m">' + meaningOf(o) + '</span>' +
-          '<span class="spacer"></span><span class="rv-sp">' + SPK + '</span>' +
-          '</div>';
-      }).join('') + '</div>' +
-      '<button class="btn green big" id="fb-next" style="margin-top:var(--sp-3)">' +
+      '<button class="btn green big next-round" id="fb-next" style="margin-top:var(--sp-3)">' +
       (quiz.idx + 1 >= quiz.queue.length ? '看看成绩 🏁' : '下一题 →') + '</button>';
     $('#fb-sp').onclick = function () { speakWord(word); };
-    $$('#rv .rv-row').forEach(function (r) {
-      r.onclick = function () { speakWord(r.dataset.w); };
-    });
     if (!ok) setTimeout(function () { speakWord(word); }, 260);
     $('#fb-next').onclick = function () {
       timeTick(Date.now() - (quiz._t || Date.now()));
