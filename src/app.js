@@ -1828,13 +1828,13 @@
     var doneN = plan.filter(function (t) { return t.done; }).length;
     var c2 = el('div', 'card');
     c2.innerHTML =
-      '<div class="row" style="justify-content:space-between;align-items:baseline;gap:8px">' +
-      '<h2 class="section" style="margin:0;font-size:19px;color:var(--ink)">今天的任务</h2>' +
+      '<div class="row" style="justify-content:space-between;align-items:baseline;gap:var(--sp-2)">' +
+      '<h2 class="section" style="margin:0;font-size:var(--fs-h2);color:var(--ink)">今天的任务</h2>' +
       /* 状态指标（正确率 / 学习时长）和打卡的指标（连续天数 / 任务进度）
          性质相同，并排放在标题右侧更紧凑：左侧 muted 写"今天"的两项，
          右侧 pill 写"打卡"的两项 */
-      '<div class="row" style="gap:8px;align-items:baseline">' +
-      '<span class="muted" style="font-size:13px">正确率 ' + acc + '% · 今日 ' + Math.round((d.ms || 0) / 60000) + ' 分钟</span>' +
+      '<div class="row" style="gap:var(--sp-2);align-items:baseline">' +
+      '<span class="muted" style="font-size:var(--fs-label)">正确率 ' + acc + '% · 今日 ' + Math.round((d.ms || 0) / 60000) + ' 分钟</span>' +
       '<span class="pill">🔥 连续 <span class="n">' + (S.streak || 0) + '</span> 天 · ' + doneN + '/' + plan.length + '</span>' +
       '</div></div>' +
       '<div class="plan-list">' +
@@ -1847,7 +1847,7 @@
           '<span class="pi-badge">' + t.badge + '</span></button>';
       }).join('') +
       '</div>' +
-      '<div class="row" style="margin-top:12px;gap:9px;align-items:center">' +
+      '<div class="row" style="margin-top:var(--sp-3);gap:var(--sp-3);align-items:center">' +
       '<button class="btn big" id="btn-start">🎮 一键开练</button>' +
       '</div>';
     v.appendChild(c2);
@@ -1966,7 +1966,7 @@
         '<div class="learn-nomic"><span>' + learnNomicText() + '</span>' +
         '<button class="nomic-re" id="mic-recheck" aria-label="配好 Key 后点这里重新检测">🔄</button></div>') +
       (passed || !supported ? '' :
-        '<button class="btn ghost xs" id="mic-self" style="margin-top:10px">我读过了（自评）</button>') +
+        '<button class="btn ghost xs" id="mic-self" style="margin-top:var(--sp-3)">我读过了（自评）</button>') +
       '<div class="learn-tip">' + esc(swipeTipText(passed)) + '</div>';
     v.appendChild(card);
     if (learnEnterDir) card.classList.add(learnEnterDir > 0 ? 'card-in-r' : 'card-in-l');
@@ -2211,11 +2211,11 @@
           return '<button data-i="' + i + '"><span class="letters">' + (p.letters || p.sound) + '</span></button>';
         }).join('') +
         '</div>' +
-        '<div class="row" style="justify-content:center;margin-top:12px;gap:8px">' +
+        '<div class="row" style="justify-content:center;margin-top:var(--sp-3);gap:var(--sp-2)">' +
         '<button class="btn blue sm" id="pd-all">▶ 连读全部</button>' +
         '<button class="btn ghost sm" id="pd-word">🔊 整词</button>' +
         '</div>' +
-        '<div class="muted" style="margin-top:8px">每个方块是一个发音，点一下听它怎么读</div>';
+        '<div class="muted" style="margin-top:var(--sp-2)">每个方块是一个发音，点一下听它怎么读</div>';
       v.appendChild(c2);
       $$('#pindu button').forEach(function (b) {
         b.onclick = function () { playPhoneme(word, +b.dataset.i, b); };
@@ -2232,10 +2232,10 @@
       c3.innerHTML = '<h2 class="section">在句子里认识它</h2>' +
         ex.map(function (e, i) {
           var hl = e.en.replace(new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'ig'),
-            function (m) { return '<span style="color:var(--brand-dk);background:#fff0d6;border-radius:5px;padding:0 3px">' + m + '</span>'; });
-          return '<div class="row" style="align-items:flex-start;gap:9px;margin-bottom:9px">' +
+            function (m) { return '<span style="color:var(--brand-dk);background:#fff0d6;border-radius:var(--r-sm);padding:0 var(--sp-1)">' + m + '</span>'; });
+          return '<div class="row" style="align-items:flex-start;gap:var(--sp-3);margin-bottom:var(--sp-3)">' +
             '<button class="speak-btn sm" data-ex="' + i + '">' + SPK + '</button>' +
-            '<div><div style="font-weight:800;font-size:16px">' + hl + '</div>' +
+            '<div><div style="font-weight:800;font-size:var(--fs-body)">' + hl + '</div>' +
             '<div class="muted">' + (e.cn || '') + '</div></div></div>';
         }).join('');
       v.appendChild(c3);
@@ -2245,7 +2245,7 @@
     }
 
     var c4 = el('div', 'card');
-    c4.innerHTML = '<div class="row" style="gap:9px">' +
+    c4.innerHTML = '<div class="row" style="gap:var(--sp-3)">' +
       '<button class="btn ghost" id="prev" style="flex:1;white-space:nowrap">← 上一个</button>' +
       '<button class="btn green" id="know" style="flex:1.4;white-space:nowrap">我记住了</button>' +
       '<button class="btn ghost" id="next" style="flex:1;white-space:nowrap">下一个 →</button>' +
@@ -2578,12 +2578,12 @@
     var c = el('div', 'card');
     c.style.textAlign = 'center';
     c.innerHTML =
-      '<div style="font-size:56px;line-height:1;margin:8px 0 6px">' + (all ? '🎉' : '💪') + '</div>' +
-      '<h2 class="section" style="font-size:20px;color:var(--brand-dk)">' +
+      '<div style="font-size:var(--icon-hero);line-height:1;margin:var(--sp-2) 0 var(--sp-2)">' + (all ? '🎉' : '💪') + '</div>' +
+      '<h2 class="section" style="font-size:var(--fs-h2);color:var(--brand-dk)">' +
         (all ? '今日新词全部通关！' : '今日跟读 ' + passed + ' / ' + total + ' 个') + '</h2>' +
-      '<div class="muted" style="margin:6px 0 14px">获得 <b>+' + (passed * 3) + ' XP</b> · 宠物 +' +
+      '<div class="muted" style="margin:var(--sp-2) 0 var(--sp-4)">获得 <b>+' + (passed * 3) + ' XP</b> · 宠物 +' +
         passed + ' 🍖' + (all ? '' : ' · 还有 ' + (total - passed) + ' 个没跟读') + '</div>' +
-      '<div class="row" style="gap:9px;margin-top:14px">' +
+      '<div class="row" style="gap:var(--sp-3);margin-top:var(--sp-4)">' +
         (all ? '' : '<button class="btn" id="to-resume" style="flex:1">← 回去补完</button>') +
         '<button class="btn green" id="to-home" style="flex:1">回首页 🏠</button>' +
       '</div>';
@@ -2603,7 +2603,7 @@
     b.innerHTML =
       '<button id="learn-browse" class="browse-entry">' +
         '<span>📚 翻词库</span>' +
-        '<span class="muted" style="font-size:12px">全部 ' + currentBookWords().length + ' 词 ›</span>' +
+        '<span class="muted" style="font-size:var(--fs-xs)">全部 ' + currentBookWords().length + ' 词 ›</span>' +
       '</button>';
     v.appendChild(b);
     $('#learn-browse').onclick = enterBrowseMode;
@@ -2781,9 +2781,9 @@
     var phPct = Math.round(phDone / 5 * 100);
     var banner = el('div', 'card');
     banner.innerHTML =
-      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">' +
-        '<span class="muted" style="font-size:13px">🔤 拼读 · 今日 ' + phDone + ' / 5</span>' +
-        '<span class="muted" style="font-size:12px">' + phPct + '%</span>' +
+      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:var(--sp-2)">' +
+        '<span class="muted" style="font-size:var(--fs-label)">🔤 拼读 · 今日 ' + phDone + ' / 5</span>' +
+        '<span class="muted" style="font-size:var(--fs-xs)">' + phPct + '%</span>' +
       '</div>' +
       '<div class="bar"><i style="width:' + phPct + '%"></i></div>';
     v.appendChild(banner);
@@ -2803,7 +2803,7 @@
     cardsLink.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
         '<span>🗂 字素表 <span class="muted" style="font-weight:600">· ' + allPhonemes().length + ' 个字素 · 按类目分组浏览</span></span>' +
-        '<span class="muted" style="font-size:18px">›</span>' +
+        '<span class="muted" style="font-size:var(--fs-h2)">›</span>' +
       '</div>';
     v.appendChild(cardsLink);
     cardsLink.onclick = function () { stopAudio(); renderPhCardsView(v); };
@@ -2818,7 +2818,7 @@
     top.style.alignItems = 'center';
     top.style.margin = '4px 0 10px';
     top.innerHTML = '<button class="btn ghost xs" id="ph-back">‹ 返回拼读</button>' +
-      '<span class="muted" style="font-size:13px">🗂 字素表</span><span></span>';
+      '<span class="muted" style="font-size:var(--fs-label)">🗂 字素表</span><span></span>';
     v.appendChild(top);
     v.appendChild(el('div', '', '<div id="ph-cards-body"></div>'));
     $('#ph-back').onclick = function () { renderPhonics(v); };
@@ -2842,7 +2842,7 @@
       }).join('');
       c.innerHTML = '<h2 class="section">' + esc(g.label) + ' <span class="muted">(' + g.items.length + ')</span></h2>' +
         '<div class="ph-grid">' + chips + '</div>' +
-        (g.tip ? '<div class="muted" style="margin-top:8px">' + esc(g.tip) + '</div>' : '');
+        (g.tip ? '<div class="muted" style="margin-top:var(--sp-2)">' + esc(g.tip) + '</div>' : '');
       v.appendChild(c);
       $$('.ph-card', c).forEach(function (b) {
         var it = g.items.filter(function (x) { return x.letters === b.dataset.l; })[0];
@@ -2863,7 +2863,7 @@
     c.innerHTML =
       '<h2 class="section">听一听，是哪个字母组合？</h2>' +
       '<button class="speak-btn big" id="ph-ask">' + SPK + '</button>' +
-      '<div class="muted center" style="padding:10px 0 14px">点喇叭再听一遍</div>' +
+      '<div class="muted center" style="padding:var(--sp-3) 0 var(--sp-4)">点喇叭再听一遍</div>' +
       '<div class="ph-pool-row" id="ph-opts">' + q.options.map(function (o) { return phOptionCard(o); }).join('') + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
@@ -2886,10 +2886,10 @@
         });
         var ex = (q.item.words || []).slice(0, 3);
         $('#ph-fb').innerHTML =
-          '<div class="feedback ' + (ok ? 'ok' : 'no') + '" style="margin-top:12px">' +
+          '<div class="feedback ' + (ok ? 'ok' : 'no') + '" style="margin-top:var(--sp-3)">' +
           '<span class="ic">' + (ok ? '🎉' : '💪') + '</span>' +
           '<span>是 <b>' + esc(q.item.letters) + '</b>' + (ex.length ? ' · 如 ' + esc(ex.join(' / ')) : '') + '</span></div>' +
-          '<button class="btn green big" id="ph-next" style="margin-top:10px">下一个 →</button>';
+          '<button class="btn green big" id="ph-next" style="margin-top:var(--sp-3)">下一个 →</button>';
         $('#ph-next').onclick = function () { phQuiz = null; phMode = pick(['hear', 'build']); renderPhonics($('#view')); };
       };
     });
@@ -2982,7 +2982,7 @@
       '<div class="wc-visual">' + visualHtml(b.word, 64) + '</div>' +
       '<div class="wc-word">' + b.word + '</div>' +
       (done ? '' : '<div class="ph-build-slots" id="ph-slots">' + slotsHtml + '</div>') +
-      (done ? '' : '<div class="muted center" style="margin:4px 0 10px">点一个听读音，按顺序点对就填进格子</div>') +
+      (done ? '' : '<div class="muted center" style="margin:var(--sp-1) 0 var(--sp-3)">点一个听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-pool-row" id="ph-pool">' +
       /* Each option shows its IPA sound (color-coded by kind) plus the speaker.
        * Showing the letters would defeat the training goal: the child would
@@ -3004,8 +3004,18 @@
           var idx = +btn.dataset.idx;
           var p = b.parts[idx];
           phPlay(p, btn);
-          if (p === b.soundParts[b.picked.length]) {
-            b.picked.push(p);
+          /* Match by SOUND, not by object identity. A word like sister has two
+           * `s` parts (both /s/) and the queue is shuffled, so the two `/s/`
+           * buttons are visually identical — identity comparison demanded one
+           * specific button and punished the child for tapping the other,
+           * which teaches nothing (the sounds ARE the same). Comparing `sound`
+           * makes either `/s/` button satisfy whichever slot wants /s/ next.
+           * We push `want` (the part the slot actually wants) so `picked`
+           * stays parallel to `soundParts` and the pool filter keeps removing
+           * exactly one button per accepted tap. */
+          var want = b.soundParts[b.picked.length];
+          if (p.sound === want.sound) {
+            b.picked.push(want);
             if (b.picked.length === b.soundParts.length) {
               gainXp(1, 'toy');
               dayStat().phonics = (dayStat().phonics || 0) + 1;
@@ -3024,7 +3034,7 @@
              * the hint disappear, and the teaching feedback renders cleanly
              * (the else-branch below). */
             renderPhBuild(v);
-          } else if (p.idx !== b.picked.length) {
+          } else {
             /* Wrong tap: only the tapped button's sound plays (already started
              * above) plus a wrong-beep — no hint of the correct answer, the
              * child keeps exploring by ear. */
@@ -3055,9 +3065,9 @@
             var sounds = b.parts.filter(function (p) { return p.letters === l; }).map(function (p) { return p.sound ? '/' + p.sound + '/' : '不发音'; });
             return '<b>' + l + '</b> → ' + sounds.join('、');
           });
-          repeatNote = '<div class="muted" style="margin-top:6px">同一个字母在不同位置：' + examples.join('；') + '</div>';
+          repeatNote = '<div class="muted" style="margin-top:var(--sp-2)">同一个字母在不同位置：' + examples.join('；') + '</div>';
         } else {
-          repeatNote = '<div class="muted" style="margin-top:6px">两个 <b>' + diffRepeated[0] + '</b> 的读音不一样（听一听）</div>';
+          repeatNote = '<div class="muted" style="margin-top:var(--sp-2)">两个 <b>' + diffRepeated[0] + '</b> 的读音不一样（听一听）</div>';
         }
       }
       var answerSlots = (function () {
@@ -3073,13 +3083,21 @@
             '</span>';
         }).join('');
       })();
+      /* `.feedback` is `display:flex; align-items:center`, and align-items centers
+       * the MARGIN box, not the border box — so any vertical margin written on
+       * the answer row shifts it off the 「拼出来啦」centerline by
+       * (marginTop - marginBottom) / 2, and the same margins silently eat the
+       * gap to the next button (they live INSIDE the green box, the button's
+       * margin lives outside it, so they never add up). `.in-answer` therefore
+       * carries NO margin: horizontal separation comes from `.feedback`'s own
+       * `gap`, and the gap below the box is the next button's `--sp-3` alone. */
       $('#ph-fb').innerHTML =
-        '<div class="feedback ok" style="margin-top:12px">' +
+        '<div class="feedback ok">' +
         '<span class="ic">🎉</span><span><b>' + esc(b.word) + '</b> 拼出来啦！+1 🎾</span>' +
-        '<div class="ph-build-slots" style="margin-top:10px;margin-bottom:2px">' + answerSlots + '</div>' +
+        '<div class="ph-build-slots in-answer">' + answerSlots + '</div>' +
         '</div>' +
         repeatNote +
-        '<button class="btn green big" id="ph-next" style="margin-top:10px">再拼一个 →</button>';
+        '<button class="btn green big next-round" id="ph-next">再拼一个 →</button>';
       $('#ph-next').onclick = function () { phBuild = null; phMode = pick(['hear', 'build']); renderPhonics($('#view')); };
     }
   }
@@ -3103,9 +3121,9 @@
     var _dailyPct = Math.round(_done / _goal * 100);
     var _dailyHead = el('div', 'card');
     _dailyHead.innerHTML =
-      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">' +
-        '<span class="muted" style="font-size:13px">🎯 今日闯关</span>' +
-        '<span class="muted" style="font-size:12px"><b style="color:var(--brand-dk)">' + _done + '</b> / ' + _goal +
+      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:var(--sp-2)">' +
+        '<span class="muted" style="font-size:var(--fs-label)">🎯 今日闯关</span>' +
+        '<span class="muted" style="font-size:var(--fs-xs)"><b style="color:var(--brand-dk)">' + _done + '</b> / ' + _goal +
           (_answeredToday >= _goal ? ' · 达标 🎉' : '') + ' · ' + _dailyPct + '%</span>' +
       '</div>' +
       '<div class="bar"><i style="width:' + _dailyPct + '%"></i></div>';
@@ -3119,10 +3137,10 @@
 
     var prompt = '', big = '';
     if (q.mode === 'en2pic') { prompt = '选出这个单词的意思'; big = word; }
-    else if (q.mode === 'pic2en') { prompt = '这张图是哪个单词？'; big = '<div style="font-size:64px;line-height:1">' + visualOf(word).emoji + (VISUALS[word] && VISUALS[word].glyph ? ' <span class="glyph-badge" style="display:inline-grid">' + VISUALS[word].glyph + '</span>' : '') + '</div>'; }
+    else if (q.mode === 'pic2en') { prompt = '这张图是哪个单词？'; big = '<div style="font-size:var(--icon-hero);line-height:1">' + visualOf(word).emoji + (VISUALS[word] && VISUALS[word].glyph ? ' <span class="glyph-badge" style="display:inline-grid">' + VISUALS[word].glyph + '</span>' : '') + '</div>'; }
     else if (q.mode === 'listen2en') { prompt = '听一听，是哪个单词？'; big = '<button class="speak-btn" id="q-play">' + SPK + '</button>'; }
     else if (q.mode === 'en2cn') { prompt = '这个单词是什么意思？'; big = word; }
-    else { prompt = '哪个单词是「' + meaningOf(word) + '」？'; big = '<div style="font-size:30px">' + meaningOf(word) + '</div>'; }
+    else { prompt = '哪个单词是「' + meaningOf(word) + '」？'; big = '<div style="font-size:var(--fs-d1)">' + meaningOf(word) + '</div>'; }
 
     c.innerHTML = prog + '<div class="q-prompt">' + prompt + '</div><div class="q-big">' + big + '</div>' +
       '<div class="opts" id="opts">' +
@@ -3154,7 +3172,7 @@
     });
 
     var foot = el('div', 'card tight');
-    foot.innerHTML = '<div class="row" style="gap:8px">' +
+    foot.innerHTML = '<div class="row" style="gap:var(--sp-2)">' +
       '<button class="btn ghost sm" id="q-skip">跳过</button>' +
       '<span class="spacer"></span>' +
       '<span class="muted">第 ' + (quiz.idx + 1) + ' / ' + quiz.queue.length + ' 题</span>' +
@@ -3195,7 +3213,7 @@
           '<span class="spacer"></span><span class="rv-sp">' + SPK + '</span>' +
           '</div>';
       }).join('') + '</div>' +
-      '<button class="btn green big" id="fb-next" style="margin-top:12px">' +
+      '<button class="btn green big" id="fb-next" style="margin-top:var(--sp-3)">' +
       (quiz.idx + 1 >= quiz.queue.length ? '看看成绩 🏁' : '下一题 →') + '</button>';
     $('#fb-sp').onclick = function () { speakWord(word); };
     $$('#rv .rv-row').forEach(function (r) {
@@ -3223,10 +3241,10 @@
 
     var c = el('div', 'card center');
     c.innerHTML =
-      '<div style="font-size:60px">' + (acc >= 90 ? '🏆' : acc >= 70 ? '🌟' : acc >= 50 ? '👍' : '💪') + '</div>' +
-      '<div style="font-size:34px;font-weight:900;margin-top:4px">' + acc + '%</div>' +
+      '<div style="font-size:var(--icon-hero)">' + (acc >= 90 ? '🏆' : acc >= 70 ? '🌟' : acc >= 50 ? '👍' : '💪') + '</div>' +
+      '<div style="font-size:var(--fs-d1);font-weight:900;margin-top:var(--sp-1)">' + acc + '%</div>' +
       '<div class="muted">答对 ' + right + ' / ' + total + ' 题</div>' +
-      '<div class="row" style="justify-content:center;gap:8px;margin-top:14px">' +
+      '<div class="row" style="justify-content:center;gap:var(--sp-2);margin-top:var(--sp-4)">' +
       '<span class="pill">🧼 +' + right + '</span>' +
       '<span class="pill">⭐ 经验 +' + right * 5 + '</span>' +
       '</div>';
@@ -3242,7 +3260,7 @@
     }
 
     var c3 = el('div', 'card');
-    c3.innerHTML = '<div class="row" style="gap:9px">' +
+    c3.innerHTML = '<div class="row" style="gap:var(--sp-3)">' +
       '<button class="btn ghost" id="r-home" style="flex:1">🏠 回首页</button>' +
       '<button class="btn" id="r-again" style="flex:1.4">再来一轮 🔁</button>' +
       '</div>';
@@ -3266,7 +3284,7 @@
     ov.id = 'stats-modal';
     var sheet = el('div', 'modal-sheet');
     sheet.innerHTML =
-      '<div class="modal-head"><span style="font-size:20px;font-weight:900">📊 我的进度</span>' +
+      '<div class="modal-head"><span style="font-size:var(--fs-h2);font-weight:900">📊 我的进度</span>' +
       '<button class="modal-x" id="stats-x">✕</button></div>' +
       '<div id="stats-body"></div>';
     ov.appendChild(sheet);
@@ -3310,7 +3328,7 @@
         var lv = n === 0 ? 0 : n < maxWords * 0.25 ? 1 : n < maxWords * 0.5 ? 2 : n < maxWords * 0.75 ? 3 : 4;
         return '<i class="l' + lv + '" title="' + k + '：' + n + ' 词">' + (+k.slice(8)) + '</i>';
       }).join('') + '</div>' +
-      '<div class="row" style="margin-top:10px;gap:10px">' +
+      '<div class="row" style="margin-top:var(--sp-3);gap:var(--sp-3)">' +
       '<span class="muted">🔥 连续打卡 <b style="color:var(--brand-dk)">' + (S.streak || 0) + '</b> 天</span>' +
       '<span class="muted">累计答词 <b style="color:var(--brand-dk)">' + Object.keys(S.words).reduce(function (a, k) { return a + S.words[k].right; }, 0) + '</b> 次</span>' +
       '</div>';
@@ -3327,7 +3345,7 @@
     var c3 = el('div', 'card');
     c3.innerHTML = '<h2 class="section">' + BOOK_META[book].label + ' · 掌握进度 ' + mastered + '/' + list.length + '</h2>' +
       '<div class="bar"><i style="width:' + (list.length ? Math.round(mastered / list.length * 100) : 0) + '%"></i></div>' +
-      '<div class="row wrap" style="gap:7px;margin-top:11px">' +
+      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       boxCount.map(function (n, i) {
         return '<span class="wpill b' + i + '"><span class="dot"></span>' + ['未学', '1档', '2档', '3档', '4档', '掌握'][i] + ' ' + n + '</span>';
       }).join('') + '</div>';
@@ -3363,7 +3381,7 @@
     ov.id = 'settings-modal';
     var sheet = el('div', 'modal-sheet');
     sheet.innerHTML =
-      '<div class="modal-head"><span style="font-size:20px;font-weight:900">⚙️ 设置</span>' +
+      '<div class="modal-head"><span style="font-size:var(--fs-h2);font-weight:900">⚙️ 设置</span>' +
       '<button class="modal-x" id="set-x">✕</button></div>' +
       '<div id="set-body"></div>';
     ov.appendChild(sheet);
@@ -3400,7 +3418,7 @@
     /* --- 教材与词库 --- */
     var c1 = el('div', 'card');
     c1.innerHTML = '<h2 class="section">教材与词库</h2>' +
-      '<div class="muted" style="margin-bottom:10px">切换学习教材，或展开查看每本教材的完整词库</div>' +
+      '<div class="muted" style="margin-bottom:var(--sp-3)">切换学习教材，或展开查看每本教材的完整词库</div>' +
       BOOK_ORDER.map(function (k) {
         var m = BOOK_META[k];
         var list = bookWords(k);
@@ -3416,12 +3434,12 @@
           '<button class="chip" data-viewbk="' + k + '">' + (settingsBookOpen === k ? '收起 ▴' : '词库 ▾') + '</button>' +
           '</div>' +
           (settingsBookOpen === k
-            ? '<div class="wtable" style="margin:2px 0 8px">' +
+            ? '<div class="wtable" style="margin:var(--sp-1) 0 var(--sp-2)">' +
               (list.length ? list.map(function (w) {
                 var st = S.words[w];
                 return '<button class="wpill b' + (st ? boxFromS(st.s) : 0) + '" data-bw="' + w + '"><span class="dot"></span>' + w + '</button>';
               }).join('') : '<span class="muted">这本教材还没有词表</span>') + '</div>' +
-              (k === 'g1b' ? '<div class="muted" style="margin:2px 0 10px">※ 一下词表为人工整理，欢迎对照课本指正</div>' : '')
+              (k === 'g1b' ? '<div class="muted" style="margin:var(--sp-1) 0 var(--sp-3)">※ 一下词表为人工整理，欢迎对照课本指正</div>' : '')
             : '');
       }).join('') +
       '<div class="muted">词库里的词点一下可以听发音，颜色代表掌握程度（绿色越深越熟）。</div>';
@@ -3461,7 +3479,7 @@
           '<div class="pg-cvwrap" data-st="' + s.i + '"><canvas width="16" height="16" data-pgst="' + s.i + '"></canvas></div>' +
           '<b>' + s.name + '</b><span class="muted">' + s.lv + (s.i === curStage ? ' · 现在' : '') + '</span></div>';
       }).join('') + '</div>' +
-      '<div class="muted" style="margin-top:10px">学单词得 🍖、拼读得 🎾、闯关得 🧼；照顾它都会涨经验，每 4 级进化一次，进化后长得不一样哦。</div>';
+      '<div class="muted" style="margin-top:var(--sp-3)">学单词得 🍖、拼读得 🎾、闯关得 🧼；照顾它都会涨经验，每 4 级进化一次，进化后长得不一样哦。</div>';
     v.appendChild(c2);
     $$('#set-body [data-pgst]').forEach(function (cv) {
       petAnim.exprIdx['idle'] = 0;
@@ -3484,8 +3502,8 @@
     /* --- 宠物物种（换着养，数值与等级保留）--- */
     var cSp = el('div', 'card');
     cSp.innerHTML = '<h2 class="section">宠物物种 · 换着养</h2>' +
-      '<div class="muted" style="margin-bottom:10px">换物种保留等级、经验和数值；进化阶段名称跟着新物种走</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<div class="muted" style="margin-bottom:var(--sp-3)">换物种保留等级、经验和数值；进化阶段名称跟着新物种走</div>' +
+      '<div style="display:flex;gap:var(--sp-2);flex-wrap:wrap">' +
       Object.keys(PET_SPECIES).map(function (k) {
         var on = k === petSpeciesKey();
         return '<button class="chip' + (on ? ' on' : '') + '" data-species="' + k + '">' +
@@ -3559,19 +3577,19 @@
     c2b.innerHTML = '<div class="tb-heading"><h2 class="section">状态试验台 · 点了就看</h2>' +
       '<a class="btn ghost sm" href="' + esc(tbPreviewUrl.href) + '">动作预览 →</a></div>' +
       '<div class="pg-cvwrap pet-canvas-wrap tb-main" id="tb-cvwrap"><canvas id="tb-cv" width="16" height="16"></canvas></div>' +
-      '<div class="row wrap" style="gap:6px;margin-top:8px" id="tb-stages">' +
+      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-2)" id="tb-stages">' +
       TB_STAGES.map(function (s) {
         return '<button class="chip" data-tbs="' + s[0] + '">' + s[1] + '</button>';
       }).join('') + '</div>' +
-      '<div class="muted" style="margin:10px 0 6px">表情（跟着上面选的形态走）</div>' +
-      '<div class="row wrap" style="gap:6px" id="tb-exprs">' +
+      '<div class="muted" style="margin:var(--sp-3) 0 var(--sp-2)">表情（跟着上面选的形态走）</div>' +
+      '<div class="row wrap" style="gap:var(--sp-2)" id="tb-exprs">' +
       TB_EXPRS.map(function (e) {
         return '<button class="chip" data-tbe="' + e[0] + '">' + e[1] + '</button>';
       }).join('') + '</div>' +
-      '<div class="muted" style="margin:10px 0 6px">像素特效精灵一览（跟首页飘的是同一套）</div>' +
-      '<div class="row wrap" style="gap:6px" id="tb-fx"></div>' +
-      '<div class="muted" style="margin:10px 0 6px">实景演示（点了就在这里播，不跳回首页）</div>' +
-      '<div class="row wrap" style="gap:6px">' +
+      '<div class="muted" style="margin:var(--sp-3) 0 var(--sp-2)">像素特效精灵一览（跟首页飘的是同一套）</div>' +
+      '<div class="row wrap" style="gap:var(--sp-2)" id="tb-fx"></div>' +
+      '<div class="muted" style="margin:var(--sp-3) 0 var(--sp-2)">实景演示（点了就在这里播，不跳回首页）</div>' +
+      '<div class="row wrap" style="gap:var(--sp-2)">' +
       '<button class="chip" data-demo="feed">喂食</button>' +
       '<button class="chip" data-demo="wash">洗澡</button>' +
       '<button class="chip" data-demo="dance">跳舞</button>' +
@@ -3579,7 +3597,7 @@
       '<button class="chip" data-demo="sad">难过</button>' +
       '<button class="chip" data-demo="poop">放颗粑粑</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:9px">粑粑演示会顺带在首页放一颗（最多 3 颗，回首页点它清理）。</div>';
+      '<div class="muted" style="margin-top:var(--sp-3)">粑粑演示会顺带在首页放一颗（最多 3 颗，回首页点它清理）。</div>';
     v.appendChild(c2b);
     function tbMarkStage() {
       $$('#tb-stages .chip').forEach(function (b) {
@@ -3652,22 +3670,22 @@
     /* --- 家长设置 --- */
     var c3 = el('div', 'card');
     c3.innerHTML = '<h2 class="section">家长设置</h2>' +
-      '<div class="row wrap" style="gap:8px">' +
+      '<div class="row wrap" style="gap:var(--sp-2)">' +
       '<button class="btn ghost sm" id="set-accent">' + (S.settings.accent === 'uk' ? '🇬🇧 英音' : '🇺🇸 美音') + '</button>' +
       '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开（点此关闭）' : '🔇 音标：关（一二年级建议）') + '</button>' +
       '</div>' +
-      '<div class="row wrap" style="gap:8px;margin-top:9px;align-items:center">' +
+      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3);align-items:center">' +
       '<span class="muted">每日目标</span>' +
       '<button class="chip' + (S.settings.dailyGoal === 5 ? ' on' : '') + '" data-goal="5">5 词</button>' +
       '<button class="chip' + (S.settings.dailyGoal === 8 ? ' on' : '') + '" data-goal="8">8 词</button>' +
       '<button class="chip' + (S.settings.dailyGoal === 12 ? ' on' : '') + '" data-goal="12">12 词</button>' +
       '</div>' +
-      '<div class="row wrap" style="gap:8px;margin-top:9px">' +
+      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       '<button class="btn ghost sm" id="exp">⬇️ 导出进度</button>' +
       '<button class="btn ghost sm" id="imp">⬆️ 导入进度</button>' +
       '<button class="btn ghost sm" id="reset">🗑 清空重来</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:9px">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>';
+      '<div class="muted" style="margin-top:var(--sp-3)">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>';
     v.appendChild(c3);
 
     /* --- 语音识别（跟读判分引擎）--- */
@@ -3675,22 +3693,22 @@
     var engTxt = eng === 'sr' ? '浏览器自带识别' : (eng === 'sf' ? '硅基流动云端' : '未启用（只能自评）');
     var c4 = el('div', 'card');
     c4.innerHTML = '<h2 class="section">语音识别 · 跟读判分</h2>' +
-      '<div class="muted" style="margin-bottom:10px">当前引擎：<b>' + engTxt + '</b>' +
+      '<div class="muted" style="margin-bottom:var(--sp-3)">当前引擎：<b>' + engTxt + '</b>' +
       (eng === 'sf' ? '（需要联网，不挑浏览器）' : '') +
       (eng === 'sr' ? '（没配 Key，Chrome 本地离线识别）' : '') + '</div>' +
-      '<div class="muted" style="margin-bottom:4px">硅基流动 API Key（填了它，Chrome/Edge/Firefox 都能跟读）</div>' +
+      '<div class="muted" style="margin-bottom:var(--sp-1)">硅基流动 API Key（填了它，Chrome/Edge/Firefox 都能跟读）</div>' +
       '<input type="password" id="asr-key" placeholder="sk-…" autocomplete="off" spellcheck="false" ' +
-        'style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box" ' +
+        'style="width:100%;padding:var(--sp-2);border:1px solid #ccc;border-radius:var(--r-sm);box-sizing:border-box" ' +
         'value="' + esc(S.settings.asrKey) + '">' +
-      '<div class="muted" style="margin:8px 0 4px">识别模型（一般不用改）</div>' +
+      '<div class="muted" style="margin:var(--sp-2) 0 var(--sp-1)">识别模型（一般不用改）</div>' +
       '<input type="text" id="asr-model" spellcheck="false" ' +
-        'style="width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box" ' +
+        'style="width:100%;padding:var(--sp-2);border:1px solid #ccc;border-radius:var(--r-sm);box-sizing:border-box" ' +
         'value="' + esc(S.settings.asrModel) + '">' +
-      '<div class="row" style="gap:8px;margin-top:10px">' +
+      '<div class="row" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
         '<button class="btn ghost sm" id="asr-save">保存</button>' +
         '<button class="btn ghost sm" id="asr-clear">清除</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:9px">密钥只存这台设备的浏览器里，Edge / Firefox / Chrome 各存各的，换浏览器要重填一次。' +
+      '<div class="muted" style="margin-top:var(--sp-3)">密钥只存这台设备的浏览器里，Edge / Firefox / Chrome 各存各的，换浏览器要重填一次。' +
       '填了 Key 跟读统一走硅基云端（不挑浏览器）；不填时只有 Chrome 能用本地离线识别。获取 Key：siliconflow.cn → API 密钥（语音模型基本免费）。英文识别不理想可把模型换成 FunAudioLLM/SenseVoiceSmall。</div>';
     v.appendChild(c4);
     $('#asr-save').onclick = function () {
