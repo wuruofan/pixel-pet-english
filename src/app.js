@@ -2856,7 +2856,7 @@
     v.innerHTML = '';
     if (!phQuiz || phQuiz.mode !== 'hear') {
       var item = pick(allPhonemes());
-      phQuiz = { mode: 'hear', item: item, options: shuffle([item].concat(phDistractors(item, 3))), answered: false };
+      phQuiz = { mode: 'hear', item: item, options: shuffle([item].concat(phDistractors(item, 3))), answered: false, missed: false };
     }
     var q = phQuiz;
     var c = el('div', 'card');
@@ -2872,13 +2872,29 @@
     $$('#ph-opts .ph-opt').forEach(function (b) {
       b.onclick = function () {
         if (q.answered) return;
-        q.answered = true;
+        /* A spent option stays spent: without this, tapping the same wrong
+         * card again would burn the one free retry and immediately fail. */
+        if (b.classList.contains('wrong')) return;
         var ok = b.dataset.l === q.item.letters;
         var chosen = q.options.filter(function (x) { return x.letters === b.dataset.l; })[0];
         /* Play the correct item's audio. Do NOT also play the child's pick —
          * playRange() starts with stopAudio() so a back-to-back second call
          * would kill the first and the child would hear nothing. */
         phPlay(q.item, b);
+        /* First miss is a FREE retry: cross the card, sound the wrong beep, and
+         * leave the question open. Nothing is graded and the answer is NOT
+         * revealed — a child who taps the wrong card once has usually just not
+         * caught the phoneme yet, and punishing that teaches them to freeze
+         * rather than listen. Only a SECOND miss counts as a wrong answer. */
+        if (!ok && !q.missed) {
+          q.missed = true;
+          b.classList.add('wrong');
+          beep('no');
+          $('#ph-fb').innerHTML =
+            '<div class="muted center" style="margin-top:var(--sp-3)">再听一次 🔊 这次不算错</div>';
+          return;
+        }
+        q.answered = true;
         pgrade(q.item.letters, ok);
         b.classList.add(ok ? 'right' : 'wrong');
         $$('#ph-opts .ph-opt').forEach(function (x) {
@@ -2889,7 +2905,7 @@
           '<div class="feedback ' + (ok ? 'ok' : 'no') + '" style="margin-top:var(--sp-3)">' +
           '<span class="ic">' + (ok ? '🎉' : '💪') + '</span>' +
           '<span>是 <b>' + esc(q.item.letters) + '</b>' + (ex.length ? ' · 如 ' + esc(ex.join(' / ')) : '') + '</span></div>' +
-          '<button class="btn green big" id="ph-next" style="margin-top:var(--sp-3)">下一个 →</button>';
+          '<button class="btn green big next-round" id="ph-next">下一个 →</button>';
         $('#ph-next').onclick = function () { phQuiz = null; phMode = pick(['hear', 'build']); renderPhonics($('#view')); };
       };
     });
