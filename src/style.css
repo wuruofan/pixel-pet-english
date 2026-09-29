@@ -569,6 +569,27 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 }
 .chip.on { background: var(--brand); color: #fff; border-color: var(--brand-dk); }
 
+/* ---------- 输入框 ---------- */
+/* 三个场景共用一类：API Key、识别模型、每日任务量的小数字框。
+   之前 API Key 和模型那两处是同一串 inline style 复制两遍，改边框颜色要
+   改两处 —— 抽成类之后新增的数字框也不用再抄一遍。 */
+.field {
+  width: 100%; padding: var(--sp-2); border: 1px solid #ccc; border-radius: var(--r-sm);
+  box-sizing: border-box; font-family: var(--font); font-size: var(--fs-body); color: var(--ink);
+  background: #fff;
+}
+.field:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
+/* 数量框：宽度用已有间距档凑（sp-4 + sp-5 = 40px，容得下两三位数），
+   右对齐，数字比正文大一点 —— 家长改的就是这个数，得一眼能读出来。
+   隐掉 number 类型的上下箭头：它会挤掉两位数的宽度，而这里又没有「微调」
+   的需求（要微调就填框）。 */
+.field-num {
+  width: calc(var(--sp-4) + var(--sp-5)); text-align: center;
+  font-weight: 800; font-size: var(--fs-h2);
+  -moz-appearance: textfield; appearance: textfield;
+}
+.field-num::-webkit-outer-spin-button, .field-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
 .sent-list { display: flex; flex-direction: column; gap: var(--sp-2); }
 .sent {
   display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) var(--sp-3);

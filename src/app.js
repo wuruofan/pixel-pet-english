@@ -34,7 +34,7 @@
     words: {},          // word -> {box, due, seen, right, wrong}
     days: {},           // 'YYYY-MM-DD' -> {words, right, wrong, ms, lessons}
     pet: { name: '小恐龙', species: 'dragon', level: 1, xp: 0, sati: 70, mood: 80, clean: 80, food: 0, toy: 0, soap: 0, fedTotal: 0, lastTick: 0, lastPlay: 0, petsDate: '', petsToday: 0, poop: { t: 0, n: 0 } },
-    settings: { dailyGoal: 8, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
+    settings: { dailyGoal: 8, phGoal: 5, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
     hints: { swipe: 0 },   // 用过一次就记一笔：卡片可滑动这件事，提示两次就够了
     lastActive: null,
     streak: 0
@@ -248,11 +248,6 @@
      (map via boxFromS) so existing saved data still renders correctly.
   */
   var S_MIN = 1, S_MAX = 60, S0 = 1, S_RATIO_OK = 1.5, S_RATIO_NO = 0.4;
-
-  /* 每日拼读题量（答对才计数）。原来是裸写的 5，散在 dailyPlan 和
-     renderPhonics 的横幅里三处 —— 改数量漏改一处，首页就会显示 5/5
-     而拼读页进度条卡在 3/5。收成一个常量，数量仍然保持 5。 */
-  var PH_GOAL = 5;
   function wstate(word) {
     if (!S.words[word]) S.words[word] = { s: S0, lastSeen: 0, seen: 0, right: 0, wrong: 0, due: 0 };
     var st = S.words[word];
@@ -1760,6 +1755,7 @@
   function dailyPlan() {
     var d = dayStat();
     var goal = S.settings.dailyGoal;
+    var phGoal = S.settings.phGoal;
     /* 第一项跟着 todayPool() 的阶段走：新词没学完是「学单词」，学完了自动
        变成「复习到期词」。cap 取 min(goal, 池子大小) —— 池子就是 buildTodayQueue
        真正会抽的那批，所以首页写的数字和进去之后练到的数量永远一致。
@@ -1770,7 +1766,7 @@
     var pool = todayPool();
     var cap = Math.min(goal, pool.list.length);
     var doneN = Math.min(pool.reviewing ? (d.reviewOk || 0) : (d.newWords || 0), cap);
-    var phDone = Math.min(d.phonics || 0, PH_GOAL);
+    var phDone = Math.min(d.phonics || 0, phGoal);
     return [
       /* dailyPlan 现在和 tabs 一一对应：每个游戏 tab 都对应一项今日任务。
          三项的达标口径统一为「答对数」—— 答错不点灯，和拼读一直以来的
@@ -1783,7 +1779,7 @@
           : '今天要学 ' + (cap - doneN) + ' 个新词',
         badge: doneN + '/' + cap,
         done: doneN >= cap, go: 'new' },
-      { ic: '🔤', title: '拼读练习', badge: phDone + '/' + PH_GOAL, done: phDone >= PH_GOAL, go: 'phonics' },
+      { ic: '🔤', title: '拼读练习', badge: phDone + '/' + phGoal, done: phDone >= phGoal, go: 'phonics' },
       { ic: '🎮', title: '闯关', badge: Math.min(d.quizOk || 0, goal) + '/' + goal, done: (d.quizOk || 0) >= goal, go: 'quiz' }
     ];
   }
@@ -2824,15 +2820,17 @@
     v.innerHTML = '';
     if (!PHONICS.groups.length) { v.appendChild(empty('拼读数据还没生成')); return; }
 
-    /* 顶部：今日总进度条 —— 目标取 PH_GOAL，和 dailyPlan() 里拼读那一项同源。
-       进度统一用 d.phonics（不分 hear/build，且只在答对时 +1）。 */
+    /* 顶部：今日总进度条 —— 目标和 dailyPlan() 里拼读那一项读同一个
+       S.settings.phGoal，所以两处不可能对不上。进度统一用 d.phonics
+       （不分 hear/build，且只在答对时 +1）。 */
     var pd = dayStat();
-    var phDone = Math.min(pd.phonics || 0, PH_GOAL);
-    var phPct = Math.round(phDone / PH_GOAL * 100);
+    var phGoal = S.settings.phGoal;
+    var phDone = Math.min(pd.phonics || 0, phGoal);
+    var phPct = Math.round(phDone / phGoal * 100);
     var banner = el('div', 'card');
     banner.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:var(--sp-2)">' +
-        '<span class="muted" style="font-size:var(--fs-label)">🔤 拼读 · 今日 ' + phDone + ' / ' + PH_GOAL + '</span>' +
+        '<span class="muted" style="font-size:var(--fs-label)">🔤 拼读 · 今日 ' + phDone + ' / ' + phGoal + '</span>' +
         '<span class="muted" style="font-size:var(--fs-xs)">' + phPct + '%</span>' +
       '</div>' +
       '<div class="bar"><i style="width:' + phPct + '%"></i></div>';
@@ -3901,17 +3899,33 @@
 
     /* --- 家长设置 --- */
     var c3 = el('div', 'card');
+    /* 两个任务量各一行：预设 chip + 一个可以自己填的数字框。
+       chip 保留是因为「5 / 8 / 12」这种常见值一键点最快，输入框是因为
+       5/8/12 之外的值（课本 25 词、想一天练 20 个）以前根本设不了。
+       数字框一直显示当前值，不藏起来 —— 藏了就不知道现在是多少，
+       而家长改的正是这个数。 */
+    var goalRow = function (label, key, unit, presets) {
+      var cur = S.settings[key];
+      return '<div class="row wrap" style="gap:var(--sp-2);align-items:center">' +
+        '<span class="muted" style="flex:0 0 auto">' + label + '</span>' +
+        presets.map(function (n) {
+          return '<button class="chip' + (cur === n ? ' on' : '') + '" data-num="' + key + '" data-v="' + n + '">' + n + '</button>';
+        }).join('') +
+        '<input class="field field-num" type="number" inputmode="numeric" min="1" max="50" step="1" ' +
+          'data-numinput="' + key + '" value="' + cur + '" aria-label="' + label + '数量">' +
+        '<span class="muted" style="flex:0 0 auto">' + unit + '</span>' +
+        '</div>';
+    };
     c3.innerHTML = '<h2 class="section">家长设置</h2>' +
       '<div class="row wrap" style="gap:var(--sp-2)">' +
       '<button class="btn ghost sm" id="set-accent">' + (S.settings.accent === 'uk' ? '🇬🇧 英音' : '🇺🇸 美音') + '</button>' +
       '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开（点此关闭）' : '🔇 音标：关（一二年级建议）') + '</button>' +
       '</div>' +
-      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3);align-items:center">' +
-      '<span class="muted">每日目标</span>' +
-      '<button class="chip' + (S.settings.dailyGoal === 5 ? ' on' : '') + '" data-goal="5">5 词</button>' +
-      '<button class="chip' + (S.settings.dailyGoal === 8 ? ' on' : '') + '" data-goal="8">8 词</button>' +
-      '<button class="chip' + (S.settings.dailyGoal === 12 ? ' on' : '') + '" data-goal="12">12 词</button>' +
-      '</div>' +
+      '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量</h2>' +
+      goalRow('学单词 / 闯关', 'dailyGoal', '词', [5, 8, 12, 20]) +
+      goalRow('拼读练习', 'phGoal', '题', [3, 5, 8, 10]) +
+      '<div class="muted" style="margin-top:var(--sp-2)">点 chip 是快捷档；想练多少就自己在框里填，' +
+      '填完按回车或点别处生效（1–50）。</div>' +
       '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       '<button class="btn ghost sm" id="exp">⬇️ 导出进度</button>' +
       '<button class="btn ghost sm" id="imp">⬆️ 导入进度</button>' +
@@ -3929,12 +3943,10 @@
       (eng === 'sf' ? '（需要联网，不挑浏览器）' : '') +
       (eng === 'sr' ? '（没配 Key，Chrome 本地离线识别）' : '') + '</div>' +
       '<div class="muted" style="margin-bottom:var(--sp-1)">硅基流动 API Key（填了它，Chrome/Edge/Firefox 都能跟读）</div>' +
-      '<input type="password" id="asr-key" placeholder="sk-…" autocomplete="off" spellcheck="false" ' +
-        'style="width:100%;padding:var(--sp-2);border:1px solid #ccc;border-radius:var(--r-sm);box-sizing:border-box" ' +
+      '<input class="field" type="password" id="asr-key" placeholder="sk-…" autocomplete="off" spellcheck="false" ' +
         'value="' + esc(S.settings.asrKey) + '">' +
       '<div class="muted" style="margin:var(--sp-2) 0 var(--sp-1)">识别模型（一般不用改）</div>' +
-      '<input type="text" id="asr-model" spellcheck="false" ' +
-        'style="width:100%;padding:var(--sp-2);border:1px solid #ccc;border-radius:var(--r-sm);box-sizing:border-box" ' +
+      '<input class="field" type="text" id="asr-model" spellcheck="false" ' +
         'value="' + esc(S.settings.asrModel) + '">' +
       '<div class="row" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
         '<button class="btn ghost sm" id="asr-save">保存</button>' +
@@ -3958,8 +3970,25 @@
       S.settings.accent = S.settings.accent === 'uk' ? 'us' : 'uk'; save(); renderSettings();
       toast('已切换到' + (S.settings.accent === 'uk' ? '英式' : '美式') + '发音');
     };
-    $$('#set-body [data-goal]').forEach(function (b) {
-      b.onclick = function () { S.settings.dailyGoal = +b.dataset.goal; save(); renderSettings(); };
+    /* 任务量：chip 和输入框都走 setNum，两条路写的是同一个 settings key，
+       所以不会出现「chip 亮着 8、框里却是 20」这种分裂状态。 */
+    var setNum = function (key, v) {
+      /* 夹取而不是拒绝：家长把框清空或者填 0 的时候，页面不该跳回设置页
+         或者变成 NaN。1–50 的上限来自「课本最大 57 词，一天练 50 词没有意义」，
+         下限 1 是为了别把进度条变成 0/0。 */
+      var n = Math.round(Number(v));
+      if (!isFinite(n) || n < 1) n = 1;
+      if (n > 50) n = 50;
+      if (S.settings[key] === n) { renderSettings(); return; }
+      S.settings[key] = n; save(); renderSettings();
+    };
+    $$('#set-body [data-num]').forEach(function (b) {
+      b.onclick = function () { setNum(b.dataset.num, b.dataset.v); };
+    });
+    $$('#set-body [data-numinput]').forEach(function (inp) {
+      /* change 而不是 input：input 每敲一个键就存一次 + 重画整个设置页，
+         打到一半的「1」会被立刻夹成 1，光标也就跳了。 */
+      inp.onchange = function () { setNum(inp.dataset.numinput, inp.value); };
     });
     $('#ipa-toggle').onclick = function () {
       S.settings.showIpa = !S.settings.showIpa; save(); renderSettings();
