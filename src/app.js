@@ -1996,12 +1996,14 @@
   /* 翻词箭头：配图左右各一个尖括号，纯 SVG 现画，不依赖任何图片素材。
      左=上一个、右=下一个，和「左滑下一个 / 右滑上一个」的滑动方向一致。
      `lock` 可选，同 bindLearnSwipe：返回字符串则该方向置灰。翻词库是自由
-     浏览、循环翻页，不传 lock，两侧永远可点。 */
+     浏览、循环翻页，不传 lock，两侧永远可点。`noun` 是翻的是词还是字素 ——
+     字素表也复用这套箭头，标签得说对，否则读屏会念「上一个词」。 */
   var NAV_PATH = { prev: 'M15 5 L8 12 L15 19', next: 'M9 5 L16 12 L9 19' };
-  function navArrowsHtml(prefix, lock) {
+  function navArrowsHtml(prefix, lock, noun) {
+    var what = noun || '词';
     return ['prev', 'next'].map(function (dir) {
       var off = lock ? lock(dir) : null;
-      var label = dir === 'prev' ? '上一个词' : '下一个词';
+      var label = (dir === 'prev' ? '上一个' : '下一个') + what;
       return '<button class="wc-nav ' + dir + (off ? ' off' : '') + '"' +
         ' id="' + prefix + '-' + dir + '" title="' + label + '" aria-label="' + label + '">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + NAV_PATH[dir] + '"/></svg>' +
@@ -2245,7 +2247,7 @@
       c3.innerHTML = '<h2 class="section">在句子里认识它</h2>' +
         ex.map(function (e, i) {
           var hl = e.en.replace(new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'ig'),
-            function (m) { return '<span style="color:var(--brand-dk);background:#fff0d6;border-radius:var(--r-sm);padding:0 var(--sp-1)">' + m + '</span>'; });
+            function (m) { return '<span class="ph-hl">' + m + '</span>'; });
           return '<div class="row" style="align-items:flex-start;gap:var(--sp-3);margin-bottom:var(--sp-3)">' +
             '<button class="speak-btn sm" data-ex="' + i + '">' + SPK + '</button>' +
             '<div><div style="font-weight:800;font-size:var(--fs-body)">' + hl + '</div>' +
@@ -2762,12 +2764,14 @@
     take(pool);
     return out.slice(0, n);
   }
-  function phPickReferenceWord(item) {
-    var bookWords = currentBookWords();
-    for (var i = 0; i < item.words.length; i++) {
-      if (bookWords.indexOf(item.words[i]) >= 0) return item.words[i];
-    }
-    return item.words[0] || null;
+  /* 这个字素的例词，现学的这本课本里有的排前面。
+     it.words 是三本课本混在一起的，插入顺序不代表相关性 —— 一上学的孩子先看到
+     orange 再看到 jiaozi 没有意义。稳定排序，课本内的相对顺序保持原样。 */
+  function phWordsInBookOrder(item) {
+    var book = currentBookWords();
+    var rank = function (w) { var i = book.indexOf(w); return i < 0 ? 1e9 : i; };
+    return (item.words || []).filter(function (w) { return WORDS[w]; })
+      .sort(function (a, b) { return rank(a) - rank(b); });
   }
   function phPlay(item, btn) {
     playRange(item.audio);
@@ -2816,53 +2820,215 @@
     cardsLink.style.cursor = 'pointer';
     cardsLink.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
-        '<span>🗂 字素表 <span class="muted" style="font-weight:600">· ' + allPhonemes().length + ' 个字素 · 按类目分组浏览</span></span>' +
+        '<span>🗂 字素表 <span class="muted" style="font-weight:600">· ' + allPhonemes().length + ' 个字素 · 左右翻，点一下听读音</span></span>' +
         '<span class="muted" style="font-size:var(--fs-h2)">›</span>' +
       '</div>';
     v.appendChild(cardsLink);
     cardsLink.onclick = function () { stopAudio(); renderPhCardsView(v); };
   }
 
-  /* 单独的字素表浏览入口（不走 segbar / phMode） */
+  /* ---------- 字素表：一次看一个字素，翻卡浏览 ---------- */
+  /* 翻卡顺序 = 分组顺序展平。卡面要显示「这是哪一类」，所以这里带上 group 引用；
+     同一个字母的第几种读法也靠展平位置现算 —— 数据里没有这个字段，但关掉音标
+     之后连着三张 a / a / a 长得一模一样，不给区分孩子只会以为页面卡住了。 */
+  var PH_FLAT = [];
+  PHONICS.groups.forEach(function (g) {
+    g.items.forEach(function (it) { PH_FLAT.push({ it: it, g: g }); });
+  });
+  var phCardsIdx = 0;
+
+  function phSoundRank(idx) {
+    var letters = PH_FLAT[idx].it.letters, of = 0, rank = 1;
+    for (var i = 0; i < PH_FLAT.length; i++) {
+      if (PH_FLAT[i].it.letters !== letters) continue;
+      of++;
+      if (i === idx) rank = of;
+    }
+    return { rank: rank, of: of };
+  }
+
+  /* 同一个音有几种写法（/s/ 还写作 c、ss）。返回展平下标，没有就空数组。
+     不发音的字素没有音，天然返回空，也就不显示这张卡。 */
+  function phSiblings(idx) {
+    var it = PH_FLAT[idx].it;
+    if (!it.sound) return [];
+    var out = [];
+    for (var i = 0; i < PH_FLAT.length; i++) {
+      if (i !== idx && PH_FLAT[i].it.sound === it.sound) out.push(i);
+    }
+    return out;
+  }
+
+  /* 把词里属于这个字素的那几个字母标出来。
+     pindu 是「字素 → 音素」逐段对齐的结果，顺着拼就是原词，所以只能按段累加
+     偏移 —— 直接 indexOf 会把 sister 的第一个 s 标出来，可它读的是 /z/。
+
+     光按 letters 找还是不够：同一个字母在一词里出现多次、读音不同时，只认字母
+     会标错那一处。rabbit 的第一个 b 发 /b/、第二个 b 才是哑的，「不发音的 b」
+     那张卡要标的是第二个。所以先按 (字母, 音) 配对，配不上才退回第一个同字母。
+     逐段比对一旦对不上就整个放弃高亮：宁可少标，也不要标错。 */
+  function phWordHtml(word, letters, sound) {
+    var pd = (WORDS[word] && WORDS[word].pindu) || [];
+    var low = word.toLowerCase(), want = (letters || '').toLowerCase();
+    var pos = 0, at = -1, len = 0, fbAt = -1, fbLen = 0;
+    for (var i = 0; i < pd.length; i++) {
+      var seg = (pd[i].letters || '').toLowerCase();
+      if (low.slice(pos, pos + seg.length) !== seg) return esc(word);
+      if (seg === want) {
+        if (at < 0 && (pd[i].sound || '') === (sound || '')) { at = pos; len = seg.length; }
+        if (fbAt < 0) { fbAt = pos; fbLen = seg.length; }
+      }
+      pos += seg.length;
+    }
+    if (at < 0) { at = fbAt; len = fbLen; }
+    if (at < 0) return esc(word);
+    return esc(word.slice(0, at)) + '<b class="ph-hl">' + esc(word.slice(at, at + len)) + '</b>' +
+      esc(word.slice(at + len));
+  }
+
+  /* 单独的字素表浏览入口（不走 segbar / phMode）：一次一张卡，
+     左右箭头 + 左右滑动翻页，操作和翻词库一模一样。 */
   function renderPhCardsView(v) {
     v = v || $('#view');
     v.innerHTML = '';
-    var top = el('div', 'row');
-    top.style.justifyContent = 'space-between';
-    top.style.alignItems = 'center';
-    top.style.margin = '4px 0 10px';
-    top.innerHTML = '<button class="btn ghost xs" id="ph-back">‹ 返回拼读</button>' +
-      '<span class="muted" style="font-size:var(--fs-label)">🗂 字素表</span><span></span>';
-    v.appendChild(top);
+    if (!PH_FLAT.length) { v.appendChild(empty('字素数据还没生成')); return; }
+    if (phCardsIdx >= PH_FLAT.length) phCardsIdx = 0;
+    var cur = PH_FLAT[phCardsIdx];
+
+    /* 顶部：沿用翻词库的骨架 —— 左「第几个 / 共几个」，右「返回」 */
+    var header = el('div', 'card');
+    header.innerHTML =
+      '<div class="row" style="justify-content:space-between;align-items:center">' +
+        '<span class="muted">🗂 字素表 · ' + (phCardsIdx + 1) + '/' + PH_FLAT.length + '</span>' +
+        '<button class="pill pill-btn" id="ph-back">← 返回拼读</button>' +
+      '</div>';
+    v.appendChild(header);
+    $('#ph-back').onclick = function () { stopAudio(); renderPhonics($('#view')); };
+
+    /* 类目跳转：点一下落到那一组的第一个字素。整页只有这一个"选择器"，
+     其余操作（换字素、听例词、跳同音写法）都长在当前这张卡上。 */
+    var jumps = el('div', 'unit-chips');
+    PHONICS.groups.forEach(function (g) {
+      var target = 0;
+      for (var i = 0; i < PH_FLAT.length; i++) {
+        if (PH_FLAT[i].g === g) { target = i; break; }
+      }
+      var b = el('button', 'chip' + (g === cur.g ? ' on' : ''), esc(g.label) + ' ' + g.items.length);
+      b.onclick = function () { phCardsJump(target); };
+      jumps.appendChild(b);
+    });
+    v.appendChild(jumps);
+
     v.appendChild(el('div', '', '<div id="ph-cards-body"></div>'));
-    $('#ph-back').onclick = function () { renderPhonics(v); };
     renderPhCards($('#ph-cards-body'));
   }
 
-  /* 字素表：按组浏览点读 */
+  /* 翻到第 target 个字素。整页重画（和翻词库翻词一个道理），但按住滚动位置：
+     孩子多半是滑到一半才翻页的，每翻一下都弹回顶部等于逼他重新找。 */
+  function phCardsJump(target) {
+    var y = window.scrollY;
+    phCardsIdx = (target + PH_FLAT.length) % PH_FLAT.length;
+    stopAudio();
+    renderPhCardsView($('#view'));
+    window.scrollTo(0, y);
+  }
+
+  /* 一张字素卡 = 主卡（字本身）+ 例词 + 同音异形。
+     主卡套的是翻词库词卡的骨架，所以左右箭头、左右滑动、点色块出声全都直接复用，
+     没有第二套翻页逻辑。 */
   function renderPhCards(v) {
     v.innerHTML = '';
-    var intro = el('div', 'card');
-    intro.innerHTML = '<div class="muted">这些是课本里 94 个词用到的全部字素。点一下听它怎么读，' +
-      '颜色相同的读法相近。全程不用音标，靠耳朵记。</div>';
-    v.appendChild(intro);
-    PHONICS.groups.forEach(function (g) {
-      var c = el('div', 'card');
-      var chips = g.items.map(function (it) {
-        var mastered = isPhMastered(it.letters);
-        return '<button class="ph-card' + (mastered ? ' done' : '') + '" data-l="' + esc(it.letters) + '">' +
-          '<span class="l pb-tag-' + PB_TAG[g.id] + '">' + esc(it.letters) + '</span>' +
-          '<span class="w">' + esc((it.words || [])[0] || '') + '</span></button>';
-      }).join('');
-      c.innerHTML = '<h2 class="section">' + esc(g.label) + ' <span class="muted">(' + g.items.length + ')</span></h2>' +
-        '<div class="ph-grid">' + chips + '</div>' +
-        (g.tip ? '<div class="muted" style="margin-top:var(--sp-2)">' + esc(g.tip) + '</div>' : '');
-      v.appendChild(c);
-      $$('.ph-card', c).forEach(function (b) {
-        var it = g.items.filter(function (x) { return x.letters === b.dataset.l; })[0];
-        b.onclick = function () { phPlay(it, b); };
+    if (!PH_FLAT.length) return;
+    var idx = phCardsIdx, f = PH_FLAT[idx], it = f.it;
+    var words = phWordsInBookOrder(it);
+
+    /* 主卡只管「这个音本身」：字、类目、音标、第几种读法、怎么听。
+       例词一律交给下面那张卡，避免同一个词在两处各出现一次。 */
+    var c = el('div', 'card wordcard learn-swipe pb-tag-' + PB_TAG[f.g.id]);
+    /* 不发音的字素没有音频（build 出来就是空串），所以那 5 个字素不给大喇叭 ——
+       以前网格里点它是死按钮，按了没反应也不知道为什么。 */
+    c.innerHTML = phFocusHtml(f, phSoundRank(idx)) +
+      (it.sound ? '<div class="learn-action">' +
+        '<button class="speak-btn" id="gph-play" aria-label="听发音">' + SPK + '</button></div>' : '') +
+      '<div class="muted gph-hint">' +
+        (it.sound ? '点色块或喇叭，听这个音怎么读' : '它不发音，只是拼写里的一块') +
+      '</div>';
+    v.appendChild(c);
+    bindLearnSwipe(c, function (dir) { phCardsJump(idx + (dir === 'next' ? 1 : -1)); });
+    $('#gph-prev').onclick = function () { phCardsJump(idx - 1); };
+    $('#gph-next').onclick = function () { phCardsJump(idx + 1); };
+    var play = $('#gph-play');
+    if (play) {
+      play.onclick = function () { phPlay(it, play); };
+      c.querySelector('.gph-visual').onclick = function () { phPlay(it, play); };
+    }
+
+    /* 例词：一张卡列全。词里属于该字素的那几个字母用 .ph-hl 标出来 ——
+       这才是「它在哪儿」的答案。 */
+    if (words.length) {
+      var c2 = el('div', 'card');
+      c2.innerHTML = '<h2 class="section">它藏在这些词里</h2>' +
+        words.map(function (w) {
+          return '<div class="gph-row">' +
+            '<span class="gph-emo">' + visualOf(w).emoji + '</span>' +
+            '<div class="gph-row-main">' +
+              '<div class="gph-row-word">' + phWordHtml(w, it.letters, it.sound) + '</div>' +
+              '<div class="muted">' + esc(meaningOf(w)) + '</div>' +
+            '</div>' +
+            '<button class="speak-btn sm" data-w="' + esc(w) + '" aria-label="听整词">' + SPK + '</button>' +
+            '</div>';
+        }).join('');
+      v.appendChild(c2);
+    }
+
+    /* 同音异形：听得一模一样、长得完全不同的写法。点一下直接翻过去，
+       翻过去会自动响同一个音 —— 孩子耳朵比眼睛先反应过来。 */
+    var sibs = phSiblings(idx);
+    if (sibs.length) {
+      var c3 = el('div', 'card');
+      c3.innerHTML = '<h2 class="section">同一个音，还有这些写法</h2>' +
+        '<div class="ph-grid">' + sibs.map(function (i) {
+          var s = PH_FLAT[i];
+          return '<button class="ph-card" data-sib="' + i + '">' +
+            '<span class="l pb-tag-' + PB_TAG[s.g.id] + '">' + esc(s.it.letters) + '</span>' +
+            '<span class="w">' + esc((s.it.words || [])[0] || '') + '</span></button>';
+        }).join('') + '</div>' +
+        '<div class="muted center" style="margin-top:var(--sp-3)">点一下就翻过去听听</div>';
+      v.appendChild(c3);
+      $$('[data-sib]', c3).forEach(function (b) {
+        b.onclick = function () { phCardsJump(+b.dataset.sib); };
       });
+    }
+
+    var c4 = el('div', 'card');
+    c4.innerHTML = '<div class="row" style="gap:var(--sp-3)">' +
+      '<button class="btn green" id="gph-practice" style="flex:1;white-space:nowrap">去练一练 →</button>' +
+      '</div>';
+    v.appendChild(c4);
+    $('#gph-practice').onclick = function () { stopAudio(); renderPhonics($('#view')); };
+
+    $$('[data-w]', v).forEach(function (b) {
+      b.onclick = function () { speakWord(b.dataset.w); };
     });
+
+    /* 翻到哪张自己响一下：这是一张点读表，不自动出声就退化成翻词库那种
+       得记得点喇叭的看图卡了。playRange 开头就 stopAudio，连着快翻只有最后一张响。 */
+    if (it.sound) setTimeout(function () { phPlay(it); }, 280);
+  }
+
+  function phFocusHtml(f, rank) {
+    var it = f.it;
+    return '<div class="gph-stage">' + navArrowsHtml('gph', null, '字素') +
+        '<div class="wc-visual gph-visual">' +
+          '<span class="gph-letter">' + esc(it.letters) + '</span>' +
+          (isPhMastered(it.letters) ? '<span class="gph-ok">✓</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="gph-kind">' + esc(f.g.label) + '</div>' +
+      (S.settings.showIpa && it.sound ? '<div class="gph-ipa">/' + esc(it.sound) + '/</div>' : '') +
+      /* 同一个字母常有好几种读法，卡片长得几乎一样；这一行是它们唯一的区别，
+         所以贴在音标正下方 —— 音标开或关它都在。 */
+      (rank.of > 1 ? '<div class="gph-rank">第 ' + rank.rank + ' 种读法（共 ' + rank.of + ' 种）</div>' : '');
   }
 
   /* 听音选字母：播声音 → 4 个字素里选 */

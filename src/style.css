@@ -31,6 +31,7 @@
    * size, so a CJK label must sit a step smaller to read as the SAME level.
    * IPA goes smallest — /θ/ /ð/ /ɪ/ are thin strokes that blur below ~11px. */
   --fs-hero: 42px;   /* the word being learned; the single loudest text   */
+  --fs-gph: 68px;    /* the one grapheme on a 字素表 card                  */
   --fs-d1: 34px;     /* score ring                                       */
   --fs-d2: 26px;     /* stat numbers                                     */
   --fs-h1: 24px;     /* section headings, Chinese gloss                   */
@@ -692,13 +693,56 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
   border: 2px solid var(--line); background: #fff; border-radius: var(--r-md); padding: var(--sp-3) var(--sp-1) var(--sp-2);
   display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); cursor: pointer;
 }
-.ph-card.done { border-color: var(--green); background: #f0fbf5; }
 .ph-card .l, .ph-opt .l, .ph-ask-letter, .slot .l {
   font-weight: 900; background: var(--pc, var(--brand)); color: #fff;
   border-radius: var(--r-sm); padding: var(--sp-1) var(--sp-3); letter-spacing: 1px;
 }
 .ph-card .l { font-size: var(--fs-h2); }
 .ph-card .w { font-size: var(--fs-micro); color: var(--ink-soft); font-weight: 700; }
+.ph-card:active { transform: scale(.96); }
+
+/* ---------- 字素卡：翻卡式浏览，骨架照搬翻词库的词卡 ---------- */
+/* 箭头改以「字母块那一层」为定位上下文，不沿用整卡：字素主卡比词卡高（多了一行
+   例词和一行提示），用整卡定位箭头会正好压在例词上。高度由 padding 撑开，
+   50% 就是字母块的中心线。 */
+.gph-stage { position: relative; display: flex; justify-content: center; padding: var(--sp-3) 0; }
+.gph-stage .wc-nav { margin-top: calc(var(--sp-5) * -1); }
+/* 主卡继续用 .wc-visual 的位置和尺寸（也是左右箭头的定位上下文），
+   只把配色换成这个字素自己的色：整块填色 + 白字，跟 .pb 字母块同一套语言，
+   一眼能认出「这是辅音还是元音组合」。
+   字母给到 --fs-gph 而不是 --fs-hero：小写字母的 x-height 只有字号的一半，
+   42px 的 n 实际只有 22px 高，塞在方块里像个缩水的错字。
+   方块宽度跟着字数走（fit-content + min-width），高度恒定 ——
+   于是 eigh 是个更宽的方块，而不是一个更小的字，所有卡片的字一样大。 */
+.gph-visual { --gph-box: 124px; min-width: var(--gph-box); width: fit-content; height: var(--gph-box); margin: 0 auto; padding: 0 var(--sp-3); background: var(--pc); border-color: var(--pcd); box-shadow: 0 6px 0 var(--pcd); cursor: pointer; }
+.gph-letter { font-size: var(--fs-gph); font-weight: 900; color: #fff; line-height: 1; letter-spacing: 1px; white-space: nowrap; }
+.gph-ok {
+  position: absolute; right: -6px; bottom: -6px;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #fff; color: var(--green); border: 3px solid var(--green);
+  font-size: var(--icon-md); font-weight: 900;
+}
+.gph-kind { margin-top: var(--sp-2); text-align: center; font-size: var(--fs-label); font-weight: 800; color: var(--ink-soft); }
+/* 音标是这张卡的主角（除了字母），所以走 --fs-d1 而不是选项按钮里那个 20px 的
+   --fs-ipa —— 那个尺寸是塞在选项行里的，换到卡片上要抬头才看得清。 */
+.gph-ipa { margin-top: var(--sp-2); text-align: center; font-size: var(--fs-d1); font-weight: 900; color: var(--pcd); }
+/* 「第 N 种读法」是同一字母几张卡之间唯一的区别，跟着音标走；
+   关掉音标时它就顶在类目下面，位置不变。 */
+.gph-rank { margin-top: var(--sp-1); text-align: center; font-size: var(--fs-label); font-weight: 800; color: var(--pcd); }
+.gph-hint { margin-top: var(--sp-2); text-align: center; }
+
+.gph-emo { font-size: var(--icon-md); line-height: 1; }
+
+.gph-row { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.gph-row-main { flex: 1; min-width: 0; }
+.gph-row-word { font-size: var(--fs-h2); font-weight: 800; }
+
+/* 词里高亮出属于该字素的那几个字母。和「在句子里认识它」里高亮目标词同色，
+   同一个视觉含义就不留两处 inline，改色只改这一行。 */
+.ph-hl { color: var(--brand-dk); background: #fff0d6; border-radius: var(--r-sm); padding: 0 var(--sp-1); font-weight: 900; }
+
+.speak-btn.playing { animation: pb-pop .55s; }
 
 .speak-btn.big { width: 84px; height: 84px; font-size: var(--icon-lg); margin: var(--sp-1) auto 0; display: block; }
 .ph-ask-letter { display: inline-block; font-size: var(--fs-hero); padding: var(--sp-2) var(--sp-5); }
