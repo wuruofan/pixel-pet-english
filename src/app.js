@@ -248,6 +248,11 @@
      (map via boxFromS) so existing saved data still renders correctly.
   */
   var S_MIN = 1, S_MAX = 60, S0 = 1, S_RATIO_OK = 1.5, S_RATIO_NO = 0.4;
+
+  /* 每日拼读题量（答对才计数）。原来是裸写的 5，散在 dailyPlan 和
+     renderPhonics 的横幅里三处 —— 改数量漏改一处，首页就会显示 5/5
+     而拼读页进度条卡在 3/5。收成一个常量，数量仍然保持 5。 */
+  var PH_GOAL = 5;
   function wstate(word) {
     if (!S.words[word]) S.words[word] = { s: S0, lastSeen: 0, seen: 0, right: 0, wrong: 0, due: 0 };
     var st = S.words[word];
@@ -279,6 +284,19 @@
     return (b && b.words ? b.words : []).map(norm).filter(function (w) { return WORDS[w]; });
   }
   function currentBookWords() { return bookWords(S.settings.book); }
+
+  /* 今日关卡练哪些词 —— 选词和首页展示必须共用这一个来源。
+     新词没学完就只给新词（掺复习会把新词进度顶掉）；学完了改给到期的词，
+     这时候艾宾浩斯该接手了 —— 课本只有 21 个词，dailyGoal 8 的话三天就轮完，
+     之后还按整本随机等于每天都点不亮第一盏灯。
+     到期词也可能有 0 个（SRS 间隔最长 9.8 天），此时退回整本随机，
+     免得孩子点进去是空队列。 */
+  function todayPool() {
+    var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
+    if (unseen.length) return { list: unseen, reviewing: false };
+    var due = dueWords(S.settings.book);
+    return { list: due.length ? due : currentBookWords(), reviewing: true };
+  }
 
   function grade(word, ok) {
     var st = wstate(word);
@@ -1740,30 +1758,33 @@
 
   /* 每日任务清单 —— 艾宾浩斯调度是核心引擎，首页只是它的呈现层 */
   function dailyPlan() {
-    var due = dueWords(S.settings.book);
-    var unseen = currentBookWords().filter(function (w) {
-      var st = S.words[w]; return !st || !st.seen;
-    });
     var d = dayStat();
-    var answered = (d.right || 0) + (d.wrong || 0);
     var goal = S.settings.dailyGoal;
-    var newCap = Math.min(goal, 8, unseen.length);
-    var newDone = Math.min(d.newWords || 0, newCap);
-    var phDone = Math.min(d.phonics || 0, 5);
+    /* 第一项跟着 todayPool() 的阶段走：新词没学完是「学单词」，学完了自动
+       变成「复习到期词」。cap 取 min(goal, 池子大小) —— 池子就是 buildTodayQueue
+       真正会抽的那批，所以首页写的数字和进去之后练到的数量永远一致。
+       （原来这里是 Math.min(goal, 8, ...)：那个 8 是魔数硬顶，设置里选了
+       「12 词」也还是显示 8，和实际队列对不上，12 档等于半残。）
+       复习阶段用 d.reviewOk 而不是 d.newWords：课本学完后没有「首次接触」，
+       拿 newWords 去比会永远是 0/8，第一盏灯就再也点不亮了。 */
+    var pool = todayPool();
+    var cap = Math.min(goal, pool.list.length);
+    var doneN = Math.min(pool.reviewing ? (d.reviewOk || 0) : (d.newWords || 0), cap);
+    var phDone = Math.min(d.phonics || 0, PH_GOAL);
     return [
       /* dailyPlan 现在和 tabs 一一对应：每个游戏 tab 都对应一项今日任务。
-         「学单词」一项合并了旧的「复习快忘的词」+「学新词」—— 因为这俩都走
-         learn tab（enterTodayMode 里已经把 due + 未见的 words 拼到同一个
-         今日队列里了），分开列只是同一个 tab 上的两个数据口径，徒增点击成本。
-         「闯关」一项也合并了「复习题」+「每日达标」—— 都是 play tab，只是
-         buildQueue('review') vs buildQueue('mixed') 的队列区别。
-         「照顾宠物」整项去掉：它本来就是首页宠物卡的三个按钮，再列一遍是重复。 */
-      { ic: '📖', title: '学单词',
-        why: due.length ? '有 ' + due.length + ' 个快忘了 + ' + (newCap - newDone) + ' 个新词' : '今天要学 ' + (newCap - newDone) + ' 个新词',
-        badge: newCap === 0 ? '✓' : newDone + '/' + newCap,
-        done: newCap === 0 || newDone >= newCap, go: 'new' },
-      { ic: '🔤', title: '拼读练习', badge: phDone + '/5', done: phDone >= 5, go: 'phonics' },
-      { ic: '🎮', title: '闯关', badge: Math.min(answered, goal) + '/' + goal, done: answered >= goal, go: 'quiz' }
+         三项的达标口径统一为「答对数」—— 答错不点灯，和拼读一直以来的
+         做法一致。但每项各用各的计数器（newWords / reviewOk、phonics、
+         quizOk），不共用 d.right：学单词的跟读通过和闯关答题都写 d.right，
+         共用会让「先做完跟读、闯关立刻满格」。 */
+      { ic: pool.reviewing ? '🔁' : '📖', title: pool.reviewing ? '复习到期词' : '学单词',
+        why: pool.reviewing
+          ? '新词学完了，今天复习 ' + (cap - doneN) + ' 个到期的词'
+          : '今天要学 ' + (cap - doneN) + ' 个新词',
+        badge: doneN + '/' + cap,
+        done: doneN >= cap, go: 'new' },
+      { ic: '🔤', title: '拼读练习', badge: phDone + '/' + PH_GOAL, done: phDone >= PH_GOAL, go: 'phonics' },
+      { ic: '🎮', title: '闯关', badge: Math.min(d.quizOk || 0, goal) + '/' + goal, done: (d.quizOk || 0) >= goal, go: 'quiz' }
     ];
   }
 
@@ -1880,6 +1901,7 @@
   var learnHits = {};           // { 队列下标: 已命中次数 }，回看时保留进度
   var learnPassed = {};         // { 队列下标: true }，已通过并计过分的词
   var learnBusy = false;        // 录音进行中，避免重复触发
+  var learnReviewing = false;   // 今日队列是「新词」还是「到期复习」，只影响文案
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
   var learnTimer = null;        // 8s 兜底超时的句柄，必须可清除
   var learnHitScored = false;   // 本次录音是否已判定命中（避免 onend 重复弹提示）
@@ -1950,7 +1972,7 @@
     var card = el('div', 'card wordcard learn-swipe' + (passed ? ' passed' : ''));
     card.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
-        '<span class="muted">今日新词 · 第 ' + (learnPos + 1) + ' / ' + learnQueue.length + ' 个</span>' +
+        '<span class="muted">今日' + (learnReviewing ? '复习' : '新词') + ' · 第 ' + (learnPos + 1) + ' / ' + learnQueue.length + ' 个</span>' +
         '<span class="hits-row">' + hitsHtml(hits) + '</span>' +
       '</div>' +
       learnWordCardHtml(word) +
@@ -2542,13 +2564,22 @@
     render();
   }
 
-  /* 通过：只在这一刻计分一次。learnPassed 保证滑回来重读不会重复加分。 */
+  /* 通过：只在这一刻计分一次。learnPassed 保证滑回来重读不会重复加分。
+     跟读是过了 HITS_GOAL 才 grade(true)，所以「答对才算」在这条链上天然成立，
+     不需要再按 ok 过滤。 */
   function markLearnPassed() {
     if (learnPassed[learnPos]) return;
     var word = learnQueue[learnPos];
     if (!word) return;
     learnPassed[learnPos] = true;
     grade(word, true);                  /* 记入 SRS + newWords */
+    /* 复习进度只写在这里（不写进共享的 grade()），因为闯关也调 grade()，
+       答对的复习题不该记到学单词头上。新词进度不另记：grade() 里
+       st.seen === 1 那次自增就是「首次接触」，哪个 tab 首次遇到都算。
+       两个阶段分开记，是因为 todayPool() 会在新词耗尽的那一刻把任务从
+       「学单词」切成「复习到期词」，进度条必须各自从 0 起算，
+       否则切换瞬间直接满格。 */
+    if (wstate(word).seen > 1) dayStat().reviewOk = (dayStat().reviewOk || 0) + 1;
     gainXp(3, 'food', 2);
     toast('🎤 ' + word + ' 通过！+1 🍖 · 点下面的「下一题」');
   }
@@ -2592,7 +2623,7 @@
     c.innerHTML =
       '<div style="font-size:var(--icon-hero);line-height:1;margin:var(--sp-2) 0 var(--sp-2)">' + (all ? '🎉' : '💪') + '</div>' +
       '<h2 class="section" style="font-size:var(--fs-h2);color:var(--brand-dk)">' +
-        (all ? '今日新词全部通关！' : '今日跟读 ' + passed + ' / ' + total + ' 个') + '</h2>' +
+        (all ? (learnReviewing ? '今日复习全部通关！' : '今日新词全部通关！') : '今日跟读 ' + passed + ' / ' + total + ' 个') + '</h2>' +
       '<div class="muted" style="margin:var(--sp-2) 0 var(--sp-4)">获得 <b>+' + (passed * 3) + ' XP</b> · 宠物 +' +
         passed + ' 🍖' + (all ? '' : ' · 还有 ' + (total - passed) + ' 个没跟读') + '</div>' +
       '<div class="row" style="gap:var(--sp-3);margin-top:var(--sp-4)">' +
@@ -2639,14 +2670,15 @@
     go('learn');
   }
   function buildTodayQueue() {
-    /* 取当前课本里未学过的词，随机抽 dailyGoal 个；若全部都学过则退化为
-       整本词表随机抽。队列仅在会话内有效（不落 storage），故同一会话内
-       稳定；重新进入今日模式会基于剩余未学词重抽一批。 */
+    /* 池子由 todayPool() 定（见那里的理由：学完新词就换成到期复习），
+       这里只负责抽 dailyGoal 个。队列仅在会话内有效（不落 storage），
+       故同一会话内稳定；重新进入今日模式会基于剩余词重抽一批。
+       learnReviewing 跟着队列一起定下来：队列在会话内不变，进度卡和
+       结果卡的文案就不该中途改口（新词说成复习会让孩子以为自己学错了）。 */
     var goal = Math.max(1, S.settings.dailyGoal);
-    var book = S.settings.book;
-    var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
-    var pool = unseen.length ? unseen : currentBookWords();
-    return shuffle(pool).slice(0, goal);
+    var p = todayPool();
+    learnReviewing = p.reviewing;
+    return shuffle(p.list).slice(0, goal);
   }
 
   function playPhoneme(word, i, btn) {
@@ -2792,15 +2824,15 @@
     v.innerHTML = '';
     if (!PHONICS.groups.length) { v.appendChild(empty('拼读数据还没生成')); return; }
 
-    /* 顶部：今日总进度条 —— 与 dailyPlan() 里 phonics 的目标保持一致（5 题）。
-       进度统一用 d.phonics（不分 hear/build）。 */
+    /* 顶部：今日总进度条 —— 目标取 PH_GOAL，和 dailyPlan() 里拼读那一项同源。
+       进度统一用 d.phonics（不分 hear/build，且只在答对时 +1）。 */
     var pd = dayStat();
-    var phDone = Math.min(pd.phonics || 0, 5);
-    var phPct = Math.round(phDone / 5 * 100);
+    var phDone = Math.min(pd.phonics || 0, PH_GOAL);
+    var phPct = Math.round(phDone / PH_GOAL * 100);
     var banner = el('div', 'card');
     banner.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:var(--sp-2)">' +
-        '<span class="muted" style="font-size:var(--fs-label)">🔤 拼读 · 今日 ' + phDone + ' / 5</span>' +
+        '<span class="muted" style="font-size:var(--fs-label)">🔤 拼读 · 今日 ' + phDone + ' / ' + PH_GOAL + '</span>' +
         '<span class="muted" style="font-size:var(--fs-xs)">' + phPct + '%</span>' +
       '</div>' +
       '<div class="bar"><i style="width:' + phPct + '%"></i></div>';
@@ -3400,7 +3432,11 @@
       b.onclick = function () { speakWord(q.opts[bi]); };
     });
     grade(word, ok);
-    if (ok) { gainXp(5, 'soap'); beep('ok'); }
+    /* 闯关的达标只认答对（和拼读一致）。计数写在闯关自己的调用点，
+       不从 grade() 的 d.right 里取 —— 学单词的跟读通过也走 grade(true)，
+       直接用 d.right 会让「先做 8 个跟读、闯关立刻满格」。
+       d.right/d.wrong 仍留给首页的正确率显示，那是两个 tab 合起来的口径。 */
+    if (ok) { gainXp(5, 'soap'); dayStat().quizOk = (dayStat().quizOk || 0) + 1; beep('ok'); }
     else { beep('no'); /* 答错不扣心情，低龄不惩罚 */ }
     save();
 
