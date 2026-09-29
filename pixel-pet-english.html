@@ -588,34 +588,36 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
   background: #fff;
 }
 .field:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
-/* 数量框：宽度用已有间距档凑（sp-4 + sp-5 = 40px，容得下两三位数），
-   右对齐，数字比正文大一点 —— 家长改的就是这个数，得一眼能读出来。
-   隐掉 number 类型的上下箭头：它会挤掉两位数的宽度，而这里已经有
-   一对加减按钮了，不需要再来一套微调。 */
+/* ---------- 数量步进器：[−] N [+] ----------
+   数字是主角，按钮是配角。所以数字无边框、加号减号是浅色小圆点，
+   hover 才变实心 —— 之前 40px 的描边橙圈三个并排，比真正的按钮还抢眼，
+   一眼看过去像三个主操作，而不是一个控件的加减。三者挤在 4px 的缝里，
+   读起来才是一个整体。 */
+.stepper { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.step-btn {
+  width: calc(var(--sp-5) + var(--sp-1)); height: calc(var(--sp-5) + var(--sp-1)); flex: 0 0 auto;
+  border: 0; background: var(--bg-2); color: var(--ink-soft);
+  border-radius: 50%; font-family: var(--font); font-size: var(--fs-h2); font-weight: 800;
+  line-height: 1; cursor: pointer; display: grid; place-items: center;
+  transition: background .15s, color .15s, transform .1s;
+}
+.step-btn:hover:not([disabled]) { background: var(--brand); color: #fff; }
+.step-btn:active:not([disabled]) { transform: scale(.88); }
+.step-btn[disabled] { opacity: .3; cursor: default; }
+
+/* 中间的数字：无框，只有底下那条线在 hover/聚焦时浮出来 ——
+   一眼能看出「这里可以改」，但安静到不跟周围的控件抢。
+   隐掉 number 类型的上下箭头：已经有加减按钮了，不需要第二套微调。 */
 .field-num {
-  width: calc(var(--sp-4) + var(--sp-5)); text-align: center;
-  font-weight: 800; font-size: var(--fs-h2);
+  min-width: calc(var(--sp-5) + var(--sp-2)); padding: 0 var(--sp-1);
+  text-align: center; font-family: var(--font); font-size: var(--fs-h1);
+  font-weight: 800; color: var(--ink);
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
   -moz-appearance: textfield; appearance: textfield;
 }
+.field-num:hover { border-bottom-color: var(--line); }
+.field-num:focus { outline: none; border-bottom-color: var(--brand); }
 .field-num::-webkit-outer-spin-button, .field-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-/* ---------- 数量步进器：[−] N [+] ----------
-   加减按钮 + 中间可输入的数字，而不是 chip 预设：三项任务量各一行，
-   chip 版本一行要放 5 个控件，三行就是 15 个 —— 设一次量要找半天。
-   步进器一行只有 3 个控件，而且「要 12 词」就是点 7 次 +，
-   不用先在预设里找一个接近的、心里再折算一次。
-   按钮尺寸走 --icon-lg（40px）：够大到小孩的手指点得准，
-   又是图标控件该用的档，不去污染字号刻度。 */
-.stepper { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.step-btn {
-  width: var(--icon-lg); height: var(--icon-lg); flex: 0 0 auto;
-  border: 2px solid var(--line); background: #fff; color: var(--brand-dk);
-  border-radius: 50%; font-family: var(--font); font-size: var(--fs-h1); font-weight: 900;
-  line-height: 1; cursor: pointer; display: grid; place-items: center;
-}
-.step-btn:active { transform: scale(.92); background: var(--brand); color: #fff; border-color: var(--brand-dk); }
-.step-btn[disabled] { opacity: .35; cursor: default; }
-.step-btn[disabled]:active { transform: none; background: #fff; color: var(--brand-dk); border-color: var(--line); }
 
 .sent-list { display: flex; flex-direction: column; gap: var(--sp-2); }
 .sent {
@@ -4975,11 +4977,13 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     var goalRow = function (label, key, unit) {
       var cur = S.settings[key];
       return '<div class="row wrap" style="gap:var(--sp-3);align-items:center">' +
-        '<span class="muted" style="flex:0 0 auto">' + label + '</span>' +
+        /* 标签定宽，「学单词」和「拼读练习」字数不同，不定宽的话三行的
+           步进器会错开，看着像没对齐。52px = 两档 sp-5 加一档 sp-1。 */
+        '<span class="muted" style="flex:0 0 auto;min-width:calc(var(--sp-5) * 2 + var(--sp-1))">' + label + '</span>' +
         '<span class="stepper">' +
           '<button class="step-btn" data-step="' + key + '" data-delta="-1"' +
             (cur <= MIN_N ? ' disabled' : '') + ' aria-label="减少' + label + '">−</button>' +
-          '<input class="field field-num" type="number" inputmode="numeric" ' +
+          '<input class="field-num" type="number" inputmode="numeric" ' +
             'min="' + MIN_N + '" max="' + MAX_N + '" step="1" ' +
             'data-numinput="' + key + '" value="' + cur + '" aria-label="' + label + '数量">' +
           '<button class="step-btn" data-step="' + key + '" data-delta="1"' +
@@ -4992,19 +4996,18 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       '<div class="row wrap" style="gap:var(--sp-2)">' +
       '<button class="btn ghost sm" id="set-accent">' + (S.settings.accent === 'uk' ? '🇬🇧 英音' : '🇺🇸 美音') + '</button>' +
       '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开（点此关闭）' : '🔇 音标：关（一二年级建议）') + '</button>' +
-      '</div>' +
-      '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量</h2>' +
-      goalRow('学单词', 'dailyGoal', '词') +
-      goalRow('闯关', 'quizGoal', '题') +
-      goalRow('拼读练习', 'phGoal', '题') +
-      '<div class="muted" style="margin-top:var(--sp-2)">点加减一题一题地调；想直接填就点中间的数字' +
-      '，填完按回车或点别处生效（' + MIN_N + '–' + MAX_N + '）。</div>' +
-      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       '<button class="btn ghost sm" id="exp">⬇️ 导出进度</button>' +
       '<button class="btn ghost sm" id="imp">⬆️ 导入进度</button>' +
       '<button class="btn ghost sm" id="reset">🗑 清空重来</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:var(--sp-3)">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>';
+      '<div class="muted" style="margin-top:var(--sp-3)">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>' +
+      /* 任务量放在家长设置的最后一段：它是这张卡里唯一需要解释的控件，
+         放最后才不会被上面那堆按钮和说明淹掉。取值范围跟在标题后面就够，
+         不必再写一段「怎么用」—— 加减号和可点的数字已经说清楚了。 */
+      '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量 <span class="muted" style="font-weight:600">· 每项 ' + MIN_N + '–' + MAX_N + '</span></h2>' +
+      goalRow('学单词', 'dailyGoal', '词') +
+      goalRow('闯关', 'quizGoal', '题') +
+      goalRow('拼读练习', 'phGoal', '题');
     v.appendChild(c3);
 
     /* --- 语音识别（跟读判分引擎）--- */

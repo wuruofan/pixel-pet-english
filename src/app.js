@@ -3917,11 +3917,13 @@
     var goalRow = function (label, key, unit) {
       var cur = S.settings[key];
       return '<div class="row wrap" style="gap:var(--sp-3);align-items:center">' +
-        '<span class="muted" style="flex:0 0 auto">' + label + '</span>' +
+        /* 标签定宽，「学单词」和「拼读练习」字数不同，不定宽的话三行的
+           步进器会错开，看着像没对齐。52px = 两档 sp-5 加一档 sp-1。 */
+        '<span class="muted" style="flex:0 0 auto;min-width:calc(var(--sp-5) * 2 + var(--sp-1))">' + label + '</span>' +
         '<span class="stepper">' +
           '<button class="step-btn" data-step="' + key + '" data-delta="-1"' +
             (cur <= MIN_N ? ' disabled' : '') + ' aria-label="减少' + label + '">−</button>' +
-          '<input class="field field-num" type="number" inputmode="numeric" ' +
+          '<input class="field-num" type="number" inputmode="numeric" ' +
             'min="' + MIN_N + '" max="' + MAX_N + '" step="1" ' +
             'data-numinput="' + key + '" value="' + cur + '" aria-label="' + label + '数量">' +
           '<button class="step-btn" data-step="' + key + '" data-delta="1"' +
@@ -3934,19 +3936,18 @@
       '<div class="row wrap" style="gap:var(--sp-2)">' +
       '<button class="btn ghost sm" id="set-accent">' + (S.settings.accent === 'uk' ? '🇬🇧 英音' : '🇺🇸 美音') + '</button>' +
       '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开（点此关闭）' : '🔇 音标：关（一二年级建议）') + '</button>' +
-      '</div>' +
-      '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量</h2>' +
-      goalRow('学单词', 'dailyGoal', '词') +
-      goalRow('闯关', 'quizGoal', '题') +
-      goalRow('拼读练习', 'phGoal', '题') +
-      '<div class="muted" style="margin-top:var(--sp-2)">点加减一题一题地调；想直接填就点中间的数字' +
-      '，填完按回车或点别处生效（' + MIN_N + '–' + MAX_N + '）。</div>' +
-      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       '<button class="btn ghost sm" id="exp">⬇️ 导出进度</button>' +
       '<button class="btn ghost sm" id="imp">⬆️ 导入进度</button>' +
       '<button class="btn ghost sm" id="reset">🗑 清空重来</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:var(--sp-3)">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>';
+      '<div class="muted" style="margin-top:var(--sp-3)">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>' +
+      /* 任务量放在家长设置的最后一段：它是这张卡里唯一需要解释的控件，
+         放最后才不会被上面那堆按钮和说明淹掉。取值范围跟在标题后面就够，
+         不必再写一段「怎么用」—— 加减号和可点的数字已经说清楚了。 */
+      '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量 <span class="muted" style="font-weight:600">· 每项 ' + MIN_N + '–' + MAX_N + '</span></h2>' +
+      goalRow('学单词', 'dailyGoal', '词') +
+      goalRow('闯关', 'quizGoal', '题') +
+      goalRow('拼读练习', 'phGoal', '题');
     v.appendChild(c3);
 
     /* --- 语音识别（跟读判分引擎）--- */
