@@ -34,7 +34,12 @@
     words: {},          // word -> {box, due, seen, right, wrong}
     days: {},           // 'YYYY-MM-DD' -> {words, right, wrong, ms, lessons}
     pet: { name: '小恐龙', species: 'dragon', level: 1, xp: 0, sati: 70, mood: 80, clean: 80, food: 0, toy: 0, soap: 0, fedTotal: 0, lastTick: 0, lastPlay: 0, petsDate: '', petsToday: 0, poop: { t: 0, n: 0 } },
-    settings: { dailyGoal: 8, phGoal: 5, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
+    /* 三个任务量各管各的：dailyGoal=学单词，quizGoal=闯关，phGoal=拼读。
+       之前只有 dailyGoal 一个，三个 tab 共用 —— 但它们是三件不同的事：
+       跟读是产出（要张嘴、要录音），闯关是辨认（选一选就行），拼读是拆音。
+       一次要张嘴 8 次、只认 4 次是合理的，硬绑在一起反而不能调。
+       老存档里只有 dailyGoal，另两个走 DEFAULT_STATE 的默认值。 */
+    settings: { dailyGoal: 8, quizGoal: 8, phGoal: 5, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
     hints: { swipe: 0 },   // 用过一次就记一笔：卡片可滑动这件事，提示两次就够了
     lastActive: null,
     streak: 0
@@ -1673,7 +1678,10 @@
   function buildQueue(kind) {
     var book = S.settings.book;
     var due = dueWords(book);
-    var goal = Math.max(5, S.settings.dailyGoal);
+    /* 出多少题 = 设置里闯关要几题。以前是 Math.max(goal, 10)：无论设多少
+       至少给 10 题，于是「今日闯关 0/5」的达标线和手上 10 道题对不上。
+       现在按设置的量给，池子不够就按池子（min），两边说的是同一件事。 */
+    var goal = S.settings.quizGoal;
     var pool;
     if (kind === 'new') {
       var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
@@ -1683,7 +1691,7 @@
     } else {
       pool = due.length ? due : currentBookWords();
     }
-    var q = shuffle(pool).slice(0, Math.max(goal, 10)).map(makeQuestion);
+    var q = shuffle(pool).slice(0, Math.min(goal, pool.length)).map(makeQuestion);
     quiz.queue = q; quiz.idx = 0; quiz.results = []; quiz.sessionStart = Date.now();
   }
 
@@ -1755,6 +1763,7 @@
   function dailyPlan() {
     var d = dayStat();
     var goal = S.settings.dailyGoal;
+    var quizGoal = S.settings.quizGoal;
     var phGoal = S.settings.phGoal;
     /* 第一项跟着 todayPool() 的阶段走：新词没学完是「学单词」，学完了自动
        变成「复习到期词」。cap 取 min(goal, 池子大小) —— 池子就是 buildTodayQueue
@@ -1780,7 +1789,7 @@
         badge: doneN + '/' + cap,
         done: doneN >= cap, go: 'new' },
       { ic: '🔤', title: '拼读练习', badge: phDone + '/' + phGoal, done: phDone >= phGoal, go: 'phonics' },
-      { ic: '🎮', title: '闯关', badge: Math.min(d.quizOk || 0, goal) + '/' + goal, done: (d.quizOk || 0) >= goal, go: 'quiz' }
+      { ic: '🎮', title: '闯关', badge: Math.min(d.quizOk || 0, quizGoal) + '/' + quizGoal, done: (d.quizOk || 0) >= quizGoal, go: 'quiz' }
     ];
   }
 
@@ -3339,18 +3348,19 @@
     var word = q.word;
 
     /* 今日进度：让孩子知道"今天闯关还差几题达标"，避免底部一题孤零零像出题器。
-       进度算今日已答题（含本会话里 quiz.results 之外、之前已累过题的），用 dayStat(). */
+       口径必须和首页那一项一致 —— 都是「答对 N 题」（d.quizOk 只在答对时 +1）。
+       原来这里用 right + wrong，也就是答错也计入，和首页的答对口径互相矛盾：
+       同一件事在两个页面上显示两个数，而且这个数是放大的。 */
     var _d = dayStat();
-    var _answeredToday = (_d.right || 0) + (_d.wrong || 0);
-    var _goal = S.settings.dailyGoal;
-    var _done = Math.min(_answeredToday, _goal);
+    var _goal = S.settings.quizGoal;
+    var _done = Math.min(_d.quizOk || 0, _goal);
     var _dailyPct = Math.round(_done / _goal * 100);
     var _dailyHead = el('div', 'card');
     _dailyHead.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:var(--sp-2)">' +
         '<span class="muted" style="font-size:var(--fs-label)">🎯 今日闯关</span>' +
         '<span class="muted" style="font-size:var(--fs-xs)"><b style="color:var(--brand-dk)">' + _done + '</b> / ' + _goal +
-          (_answeredToday >= _goal ? ' · 达标 🎉' : '') + ' · ' + _dailyPct + '%</span>' +
+          (_done >= _goal ? ' · 达标 🎉' : '') + ' · ' + _dailyPct + '%</span>' +
       '</div>' +
       '<div class="bar"><i style="width:' + _dailyPct + '%"></i></div>';
     v.appendChild(_dailyHead);
@@ -3899,20 +3909,24 @@
 
     /* --- 家长设置 --- */
     var c3 = el('div', 'card');
-    /* 两个任务量各一行：预设 chip + 一个可以自己填的数字框。
-       chip 保留是因为「5 / 8 / 12」这种常见值一键点最快，输入框是因为
-       5/8/12 之外的值（课本 25 词、想一天练 20 个）以前根本设不了。
-       数字框一直显示当前值，不藏起来 —— 藏了就不知道现在是多少，
-       而家长改的正是这个数。 */
-    var goalRow = function (label, key, unit, presets) {
+    /* 三个任务量各一行：[−] 当前值 [+]，中间的数字可以直接点开输入。
+       不用 chip 预设 —— 三行 × 5 个控件 = 15 个控件，设一次量要找半天；
+       而且「要 12 词」在 chip 版里只能选 12 或者选 5 再心里折算。
+       步进器一行 3 个控件，12 就是点 7 次 +，不用预判。 */
+    var MIN_N = 1, MAX_N = 50;
+    var goalRow = function (label, key, unit) {
       var cur = S.settings[key];
-      return '<div class="row wrap" style="gap:var(--sp-2);align-items:center">' +
+      return '<div class="row wrap" style="gap:var(--sp-3);align-items:center">' +
         '<span class="muted" style="flex:0 0 auto">' + label + '</span>' +
-        presets.map(function (n) {
-          return '<button class="chip' + (cur === n ? ' on' : '') + '" data-num="' + key + '" data-v="' + n + '">' + n + '</button>';
-        }).join('') +
-        '<input class="field field-num" type="number" inputmode="numeric" min="1" max="50" step="1" ' +
-          'data-numinput="' + key + '" value="' + cur + '" aria-label="' + label + '数量">' +
+        '<span class="stepper">' +
+          '<button class="step-btn" data-step="' + key + '" data-delta="-1"' +
+            (cur <= MIN_N ? ' disabled' : '') + ' aria-label="减少' + label + '">−</button>' +
+          '<input class="field field-num" type="number" inputmode="numeric" ' +
+            'min="' + MIN_N + '" max="' + MAX_N + '" step="1" ' +
+            'data-numinput="' + key + '" value="' + cur + '" aria-label="' + label + '数量">' +
+          '<button class="step-btn" data-step="' + key + '" data-delta="1"' +
+            (cur >= MAX_N ? ' disabled' : '') + ' aria-label="增加' + label + '">+</button>' +
+        '</span>' +
         '<span class="muted" style="flex:0 0 auto">' + unit + '</span>' +
         '</div>';
     };
@@ -3922,10 +3936,11 @@
       '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开（点此关闭）' : '🔇 音标：关（一二年级建议）') + '</button>' +
       '</div>' +
       '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量</h2>' +
-      goalRow('学单词 / 闯关', 'dailyGoal', '词', [5, 8, 12, 20]) +
-      goalRow('拼读练习', 'phGoal', '题', [3, 5, 8, 10]) +
-      '<div class="muted" style="margin-top:var(--sp-2)">点 chip 是快捷档；想练多少就自己在框里填，' +
-      '填完按回车或点别处生效（1–50）。</div>' +
+      goalRow('学单词', 'dailyGoal', '词') +
+      goalRow('闯关', 'quizGoal', '题') +
+      goalRow('拼读练习', 'phGoal', '题') +
+      '<div class="muted" style="margin-top:var(--sp-2)">点加减一题一题地调；想直接填就点中间的数字' +
+      '，填完按回车或点别处生效（' + MIN_N + '–' + MAX_N + '）。</div>' +
       '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       '<button class="btn ghost sm" id="exp">⬇️ 导出进度</button>' +
       '<button class="btn ghost sm" id="imp">⬆️ 导入进度</button>' +
@@ -3970,20 +3985,20 @@
       S.settings.accent = S.settings.accent === 'uk' ? 'us' : 'uk'; save(); renderSettings();
       toast('已切换到' + (S.settings.accent === 'uk' ? '英式' : '美式') + '发音');
     };
-    /* 任务量：chip 和输入框都走 setNum，两条路写的是同一个 settings key，
-       所以不会出现「chip 亮着 8、框里却是 20」这种分裂状态。 */
+    /* 任务量：加减按钮和输入框都走 setNum，两条路写的是同一个 settings key，
+       所以不会出现「按钮显示 8、框里却是 20」这种分裂状态。 */
     var setNum = function (key, v) {
       /* 夹取而不是拒绝：家长把框清空或者填 0 的时候，页面不该跳回设置页
          或者变成 NaN。1–50 的上限来自「课本最大 57 词，一天练 50 词没有意义」，
          下限 1 是为了别把进度条变成 0/0。 */
       var n = Math.round(Number(v));
-      if (!isFinite(n) || n < 1) n = 1;
-      if (n > 50) n = 50;
+      if (!isFinite(n) || n < MIN_N) n = MIN_N;
+      if (n > MAX_N) n = MAX_N;
       if (S.settings[key] === n) { renderSettings(); return; }
       S.settings[key] = n; save(); renderSettings();
     };
-    $$('#set-body [data-num]').forEach(function (b) {
-      b.onclick = function () { setNum(b.dataset.num, b.dataset.v); };
+    $$('#set-body [data-step]').forEach(function (b) {
+      b.onclick = function () { setNum(b.dataset.step, S.settings[b.dataset.step] + Number(b.dataset.delta)); };
     });
     $$('#set-body [data-numinput]').forEach(function (inp) {
       /* change 而不是 input：input 每敲一个键就存一次 + 重画整个设置页，
