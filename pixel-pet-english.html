@@ -594,6 +594,15 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
    再大一档（--fs-h1）时三个 24px 的数字会压过整行内容，看着像在喊。
    按钮同理：28px 还是有点重，收到 --sp-5（24px），够手指点，也不至于
    变成三个装饰品。 */
+/* 任务量每行前面的列表符号。定宽是为了让三行的步进器对齐 ——
+   「学单词」三个字、「拼读练习」四个字，不定宽就会错开。
+   符号走 ::before 而不是写进文案：它是装饰，不该被读屏念出来，
+   也不该混进 aria-label 的内容里。
+   用 • 而不是 ·：· 在这个项目里是分隔符的角色（8 处标题都用它），
+   列表符号得跟它区分开。 */
+.goal-label { flex: 0 0 auto; min-width: calc(var(--sp-5) * 2 + var(--sp-2)); }
+.goal-label::before { content: "•"; color: var(--line); margin-right: var(--sp-2); }
+
 .stepper { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .step-btn {
   width: var(--sp-5); height: var(--sp-5); flex: 0 0 auto;
@@ -4978,9 +4987,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     var goalRow = function (label, key, unit) {
       var cur = S.settings[key];
       return '<div class="row wrap" style="gap:var(--sp-3);align-items:center">' +
-        /* 标签定宽，「学单词」和「拼读练习」字数不同，不定宽的话三行的
-           步进器会错开，看着像没对齐。52px = 两档 sp-5 加一档 sp-1。 */
-        '<span class="muted" style="flex:0 0 auto;min-width:calc(var(--sp-5) * 2 + var(--sp-1))">' + label + '</span>' +
+        '<span class="muted goal-label">' + label + '</span>' +
         '<span class="stepper">' +
           '<button class="step-btn" data-step="' + key + '" data-delta="-1"' +
             (cur <= MIN_N ? ' disabled' : '') + ' aria-label="减少' + label + '">−</button>' +

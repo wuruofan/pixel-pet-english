@@ -3917,9 +3917,7 @@
     var goalRow = function (label, key, unit) {
       var cur = S.settings[key];
       return '<div class="row wrap" style="gap:var(--sp-3);align-items:center">' +
-        /* 标签定宽，「学单词」和「拼读练习」字数不同，不定宽的话三行的
-           步进器会错开，看着像没对齐。52px = 两档 sp-5 加一档 sp-1。 */
-        '<span class="muted" style="flex:0 0 auto;min-width:calc(var(--sp-5) * 2 + var(--sp-1))">' + label + '</span>' +
+        '<span class="muted goal-label">' + label + '</span>' +
         '<span class="stepper">' +
           '<button class="step-btn" data-step="' + key + '" data-delta="-1"' +
             (cur <= MIN_N ? ' disabled' : '') + ' aria-label="减少' + label + '">−</button>' +
