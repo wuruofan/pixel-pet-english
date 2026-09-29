@@ -3932,18 +3932,23 @@
         '<span class="muted" style="flex:0 0 auto">' + unit + '</span>' +
         '</div>';
     };
-    c3.innerHTML = '<h2 class="section">家长设置</h2>' +
+    /* 两行：第一行是学习偏好，第二行是进度数据。分开的理由不是排版好看 ——
+       导出/导入/清空动的是存档，跟「英音还是美音」不是一类东西，
+       放一行里容易被当成一组同类选项顺手点下去（清空重来不可撤销）。
+       按钮只报状态，不报用法：「点此关闭」这种话是控件自己该知道的事，
+       真正需要说的（音标建议、进度只在本机）并到标题后面一句。 */
+    c3.innerHTML = '<h2 class="section">家长设置 <span class="muted" style="font-weight:600">· 一二年级建议关音标 · 进度只存本机，换设备用导出/导入</span></h2>' +
       '<div class="row wrap" style="gap:var(--sp-2)">' +
       '<button class="btn ghost sm" id="set-accent">' + (S.settings.accent === 'uk' ? '🇬🇧 英音' : '🇺🇸 美音') + '</button>' +
-      '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开（点此关闭）' : '🔇 音标：关（一二年级建议）') + '</button>' +
+      '<button class="btn ghost sm" id="ipa-toggle">' + (S.settings.showIpa ? '🔊 音标：开' : '🔇 音标：关') + '</button>' +
+      '</div>' +
+      '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-2)">' +
       '<button class="btn ghost sm" id="exp">⬇️ 导出进度</button>' +
       '<button class="btn ghost sm" id="imp">⬆️ 导入进度</button>' +
       '<button class="btn ghost sm" id="reset">🗑 清空重来</button>' +
       '</div>' +
-      '<div class="muted" style="margin-top:var(--sp-3)">一二年级不学音标，默认用彩色字素块代替；进度只保存在这台设备的浏览器里，换设备请用导出/导入。</div>' +
-      /* 任务量放在家长设置的最后一段：它是这张卡里唯一需要解释的控件，
-         放最后才不会被上面那堆按钮和说明淹掉。取值范围跟在标题后面就够，
-         不必再写一段「怎么用」—— 加减号和可点的数字已经说清楚了。 */
+      /* 任务量放在最后：它是这张卡里唯一需要解释的控件，
+         放最后才不会被上面的按钮和标题说明淹掉。 */
       '<h2 class="section" style="margin-top:var(--sp-4)">每日任务量 <span class="muted" style="font-weight:600">· 每项 ' + MIN_N + '–' + MAX_N + '</span></h2>' +
       goalRow('学单词', 'dailyGoal', '词') +
       goalRow('闯关', 'quizGoal', '题') +
