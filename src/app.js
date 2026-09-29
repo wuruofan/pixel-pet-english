@@ -1877,7 +1877,7 @@
   var learnMode = 'today';      // 'today' = 今日关卡（默认），'browse' = 全部词库
   var learnQueue = [];          // 今日关卡的词序列（用户级关卡进度，不入 storage）
   var learnPos = 0;             // 今日关卡当前第几个词
-  var learnHits = {};           // { 队列下标: 已命中次数 }，左右滑回看时保留进度
+  var learnHits = {};           // { 队列下标: 已命中次数 }，回看时保留进度
   var learnPassed = {};         // { 队列下标: true }，已通过并计过分的词
   var learnBusy = false;        // 录音进行中，避免重复触发
   var learnFinalWords = [];     // 最近一次识别结果（累积命中判定）
@@ -1887,7 +1887,7 @@
   var learnEnded = true;        // 本次录音是否已真正结束（onend 触发）；用于兜底检测「卡死」
   var learnStartTs = 0;         // 本次录音开始时间（诊断：区分「几乎没录上」vs「听了没声音」）
   var learnEngine = 'sf';       // 当前一轮录音走的引擎：仅硅基流动云端 ASR（'sf'）
-  var learnEnterDir = 0;        // 新卡入场方向：1=从右（左滑后）、-1=从左（右滑后）
+  var learnEnterDir = 0;        // 新卡入场方向：1=从右（下一题）、-1=从左
   var HITS_GOAL = 2;            // 跟读几次算通过
   var SWIPE_HINT_MAX = 2;       // 「卡片能滑」这件事最多提示两次
   var learnHintPending = false; // 本次进入 tab 是否还没用过摇晃提示
@@ -1898,8 +1898,8 @@
     return renderLearnBrowse(v);
   }
   /* ---------- 滑动提示：头两次进页面晃一下 ---------- */
-  /* 孩子不知道卡片能左右滑。进入 tab 时预置一次提示，卡片真正渲染出来才播放并计数；
-     一旦他自己滑成功过，就直接记满，后面不再打扰。 */
+  /* 孩子不知道翻词库里的卡片能左右滑。进入 tab 时预置一次提示，卡片真正渲染出来
+     才播放并计数；一旦他自己滑成功过，就直接记满，后面不再打扰。 */
   function armSwipeHint() {
     learnHintPending = swipeHintLeft() > 0;
   }
@@ -1953,7 +1953,7 @@
         '<span class="muted">今日新词 · 第 ' + (learnPos + 1) + ' / ' + learnQueue.length + ' 个</span>' +
         '<span class="hits-row">' + hitsHtml(hits) + '</span>' +
       '</div>' +
-      learnWordCardHtml(word, wcNavHtml()) +
+      learnWordCardHtml(word) +
       '<div class="learn-status' + (passed ? ' ok' : '') + '" id="learn-status">' +
         esc(learnStatusText(word, hits, passed, supported)) +
       '</div>' +
@@ -1967,44 +1967,46 @@
         '<button class="nomic-re" id="mic-recheck" aria-label="配好 Key 后点这里重新检测">🔄</button></div>') +
       (passed || !supported ? '' :
         '<button class="btn ghost xs" id="mic-self" style="margin-top:var(--sp-3)">我读过了（自评）</button>') +
-      '<div class="learn-tip">' + esc(swipeTipText(passed)) + '</div>';
+      /* Advancing still requires the reading check — the drill is a reading
+         drill, and a gate that can be walked past teaches nothing. What changed
+         is HOW you advance: one explicit button, matching the phonics and quiz
+         tabs, instead of the card's side arrows plus swipe-to-flip. The
+         self-rating ✅ remains the escape hatch when speech recognition is
+         unavailable or never matches, so the child is never truly stuck. */
+      '<button class="btn green big next-round" id="learn-next"' +
+        (passed ? '' : ' disabled title="先跟读出这个词再继续"') +
+        ' style="margin-top:var(--sp-4)">' +
+        (learnPos >= learnQueue.length - 1 ? '看看今天的结果 🎉' : '下一题 →') + '</button>';
     v.appendChild(card);
     if (learnEnterDir) card.classList.add(learnEnterDir > 0 ? 'card-in-r' : 'card-in-l');
     learnEnterDir = 0;
 
     bindWordCardPlayback(card, word);
     bindLearnSpeak(card);
-    bindLearnSwipe(card);
-    $('#nav-prev').onclick = function () { tryGo('prev'); };
-    $('#nav-next').onclick = function () { tryGo('next'); };
     /* 配置 Key 后点 🔄 即时重检引擎并重建卡片，无需整页刷新 */
     var rc = $('#mic-recheck');
     if (rc) rc.onclick = function () { render(); };
+    $('#learn-next').onclick = function () { abandonLearnMic(); learnGoNext(); };
 
-    playSwipeHint(card);
     appendBrowseEntry(v);
   }
 
   function hitsFor(pos) { return learnHits[pos] || 0; }
 
   /* 翻词箭头：配图左右各一个尖括号，纯 SVG 现画，不依赖任何图片素材。
-     左=上一个、右=下一个，和「左滑下一个 / 右滑上一个」的滑动方向一致。 */
+     左=上一个、右=下一个，和「左滑下一个 / 右滑上一个」的滑动方向一致。
+     `lock` 可选，同 bindLearnSwipe：返回字符串则该方向置灰。翻词库是自由
+     浏览、循环翻页，不传 lock，两侧永远可点。 */
   var NAV_PATH = { prev: 'M15 5 L8 12 L15 19', next: 'M9 5 L16 12 L9 19' };
-  function wcNavHtml() {
+  function navArrowsHtml(prefix, lock) {
     return ['prev', 'next'].map(function (dir) {
-      var last = dir === 'next' && learnPos >= learnQueue.length - 1;
-      var label = dir === 'prev' ? '上一个词' : (last ? '完成，看结果' : '下一个词');
-      return '<button class="wc-nav ' + dir + (swipeBlockReason(dir) ? ' off' : '') + '"' +
-        ' id="nav-' + dir + '" title="' + label + '" aria-label="' + label + '">' +
+      var off = lock ? lock(dir) : null;
+      var label = dir === 'prev' ? '上一个词' : '下一个词';
+      return '<button class="wc-nav ' + dir + (off ? ' off' : '') + '"' +
+        ' id="' + prefix + '-' + dir + '" title="' + label + '" aria-label="' + label + '">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + NAV_PATH[dir] + '"/></svg>' +
         '</button>';
     }).join('');
-  }
-
-  /* 底部一行小字：只说明「怎么翻页」，不重复状态行已经说过的话 */
-  function swipeTipText(passed) {
-    if (!passed) return '读满 ' + HITS_GOAL + ' 次才能翻页 · 也可以点箭头';
-    return '← 左右滑一滑翻词 · 点箭头也行 →';
   }
 
   /* 跟读按钮：支持识别时是「点一下录 / 再点一下停」的开关；不支持时降级为自评 ✅ */
@@ -2026,34 +2028,32 @@
     var mic = scope.querySelector('#mic-btn');
     if (mic) mic.onclick = toggleLearnMic;
     var fb = scope.querySelector('#mic-btn-fb');
-    if (fb) fb.onclick = onLearnHit;
     var self = scope.querySelector('#mic-self');
-    if (self) self.onclick = function () { if (learnBusy) abandonLearnMic(); onLearnHit(); };
+    /* Self-rating has no recording behind it: every tap is one independent
+     * judgement, so it must NOT go through onLearnHit's `learnHitScored`
+     * de-duplication. That flag exists so a single recognition that fires
+     * onend twice is counted once — but it is only reset in abandonLearnMic(),
+     * which self-rating never reaches. Result: the first tap set the flag, the
+     * second tap hit `if (learnHitScored) return`, hits froze at 1 and
+     * HITS_GOAL=2 could never be reached — the escape hatch deadlocked the
+     * child on a single word. Clear the flag before each self-rating. */
+    if (fb) fb.onclick = function () { learnHitScored = false; onLearnHit(); };
+    if (self) self.onclick = function () { if (learnBusy) abandonLearnMic(); learnHitScored = false; onLearnHit(); };
   }
 
-  /* ---------- 滑动：跟手位移 + 倾斜，未过关时锁住 ---------- */
-  /* 返回 null 表示这个方向可以划走；返回字符串即被拦住的原因（同时用于 toast）。
-     规则只有一条：当前词没过关就别想翻页——去下一个和回上一个都不行。 */
-  function swipeBlockReason(dir) {
-    if (!learnPassed[learnPos]) return '先读出这个词 ' + HITS_GOAL + ' 次才能过关哦 🎤';
-    if (dir === 'prev' && learnPos <= 0) return '已经是第一个词啦';
-    return null;
-  }
-
-  /* 按钮 / 键盘走的都是同一条判定，保证桌面端和触屏行为一致 */
-  function tryGo(dir) {
-    var reason = swipeBlockReason(dir);
-    if (reason) { toast(reason); return; }
-    markSwipeLearned();          /* 自己翻过一次就不用再教了 */
-    learnHintPending = false;
-    stopSwipeHintIfAny();
-    learnEnterDir = dir === 'next' ? 1 : -1;
-    if (dir === 'next') learnGoNext(); else learnGoPrev();
-  }
+  /* ---------- 滑动：跟手位移 + 倾斜 ---------- */
+  /* 判定规则由调用方通过 bindLearnSwipe 的 lock 参数传入，翻词库不传即自由滑动。
+     「没过关就不许翻页」这条规则已随今日关卡改用「下一题」按钮而移除。 */
 
   var SWIPE_MIN = 54;   // 判定为「划走」的最小位移
   var SWIPE_SOFT = 110; // 超过后进入阻尼，避免卡片被拖出屏幕
-  function bindLearnSwipe(node) {
+  /* Swipe-to-flip lives on the BROWSE card only. Today's drill advances with a
+     button, because gating a button on "have you passed the reading check yet"
+     is what used to strand a child on one word. `lock` is optional: return a
+     string to refuse that direction (the card still gives resistance so the
+     push feels solid rather than dead), or omit it for a free-scrolling card. */
+  function bindLearnSwipe(node, go, lock) {
+    var locked = function (dir) { return lock ? lock(dir) : null; };
     var x0 = null, y0 = null, t0 = 0, onBtn = false, dragging = false, dx = 0, dirNow = 0;
     var suppressClick = false;
 
@@ -2088,10 +2088,10 @@
       }
       dx = tx;
       dirNow = dx < 0 ? 1 : -1;
-      var locked = !!swipeBlockReason(dirNow > 0 ? 'next' : 'prev');
-      var off = swipeOffset(dx, locked);
+      var isLocked = !!locked(dirNow > 0 ? 'next' : 'prev');
+      var off = swipeOffset(dx, isLocked);
       node.style.transform = 'translateX(' + off.toFixed(1) + 'px) rotate(' + (off * 0.035).toFixed(2) + 'deg)';
-      node.style.opacity = locked ? '1' : Math.max(0.5, 1 - Math.abs(off) / 420).toFixed(2);
+      node.style.opacity = isLocked ? '1' : Math.max(0.5, 1 - Math.abs(off) / 420).toFixed(2);
       if (e.cancelable) e.preventDefault();
     }, { passive: false });
 
@@ -2107,10 +2107,10 @@
       if (!wasDragging) return;
       suppressClick = true;       /* 滑过就别再当成「点箭头」了 */
       setTimeout(function () { suppressClick = false; }, 400);
-      var reason = swipeBlockReason(dir);
+      var reason = locked(dir);
       if (reason) { snapBack(node); toast(reason); return; }
       if (dist < SWIPE_MIN || Date.now() - t0 > 900) { snapBack(node); return; }
-      flyOut(node, dir, function () { tryGo(dir); });
+      flyOut(node, dir, function () { go(dir); });
     }
     node.addEventListener('touchend', end, { passive: true });
     node.addEventListener('touchcancel', function () { if (x0 == null) return; x0 = null; dragging = false; node.classList.remove('dragging'); snapBack(node); }, { passive: true });
@@ -2193,15 +2193,28 @@
     v.appendChild(header);
     $('#learn-today').onclick = enterTodayMode;
 
-    /* 词卡（复用 today 的视觉；这里只听不跟读，所以只有 🔊 🐢 两个按钮） */
-    var c = el('div', 'card wordcard');
-    c.innerHTML = learnWordCardHtml(word) +
+    /* 词卡（复用 today 的视觉；这里只听不跟读，所以只有 🔊 🐢 两个按钮）。
+       翻卡交互归这里：左右箭头 + 左右滑动，对应「随便翻翻词库」；今日关卡那边
+       改成统一的「下一题」按钮，不再靠滑。词库是循环的，两侧永不禁用。 */
+    var browseGo = function (dir) {
+      markSwipeLearned();
+      learnHintPending = false;
+      stopSwipeHintIfAny();
+      learnIdx = (learnIdx + (dir === 'next' ? 1 : -1) + list.length) % list.length;
+      stopAudio(); render();
+    };
+    var c = el('div', 'card wordcard learn-swipe');
+    c.innerHTML = learnWordCardHtml(word, navArrowsHtml('browse', null)) +
       '<div class="learn-action">' +
         '<button class="speak-btn" id="s1" aria-label="听发音">' + SPK + '</button>' +
         '<button class="speak-btn" id="s2" aria-label="慢速发音">🐢</button>' +
       '</div>';
     v.appendChild(c);
     bindWordCardPlayback(c, word);
+    bindLearnSwipe(c, browseGo);
+    $('#browse-prev').onclick = function () { browseGo('prev'); };
+    $('#browse-next').onclick = function () { browseGo('next'); };
+    playSwipeHint(c);
 
     if (pd.length) {
       var c2 = el('div', 'card');
@@ -2246,13 +2259,9 @@
 
     var c4 = el('div', 'card');
     c4.innerHTML = '<div class="row" style="gap:var(--sp-3)">' +
-      '<button class="btn ghost" id="prev" style="flex:1;white-space:nowrap">← 上一个</button>' +
-      '<button class="btn green" id="know" style="flex:1.4;white-space:nowrap">我记住了</button>' +
-      '<button class="btn ghost" id="next" style="flex:1;white-space:nowrap">下一个 →</button>' +
+      '<button class="btn green" id="know" style="flex:1;white-space:nowrap">我记住了</button>' +
       '</div>';
     v.appendChild(c4);
-    $('#prev').onclick = function () { learnIdx = (learnIdx - 1 + list.length) % list.length; stopAudio(); render(); };
-    $('#next').onclick = function () { learnIdx = (learnIdx + 1) % list.length; stopAudio(); render(); };
     $('#know').onclick = finishBrowseWord;
   }
 
@@ -2517,7 +2526,7 @@
     /* 已过的词再读：停掉录音、给个方向提示，不再重复计分 */
     if (learnPassed[learnPos]) {
       learnHitScored = true;
-      stopCurrentMic(); beep('ok'); toast('已经过关啦，左滑去下一个词 👉');
+      stopCurrentMic(); beep('ok'); toast('已经过关啦，点下面的「下一题」继续 👇');
       return;
     }
     if (learnHitScored) return;     // 同一次录音里结果可能多次命中，只计一次
@@ -2539,10 +2548,10 @@
     learnPassed[learnPos] = true;
     grade(word, true);                  /* 记入 SRS + newWords */
     gainXp(3, 'food', 2);
-    toast('🎤 ' + word + ' 通过！+1 🍖 · 左滑下一个');
+    toast('🎤 ' + word + ' 通过！+1 🍖 · 点下面的「下一题」');
   }
 
-  /* 左右滑 / 按钮：纯导航，不记通过。滑过末尾即进入结果卡。 */
+  /* 「下一题」：纯导航，不记通过。到末尾即进入结果卡。 */
   function learnGoNext() {
     learnPos = learnPos >= learnQueue.length - 1 ? learnQueue.length : learnPos + 1;
     abandonLearnMic(); render();
@@ -2551,11 +2560,12 @@
     if (learnPos <= 0) return;
     learnPos--; abandonLearnMic(); render();
   }
-  /* 桌面端没有触摸：方向键同样映射为「左=下一个 / 右=上一个」，判定与触屏共用 */
+  /* 桌面端没有触摸：方向键映射到翻词库的左右翻词（今日关卡现在是「下一题」按钮，
+     不用方向键）。左右与卡片箭头保持一致：← 上一个、→ 下一个。 */
   document.addEventListener('keydown', function (e) {
-    if (tab !== 'learn' || learnMode !== 'today') return;
-    if (e.key === 'ArrowLeft') tryGo('next');
-    else if (e.key === 'ArrowRight') tryGo('prev');
+    if (tab !== 'learn' || learnMode !== 'browse') return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); $('#browse-prev') && $('#browse-prev').click(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); $('#browse-next') && $('#browse-next').click(); }
   });
 
   /* 全部词库模式下的"我记住了"按钮同样走 grade，但不走跟读 */
@@ -2620,7 +2630,11 @@
     learnMode = 'today';
     if (!learnQueue.length) { learnQueue = buildTodayQueue(); learnPos = 0; }
     abandonLearnMic();
-    render();
+    /* 切 tab 必须走 go()：render() 只按 tab 分派，不改 tab。
+       首页的「一键开练」和「学单词」任务都调这里，直接 render() 会把首页原地重画一遍，
+       看起来就是「点了没反应」。已在 learn tab 内时（如「回今日关卡」）go('learn') 同 tab，
+       等价于原来的 render()。 */
+    go('learn');
   }
   function buildTodayQueue() {
     /* 取当前课本里未学过的词，随机抽 dailyGoal 个；若全部都学过则退化为
