@@ -21,8 +21,34 @@ scripts/fetch_textbooks.js  scripts/fetch_words.js  scripts/build.js
 ```bash
 node scripts/fetch_textbooks.js   # 抓教材 → data/textbooks.json
 node scripts/fetch_words.js       # 抓单词 → data/words.json
-node scripts/build.js             # 打包 → pixel-pet-english.html
+node scripts/build.js             # 纠错 + 体检 + 打包 → pixel-pet-english.html
 ```
+
+## 加词库后怎么验
+
+抓来的 `pindu` 是「字素 → 音素」的**对齐结果**，不是教学规则 —— 双写辅音当年四个词
+全标反了（rabbit / happy / apple / yellow 标成「前哑后响」，其实该是前响后哑）。
+这类错不会自己暴露，所以纠错和体检都挂在构建链上：`build.js` 先纠错再体检，
+**有 ERROR 就不出包**。
+
+```bash
+node scripts/phonics-rules.js   # 纠错 + 体检当前 data/，有 ERROR 退出码 1
+node scripts/probe-phonics.js   # 查已构建的产物
+```
+
+规则全在 `scripts/phonics-rules.js`，构建和体检共用同一份判定，不会出现「体检绿灯、
+构建出来却不对」。体检跑四组：
+
+| 组 | 拦住什么 |
+|---|---|
+| 源词库 | 字素拼不回原词、`start` 与真实位置对不上（高亮直接指错字母）、有音没音频（死按钮）、双写辅音前后颠倒 |
+| 字素表 | `letters\|sound` 键重复（会静默覆盖）、条目没有例词（卡片是空的）、有音没音频 |
+| 题目 | 某字素干扰项候选不足 3 个（听音选字母凑不满 4 个选项）、某本书一个词都拆不了（拆词拼读空着） |
+| 产物 | 210 处例词高亮逐个回代核对：高亮必须落在**同时满足「字母相同」且「音相同」**的那一段上 |
+
+最后一条是当初那个 bug 的落点：`panda` 的第二个 `a` 读 /ə/，只按字母找会标到第一个
+`a` 去。体检查不了「读音本身对不对」（sister 第二个 `s` 其实读 /z/，数据标成 /s/），
+那类只能靠人抽查。
 
 ## 本地预览与宠物动作测试
 

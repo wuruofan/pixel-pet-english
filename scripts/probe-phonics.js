@@ -61,3 +61,45 @@ for (const w of MUST_APPEAR) {
 }
 
 console.log('PHONEMES_BY_WORD probe OK: ' + Object.keys(PHONEMES_BY_WORD).length + ' words exported');
+
+/* ------------------------------------------------------------------
+ * 字素卡例词高亮必须落在「带这个音的那一段」上。
+ *
+ * 这条是字素表真正会被孩子看见的东西，也是当初 rabbit 的第一个 b 被标成
+ * 哑字母、高亮却指着它的那个 bug 的落点。数据体检（phonics-rules.js）只能
+ * 保证 pindu 本身自洽，标到哪一段要看运行时的定位逻辑，所以在这里查。
+ *
+ * 跑的是 src/app.js 里真正的 phWordHtml，不复刻 —— 复刻的那份迟早会跟实现跑偏。
+ * ------------------------------------------------------------------ */
+const APPJS = path.join(ROOT, 'src', 'app.js');
+const appSrc = fs.readFileSync(APPJS, 'utf8');
+const fnSrc = appSrc.match(/function phWordHtml[\s\S]*?\n  \}/);
+assert.ok(fnSrc, 'phWordHtml must exist in src/app.js');
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const phWordHtml = new Function('WORDS', 'esc', fnSrc[0] + '\nreturn phWordHtml;')(
+  extractGlobal('WORDS').words, esc);
+
+const PHONICS = extractGlobal('PHONICS');
+const ALL = [];
+PHONICS.groups.forEach((g) => g.items.forEach((it) => ALL.push(it)));
+
+let marks = 0;
+for (const it of ALL) {
+  for (const word of it.words || []) {
+    const html = phWordHtml(word, it.letters, it.sound);
+    const m = html.match(/<b class="ph-hl">(.*?)<\/b>/);
+    assert.ok(m, word + ' /' + (it.sound || '静') + '/ 例词没有高亮出来');
+    const at = html.indexOf('<b'), seg = m[1].toLowerCase(), sound = it.sound || '';
+    /* 高亮位置回代到 pindu：那一段必须同时满足「字母相同」和「音相同」 */
+    let off = 0, hit = false;
+    for (const p of extractGlobal('WORDS').words[word].pindu) {
+      if (off === at && p.letters.toLowerCase() === seg && (p.sound || '') === sound) hit = true;
+      off += p.letters.length;
+    }
+    assert.ok(hit, word + ' /' + sound + '/ 高亮落在第 ' + at + ' 位的「' + m[1] +
+      '」，不是带这个音的那一段');
+    marks++;
+  }
+}
+console.log('字素例词高亮 probe OK: ' + marks + ' 处都落在 (字母, 音) 对得上的那一段');

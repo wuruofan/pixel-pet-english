@@ -5,6 +5,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const rules = require('./phonics-rules');
 
 const root = path.join(__dirname, '..');
 const outFile = path.join(root, 'pixel-pet-english.html');
@@ -40,62 +41,20 @@ const textbooks = {
 /* ------------------------------------------------------------------
  * 自然拼读（phonics）数据层
  *
- * 来源：每个词的 pindu 已经是「字素 → 音素」对齐（拼接后能 100% 还原原词），
- * 但它是对齐结果，不是教学规则 —— 像 grandma 里的 nd→/n/、two 里的 wo→/uː/
- * 只是"哑音字母被粘到了邻居上"，拿去当规则教孩子是错的。
- * 所以这里只保留标准字素（grapheme），其余丢弃。
+ * 判定「哪些字素能教」「抓来的数据要先纠什么错」「体检查哪些条」全在
+ * phonics-rules.js：构建和 `node scripts/phonics-rules.js` 必须用同一份，
+ * 否则会出现「体检绿灯、构建出来却不对」这种最坏情况。
+ *
+ * check() 原地纠正 words.words[*].pindu，之后本文件后面所有读取
+ * （buildPhonics / PHONEMES_BY_WORD）拿到的都是干净数据，一个循环都不用改。
  * ------------------------------------------------------------------ */
-const RCTRL = new Set(['ar', 'er', 'ir', 'or', 'ur', 'air', 'are', 'ear', 'eer', 'ere', 'ire', 'ore', 'our', 'oor', 'oar', 'ure']);
-const VOW_TEAMS = new Set(['ai', 'ay', 'au', 'aw', 'al', 'ea', 'ee', 'ei', 'eu', 'ew', 'ey', 'ie', 'oa', 'oe', 'oi', 'oo', 'ou', 'ow', 'oy', 'ua', 'ue', 'ui', 'igh', 'eigh']);
-const CONS_TEAMS = new Set(['ch', 'sh', 'th', 'wh', 'ph', 'gh', 'ck', 'ng', 'nk', 'kn', 'wr', 'gn', 'mb', 'qu', 'bl', 'cl', 'fl', 'gl', 'pl', 'sl', 'br', 'cr', 'dr', 'fr', 'gr', 'pr', 'tr', 'sc', 'sk', 'sm', 'sn', 'sp', 'st', 'sw', 'tw', 'scr', 'shr', 'spr', 'str', 'thr', 'ing', 'ge']);
-const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
-
-function classify(letters, sound) {
-  if (!sound) return 'silent';            // 不发音的字母（magic-e、双写等）
-  const L = letters.toLowerCase();
-  if (RCTRL.has(L)) return 'rctrl';
-  if (L.length === 1) return VOWELS.has(L) ? 'vowel' : 'cons';
-  if (VOW_TEAMS.has(L)) return 'vteam';
-  if (CONS_TEAMS.has(L)) return 'cteam';
-  // 双写辅音（pp/ss/gg…）只发一个音，是标准拼读规则，保留
-  if (L.length === 2 && L[0] === L[1] && !VOWELS.has(L[0])) return 'cteam';
-  return null;                             // 其余是不可教学的粘合块，丢弃
+const gate = rules.check(words.words, textbooksRaw);
+const phonics = gate.phonics;
+if (gate.findings.length) console.log(rules.report(gate.findings));
+if (gate.findings.some((f) => f.level === 'error')) {
+  console.error('构建中止：上面的 ERROR 修好再出包。');
+  process.exit(1);
 }
-
-const GROUPS = [
-  { id: 'cons', label: '辅音字母', tip: '一个字母一个音，最好记' },
-  { id: 'vowel', label: '元音字母', tip: '同一个字母可能有好几种读法' },
-  { id: 'cteam', label: '辅音组合', tip: '两个字母一起发一个音' },
-  { id: 'vteam', label: '元音组合', tip: '两个元音一起，常常读长音' },
-  { id: 'rctrl', label: 'r 控元音', tip: '元音后面跟 r，读音会变' },
-  { id: 'silent', label: '不发音的字母', tip: '看得见、读不出来的字母' }
-];
-
-function buildPhonics() {
-  const byKey = new Map();     // "letters|sound" -> item
-  const skipped = [];
-  Object.keys(words.words).forEach((word) => {
-    (words.words[word].pindu || []).forEach((p) => {
-      const kind = classify(p.letters, p.sound);
-      if (!kind) { skipped.push(word + ':' + p.letters); return; }
-      const key = p.letters.toLowerCase() + '|' + p.sound;
-      let it = byKey.get(key);
-      if (!it) {
-        it = { letters: p.letters.toLowerCase(), sound: p.sound, audio: p.audio, kind: kind, n: 0, words: [] };
-        byKey.set(key, it);
-      }
-      it.n++;
-      if (it.words.indexOf(word) < 0 && it.words.length < 4) it.words.push(word);
-    });
-  });
-  const groups = GROUPS.map((g) => ({
-    id: g.id, label: g.label, tip: g.tip,
-    items: [...byKey.values()].filter((i) => i.kind === g.id).sort((a, b) => b.n - a.n || a.letters.localeCompare(b.letters))
-  })).filter((g) => g.items.length);
-  return { groups: groups, skipped: skipped };
-}
-
-const phonics = buildPhonics();
 
 /* ------------------------------------------------------------------
  * PHONEMES_BY_WORD — every word whose pindu maps cleanly to teachable
@@ -185,5 +144,6 @@ const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(0);
 console.log(`built ${path.relative(process.cwd(), outFile)} — ${kb} KB`);
 console.log(`  books: ${textbooks.books.map((b) => b.key).join(', ')}`);
 console.log(`  words: ${Object.keys(words.words).length}`);
+console.log(`  纠错: ${gate.fixed.length ? gate.fixed.join(' ') + ' 的双写辅音（抓反了，已改成前响后哑）' : '无'}`);
 console.log(`  phonics: ${phonics.groups.map((g) => g.id + ' ' + g.items.length).join(', ')}` +
   ` (共 ${phonics.groups.reduce((a, g) => a + g.items.length, 0)} 条，丢弃粘合块 ${phonics.skipped.length} 处: ${[...new Set(phonics.skipped.map((s) => s.split(':')[1]))].join(' ')})`);
