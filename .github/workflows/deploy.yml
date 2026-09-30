@@ -39,6 +39,7 @@ jobs:
         run: |
           mkdir -p _site
           cp pixel-pet-english.html _site/index.html
+          cp diag.html _site/diag.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
