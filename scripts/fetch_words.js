@@ -146,11 +146,12 @@ async function fetchWord(word) {
      than a textbook, which is fine — books was always only used to answer
      "which group is this word in", and that question is now about difficulty.
        data/l2-words.txt   日常词：课文正文出现 >=4 次、必背表没收的实义词
-       data/l3a-words.txt  拓展词：KET 词表 ∩ Oxford 3000 A1/A2
+       data/l3a1-words.txt 启程词：KET 词表 ∩ Oxford 3000 A1
+       data/l3a2-words.txt 拓展词：KET 词表 ∩ Oxford 3000 A2
        data/l3b-words.txt  挑战词：KET 词表 ∩ Oxford 3000 B1/B2
        data/l3c-words.txt  补充词：KET 词表 - Oxford 3000（未收录）
-     The three l3 files are one KET list split by CEFR level, not three lists —
-     scripts/split-l3-bands.js regenerates all three from data/l3-words.txt.
+     The four l3 files are one KET list split by CEFR level, not four lists —
+     scripts/split-l3-bands.js regenerates all of them from data/oxford-cefr.json.
      Driven by a loop so adding a band is a one-line change; a forgotten file
      would otherwise tag nothing and quietly shrink that band. */
   const readList = (p) =>
@@ -161,7 +162,7 @@ async function fetchWord(word) {
           .map((l) => l.replace(/#.*$/, '').trim())
           .filter(Boolean)
       : [];
-  for (const tag of ['l2', 'l3a', 'l3b', 'l3c']) {
+  for (const tag of ['l2', 'l3a1', 'l3a2', 'l3b', 'l3c']) {
     const p = path.join(__dirname, '..', 'data', `${tag}-words.txt`);
     if (!fs.existsSync(p)) {
       console.error(`缺少词表文件 ${p}，${tag} 层会是空的`);

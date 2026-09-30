@@ -85,15 +85,15 @@ delete visuals._comment;
  * 分层归位 + 自检
  *
  * `band` 由 `books` 推导，不手工维护：g1a/g2a/g1b 三个课本标签 → L1，
- * 加上 fetch_words.js 打的 l2 / l3a / l3b / l3c 标签。手工标过一次 band，忘了同步，
- * 结果 137 词全部落进兜底的 L3C，而构建日志全绿、界面也不报错。
+ * 加上 fetch_words.js 打的 l2 / l3a1 / l3a2 / l3b / l3c 标签。手工标过一次 band，
+ * 忘了同步，结果 137 词全部落进兜底的 L3C，而构建日志全绿、界面也不报错。
  * 单一数据源（books）+ 构建期校验，这条路就不用再走第二遍。
  *
  * 每层都必须有词：某一层为空时，⚙️ 里的分层切换会显示「词库 0 词」，
  * 是一条会误导家长的死行。
  * ------------------------------------------------------------------ */
-const BAND_ORDER = ['L1', 'L2', 'L3A', 'L3B', 'L3C'];
-const BAND_FROM_BOOKS = { g1a: 'L1', g2a: 'L1', g1b: 'L1', l2: 'L2', l3a: 'L3A', l3b: 'L3B', l3c: 'L3C' };
+const BAND_ORDER = ['L1', 'L2', 'L3A1', 'L3A2', 'L3B', 'L3C'];
+const BAND_FROM_BOOKS = { g1a: 'L1', g2a: 'L1', g1b: 'L1', l2: 'L2', l3a1: 'L3A1', l3a2: 'L3A2', l3b: 'L3B', l3c: 'L3C' };
 const bandCount = Object.fromEntries(BAND_ORDER.map((b) => [b, 0]));
 const bandProblems = [];
 for (const [w, v] of Object.entries(words.words)) {
@@ -154,14 +154,14 @@ for (const word of Object.keys(words.words)) {
  * 这两块只有在「学单词」的词卡和「拼读」页才渲染，闯关出题一个都不用。
  *
  * L1/L2 是孩子当下真在学的（137 词），全量带上，词卡和拼读都完整。
- * L3A/L3B/L3C 是 1325 词的分量储备，绝大多数孩子几个月内碰不到，为它们预载例句
- * 和逐音素音频只是让首屏多等 2 秒。这三层只带出题必需的字段：
+ * L3A1/L3A2/L3B/L3C 是 1325 词的分量储备，绝大多数孩子几个月内碰不到，为它们预载例句
+ * 和逐音素音频只是让首屏多等 2 秒。这四层只带出题必需的字段：
  *   explains  中文释义   → en2cn / cn2en
  *   us.audio  美音       → listen2en
  * 其余字段留在 data/words.json 里，需要时再按需补。
  *
  * 瘦身名单由 BAND_ORDER 推导，而不是手写集合：新增一层时忘了往 SLIM_BANDS 里
- * 补一个键，那 959 个词会带着例句和逐音素音频进包，体积悄悄翻几倍而日志全绿。
+ * 补一个键，那 1325 个词会带着例句和逐音素音频进包，体积悄悄翻几倍而日志全绿。
  *
  * 顺带把英音去重：源站的英/美录音是同一份文件挂在两个目录下（1462 词
  * 逐个核对，id 100% 一致），所以 KET 层只存一个 audioId，运行时按口音拼 URL。

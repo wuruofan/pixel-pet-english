@@ -116,18 +116,18 @@ const EMOJI = {
 };
 
 const visuals = JSON.parse(fs.readFileSync(VISUALS, 'utf8'));
-/* The KET vocabulary is one list split across three CEFR files. Read all three
-   rather than the undivided l3-words.txt that v7 retired — reading a deleted
-   file would throw, and reading only one of the three would quietly skip two
-   thirds of the words this script exists to cover. */
-const L3_FILES = ['l3a-words.txt', 'l3b-words.txt', 'l3c-words.txt'].map((f) =>
+/* The KET vocabulary is one list split across four CEFR files. Read all four
+   rather than the undivided l3-words.txt / l3a-words.txt that later versions
+   retired — reading a deleted file would throw, and reading only one of the four
+   would quietly skip most of the words this script exists to cover. */
+const L3_FILES = ['l3a1-words.txt', 'l3a2-words.txt', 'l3b-words.txt', 'l3c-words.txt'].map((f) =>
   path.join(ROOT, 'data', f)
 );
 const missing = L3_FILES.filter((p) => !fs.existsSync(p));
 if (missing.length) {
   console.error(
     `缺少词表文件：\n  ${missing.join('\n  ')}\n` +
-      '用 node scripts/split-l3-bands.js 重新生成，或 git checkout data/l3-words.txt 后重跑。'
+      '用 node scripts/split-l3-bands.js 重新生成。'
   );
   process.exit(1);
 }

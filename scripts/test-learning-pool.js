@@ -85,8 +85,8 @@ if (fresh.band !== 'L1') throw new Error('新用户应停在 L1');
 
 scenario('L1 学一半', 'L1', BAND.L1.slice(0, 50));
 
-/* Walk the whole climb. With a single L3 there was one hop to check; five
-   bands means a wrong order (say L3B before L3A) would still "pass" a test that
+/* Walk the whole climb. With a single L3 there was one hop to check; six
+   bands means a wrong order (say L3A2 before L3A1) would still "pass" a test that
    only asserts "some new word appears". So assert the exact band at each step —
    that is the only thing that pins the ladder's order. */
 let learned = BAND.L1.slice();
@@ -109,17 +109,63 @@ if (!all.reviewing) throw new Error(`${BAND_ORDER.length} 层都学完后应转�
 if (all.list.length === 0) throw new Error('复习池不该是空的');
 if (all.pool.length !== Object.keys(W).length) throw new Error('全学完后词池应覆盖全部词库');
 
-// A save written by v6 holds band "L3", which no longer exists. learningPool()
-// would resolve it to indexOf() === -1 and silently collapse the pool to L1 —
-// every word already learned would vanish with no error. The load-time guard is
-// what prevents that, so assert it is actually in the shipped bundle.
-const htmlHasGuard = /m\.settings\.band === 'L3'\) m\.settings\.band = 'L3A'/.test(html)
-  && /BAND_ORDER\.indexOf\(m\.settings\.band\) < 0\) m\.settings\.band = 'L1'/.test(html);
-if (!htmlHasGuard) throw new Error('bundle 里缺少 L3→L3A 迁移或 band 不变量兜底');
-const legacy = scenario('老存档 band=L3（未迁移时）', 'L3', []);
-if (legacy.pool.length !== BAND.L1.length) {
-  throw new Error(`未迁移的 'L3' 会让词池塌成 ${legacy.pool.length} 词（learningPool 兜底到 L1），迁移必须拦住`);
+// A save written by v6 holds band "L3", one by v7 holds "L3A". Neither exists any
+// more. learningPool() resolves them to indexOf() === -1 and silently collapses
+// the pool to L1 — every word already learned vanishes with no error.
+//
+// The guard used to be asserted as a regex over the bundle, which is nearly
+// worthless: a commented-out hop or a prose mention in a comment matches just as
+// well as live code, so the check stayed green through two renames. Run the real
+// load() against a fake localStorage instead and assert where each save lands.
+const liftedLoad = new Function(
+  'DEFAULT_STATE',
+  'localStorage',
+  `var KEY = 'pixel-pet-english-v1', OLD_KEY = 'kids-english-v1';
+   ${html.match(/var BAND_ORDER = \[[^\]]*\];/)[0]}
+   ${html.match(/  function deepMerge\(base, over\) \{[\s\S]*?\n  \}\n/)[0]}
+   ${html.match(/  function load\(\) \{[\s\S]*?\n  \}\n/)[0]}
+   return load;`
+);
+const store = {};
+const DEFAULT_STATE = { settings: { band: 'L1' }, words: {}, pet: {}, days: {} };
+const load = liftedLoad(DEFAULT_STATE, {
+  getItem: (k) => (k in store ? store[k] : null),
+  setItem: (k, v) => { store[k] = v; },
+  removeItem: (k) => { delete store[k]; },
+});
+const savedBand = (save) => {
+  store['pixel-pet-english-v1'] = JSON.stringify(save);
+  return load().settings.band;
+};
+const baseSave = () => JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+// Every hop of the ladder a real save can still be holding, newest first, plus
+// the catch-all. A live band must survive untouched — a migration that is too
+// eager resets a working child to L1, which is the same bug wearing a mask.
+const MIGRATIONS = [
+  ['无 band 字段', baseSave(), 'L1'],
+  ['v5 老存档 settings.book', { ...baseSave(), settings: { book: 'g2a' } }, 'L1'],
+  ['v6 band=L3', { ...baseSave(), settings: { band: 'L3' } }, 'L3A1'],
+  ['v7 band=L3A', { ...baseSave(), settings: { band: 'L3A' } }, 'L3A1'],
+  ['band=L3A1', { ...baseSave(), settings: { band: 'L3A1' } }, 'L3A1'],
+  ['band=L3A2', { ...baseSave(), settings: { band: 'L3A2' } }, 'L3A2'],
+  ['band=L3B', { ...baseSave(), settings: { band: 'L3B' } }, 'L3B'],
+  ['band=L3C', { ...baseSave(), settings: { band: 'L3C' } }, 'L3C'],
+  ['无法识别的值', { ...baseSave(), settings: { band: 'garbage' } }, 'L1'],
+];
+for (const [label, save, expect] of MIGRATIONS) {
+  const got = savedBand(save);
+  if (got !== expect) throw new Error(`老存档迁移失败：${label} 落到 ${got}，期望 ${expect}`);
 }
-console.log('   → learningPool 对未知 band 回落 L1，load() 的迁移会先把 L3 改写成 L3A');
+// The pool half of the same guarantee: a band that never got migrated collapses
+// to L1 rather than erroring, which is why the migration above is the only line
+// standing between a v7 child and losing every word they had learned.
+for (const dead of ['L3', 'L3A']) {
+  const legacy = scenario(`老存档 band=${dead}（未迁移时）`, dead, []);
+  if (legacy.pool.length !== BAND.L1.length) {
+    throw new Error(`未迁移的 '${dead}' 会让词池塌成 ${legacy.pool.length} 词（learningPool 兜底到 L1），迁移必须拦住`);
+  }
+}
+console.log(`   → load() 实跑 ${MIGRATIONS.length} 份老存档全部落到期望的层；learningPool 对未迁移的 band 回落 L1`);
 
 console.log('\n全部通过');

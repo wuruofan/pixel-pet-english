@@ -22,7 +22,8 @@
      Bands don't: finish L1 and L2 is already open.
        L1   core       94   words a publisher (or, for 一下, a hand) called 必背
        L2   daily      43   lesson-text words used >=4 times that no 必背 list covers
-       L3A  wider     959   KET list, Oxford 3000 A1+A2 — the everyday KET core
+       L3A1 starter   629   KET list, Oxford 3000 A1 — the everyday KET core
+       L3A2 wider     330   KET list, Oxford 3000 A2
        L3B  challenge  76   KET list, Oxford 3000 B1+B2 — the genuinely hard tail
        L3C  extra     290   KET list, absent from the Oxford 3000
      The L1/L2 line is "has textbook backing", NOT "is more frequent": 48 of the
@@ -30,7 +31,7 @@
      source site had no word list, and 49 of those 57 meet L2's own >=4 cutoff.
      See README「词库怎么组织的」for why they were not re-sorted.
 
-     L3A/L3B/L3C come from one split of the KET list, not three sources, so the
+     L3A1/A2/B/C come from one split of the KET list, not four sources, so the
      L3 prefix keeps them reading as one block in the data. L3C being its own
      band rather than a tail of L3B is the honest reading of the source: the
      Oxford 3000 is a *deduplicated* keyword list, so absence means "Oxford
@@ -39,13 +40,23 @@
      (ball, pizza, beach) and plurals (glasses, feelings). Filing those under a
      🎯 label would invent a difficulty the data never claimed.
 
+     A1 vs A2 is the one split that is not cosmetic. The first three bands held
+     137 words and the next held 959, so a finished L2 dropped a child into a
+     916-word cliff — the widest jump in the whole ladder, and it happened right
+     where a child is most likely to give up. Halving it to 629 is the largest
+     single-step reduction available without inventing words: every alternative
+     word list we could legally obtain (人教 PEP 二下, YLE 三级, the Chinese
+     KET topic list) added 214 words between them, which moves the cliff's end
+     by 214 and not its height. README「试过但没采用的词表」has the numbers.
+
      words.json tags each word with `band` (NOT `level` — that key name is
      already taken by the pet's growth stage). */
-  var BAND_ORDER = ['L1', 'L2', 'L3A', 'L3B', 'L3C'];
+  var BAND_ORDER = ['L1', 'L2', 'L3A1', 'L3A2', 'L3B', 'L3C'];
   var BAND_META = {
     L1: { label: '核心词', short: '核心', emoji: '⭐', note: '北京版一上/一下/二上必背表' },
     L2: { label: '日常词', short: '日常', emoji: '🌱', note: '课本正文出现 ≥4 次但必背表没收的词，可在 data/l2-words.txt 增删' },
-    L3A: { label: '拓展词', short: '拓展', emoji: '🌳', note: '剑桥 KET 官方词表，Oxford 3000 标为 A1/A2 的 959 词' },
+    L3A1: { label: '启程词', short: '启程', emoji: '⛅', note: '剑桥 KET 官方词表里 Oxford 3000 标为 A1 的 629 词——日常生活最常用的那一半' },
+    L3A2: { label: '拓展词', short: '拓展', emoji: '🌳', note: 'KET 词表里 Oxford 3000 标为 A2 的 330 词，比启程词抽象一些' },
     L3B: { label: '挑战词', short: '挑战', emoji: '🎯', note: 'KET 词表里 Oxford 3000 标为 B1/B2 的 76 词，是其中最难的' },
     L3C: { label: '补充词', short: '补充', emoji: '📦', note: 'KET 词表里 Oxford 3000 未收录的 290 词——多是虚词、复数和派生形，不是「更难」，只是 Oxford 没列为优先关键词' }
   };
@@ -110,7 +121,7 @@
       /* 默认宠物名 "小火龙" 改为 "小恐龙"，老存档里名字仍是"小火龙"的同步替换 */
       if (m.pet && m.pet.name === '小火龙') m.pet.name = '小恐龙';
       /* v5: 教材分册 → 难度分层。老存档记的是 settings.book（g1a/g1b/g2a），
-         新版读 settings.band（L1/L2/L3A/L3B/L3C）。一上/一下/二上 大致对应 L1 起点，
+         新版读 settings.band（L1/L2/L3A1/L3A2/L3B/L3C）。一上/一下/二上 大致对应 L1 起点，
          但 L1 现在同时包含三册原有的 137 词，所以直接落到 L1 而不是逐册还原：
          老进度落在 words 里是按词记的，不依赖册，切层不会丢任何进度。 */
       if (m.settings && m.settings.book != null) { delete m.settings.book; m.settings.band = 'L1'; }
@@ -119,6 +130,12 @@
          统称 L3，落到 L3A（959 词，与原 L3 覆盖面最接近），而不是 L3B/L3C——
          孩子原本够得着的那部分就是 A1/A2。 */
       if (m.settings && m.settings.band === 'L3') m.settings.band = 'L3A';
+      /* v8: L3A 再按 A1/A2 拆成 L3A1/L3A2，理由是把 43→959 的 916 词断崖劈成两半。
+         必须显式迁移，不能指望下面那条不变量兜底：老存档的 'L3A' 会掉进
+         BAND_ORDER.indexOf < 0 而被重置成 L1，把选了宽层的孩子打回最保守的一层。
+         落到 L3A1（629 词）而不是 L3A2：老存档记 L3A 意味着「已经能学 A1+A2」，
+         挪到更窄的 A2 反而收窄了原有覆盖面，方向反了。 */
+      if (m.settings && m.settings.band === 'L3A') m.settings.band = 'L3A1';
       /* 不变量兜底，而不是继续往上加 if。learningPool() 拿到一个 BAND_ORDER
          里没有的 band 时 indexOf 返回 -1，词池会静默塌回 L1：孩子已经学完的
          层全部消失，且界面不报错。改名后的老存档正是这个形状。任何遗留值一律

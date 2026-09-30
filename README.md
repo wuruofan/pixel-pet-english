@@ -14,36 +14,48 @@
 > **v7 L3 按 Oxford 3000 的 CEFR 等级再拆三层，3 层 → 5 层**。KET 官方词表本身是平铺的
 > A2 列表、没有内部分级（Cambridge 只另外发布与之并列的 Starters/Flyers/Movers），
 > 所以用 Oxford 3000 的 A1/A2/B1/B2 作为难度轴。修掉两个真 bug，详见「v7 修掉的问题」。
+>
+> **v8 把 L3A 再按 A1/A2 拆成启程/拓展两层，5 层 → 6 层**。v7 把 A1+A2 合成一层（959 词），
+> 代价是 L2 到 L3A 一次跨 **916 词**——整条梯子最陡的一刀。人教 PEP 二下、YLE 三级、
+> KET 中文主题表三条加词路线全试过，合计只 +214 词，**断崖在"跳"上不在"词"上**，
+> 所以选择零抓取地切层，把最大单跳降到 629。详见「v8 修掉的问题」和「试过但没采用的词表」。
 
 ```
 pixel-pet-english.html  ← 成品，双击即可用（也可部署到任意静态服务器）
 data/words.json          ← 1462 词：音标、英美发音、逐音素自然拼读、释义、例句、band 分层标签
 data/l2-words.txt        ← 日常词清单（43 词）。改这个文件就能加日常词，见下
-data/l3a-words.txt       ← 拓展词清单（959 词，KET ∩ Oxford A1/A2）
+data/l3a1-words.txt      ← 启程词清单（629 词，KET ∩ Oxford A1）
+data/l3a2-words.txt      ← 拓展词清单（330 词，KET ∩ Oxford A2）
 data/l3b-words.txt       ← 挑战词清单（76 词，KET ∩ Oxford B1/B2）
 data/l3c-words.txt       ← 补充词清单（290 词，KET 中 Oxford 未收录的）
 data/oxford-cefr.json    ← Oxford 3000 的 CEFR 分级原始结果，由 fetch-oxford-cefr.js 拉取
 data/ket-words.json      ← 剑桥官方 A2 Key (KET) 词表原始解析结果（1543 词，含 98 个短语）
+data/yle-words.json      ← 剑桥 YLE 三级词表解析结果，**未入库**，见「试过但没采用的词表」
 data/textbooks.json      ← 三册课文（目录 / 逐句英文+中文 / 逐句音频时间轴）。已不打包进产物，
                            只作为 fetch_textbooks.js 的刷新目标和词频统计的输入
 data/visuals.json        ← 词 → 图形（emoji / 字形徽章），359/1462 有图
 src/app.js  src/style.css
 scripts/fetch_textbooks.js  scripts/fetch_words.js  scripts/parse_ket_list.js  scripts/build.js
-scripts/fetch-oxford-cefr.js  scripts/split-l3-bands.js
-scripts/apply-emoji-l3.js  scripts/test-learning-pool.js
+scripts/fetch-oxford-cefr.js  scripts/split-l3-bands.js  scripts/parse_yle_lists.js
+scripts/word-freq-candidates.js  scripts/apply-emoji-l3.js  scripts/test-learning-pool.js
 ```
 
 ## 词库怎么组织的
 
-词分五层，不按教材册也不按主题：
+词分六层，不按教材册也不按主题：
 
 | 层 | 词数 | 源表等级 | 依据 |
 |---|---:|---|---|
 | ⭐ L1 核心词 | 94 | 北京版一上/一下/二上 | 源站官方必背表（一上 21 + 一下 57 + 二上 25，9 词跨册重复，去重后 94） |
 | 🌱 L2 日常词 | 43 | 北京版一上/一下/二上 | 课本正文出现 ≥4 次、但任何必背表都没收录的实义词 |
-| 🌳 L3A 拓展词 | 959 | CEFR A1–A2 | KET 词表 ∩ Oxford 3000 A1/A2 —— KET 里最日常的一批，学完教材该往这儿走 |
+| ⛅ L3A1 启程词 | 629 | CEFR A1 | KET 词表 ∩ Oxford 3000 A1 —— 走出教材后的第一站 |
+| 🌳 L3A2 拓展词 | 330 | CEFR A2 | KET 词表 ∩ Oxford 3000 A2，比启程词抽象一些 |
 | 🎯 L3B 挑战词 | 76 | CEFR B1–B2 | KET 词表 ∩ Oxford 3000 B1/B2 —— 其中真难的尾巴：`examination` `helicopter` `photographer` `frightened` |
 | 📦 L3C 补充词 | 290 | 无等级 | KET 词表里 Oxford 3000 **未收录**的词，没有难度依据可排 |
+
+**每一跳的落差**：94 → +43 → **+629** → +330 → +76 → +290 → 1462。
+最大单跳 629 词。v7 之前这一格是 **+916**（L2 43 词直接跳到 L3A 959 词），
+是整条梯子最陡的一刀，而且正好落在孩子最可能放弃的位置。见「v8 修掉的问题」。
 
 **教材是北京版（北京出版社），不是人教版。** 这一条以前标错过：`fetch_textbooks.js` 用的
 slug 是 `bjb_*`（`bjb` = 北京版），数据一直是北京版，但 README 和设置页文案写的是「人教版」。
@@ -54,17 +66,22 @@ slug 是 `bjb_*`（`bjb` = 北京版），数据一直是北京版，但 README 
 而且**不是「忘了抓」——北京版二下在源站上根本没有词表页**（见下面「已知缺口」），
 所以它只能像 L2 那样靠课文正文词频补，不能像一上/二上那样直接取必背表。
 
-L3A + L3B + L3C = 1325 词，即剑桥官方《A2 Key Vocabulary List》（UCLES 2018）里的单词。
+L3A1 + L3A2 + L3B + L3C = 1325 词，即剑桥官方《A2 Key Vocabulary List》（UCLES 2018）里的单词。
 
-**L3 三层整体远超二年级**。KET 是剑桥 A2 考试，对标英国 Year 7–8（约十三四岁）。
-L3A 虽标 A1–A2，也是「小学高年级到初中」的词（`before` `begin` `behind` `believe`），
+**L3 四层整体远超二年级**。KET 是剑桥 A2 考试，对标英国 Year 7–8（约十三四岁）。
+L3A1 虽标 A1，也是「小学高年级到初中」的词（`before` `begin` `behind` `believe`），
 不是二年级该碰的。L3 是给「一二年级学完之后」的储备，不是下一站。
 **CEFR 到中国年级没有任何官方映射**，所以这一列直接写源表等级，不折算年级——折算出来的数字看着精确，是编的。
 
-**L3A/L3B/L3C 为什么这么切**：KET 官方词表本身是**平铺的 A2 列表，没有内部分级**。
+**L3 四层为什么这么切**：KET 官方词表本身是**平铺的 A2 列表，没有内部分级**。
 Cambridge 确实有 Starters / Flyers / Movers，但那是与 KET **并列**的三张表，不是它的上下级，
 所以「KET 一级 / 二级」官方不存在。改用 Oxford 3000 的 CEFR 等级（A1/A2/B1/B2）作难度轴——
 它基于英国国家语料库的词频，正是 L3 需要的那个坐标。
+
+**A1 和 A2 之间为什么还要切一刀**：v7 把 A1+A2 合成一层（959 词），因为 Oxford 的 A1/A2
+本来就是相邻两级，看起来没必要。但合层的代价是 L2→L3A 一次跨 916 词——而这三个来源
+（人教 PEP 二下、YLE 三级、KET 中文主题表）全试过之后，能合法拿到的词合计只 +214。
+**断崖在"跳"上，不在"词"上**。切开后最大单跳降到 629，且不花一次抓取。
 
 **L3C 为什么单开一层，而不是并进 L3B**：Oxford 3000 是**去重后的 3000 个核心关键词**，
 某词缺席意味着「Oxford 没把它当优先关键词」，不是「Oxford 认为它很难」。翻这 290 词就知道：
@@ -92,13 +109,31 @@ L1 里有 48 词和 L2 同源：源站对新版一年级下册没有词表页（
 （尤其是干扰项不能超出一个孩子没学过的范围，见 `distractors()`）。既然要的是边界，
 分层同样能给，而且多了一样教材册给不了的东西：**顺序**。
 
-**层是上限，不是过滤器。** 选了 🎯 挑战，池子是「核心 + 日常 + 拓展 + 挑战」——
+**层是上限，不是过滤器。** 选了 🎯 挑战，池子是「核心 + 日常 + 启程 + 拓展 + 挑战」——
 不包含 📦 补充的词，但包含所有更简单的词。所以切到挑战层后第一题仍可能出 `read`，
 这是对的：孩子没学过它，它就是新词。
 
 **自动升层**：`learningPool()` 从 L1 起，把当前层及以下的词作为池；这一层的新词学完
 而上面还有新词时，顶层自动上移一级，直到遇到没学过的新词。所以孩子学完 94 个 L1 词
-就会自动开始学 L2，学完 L2 自动进 959 词的 L3A，再往上是 L3B、L3C，全程不需要去设置里手动切。
+就会自动开始学 L2，学完 L2 自动进 629 词的启程层，再往上是拓展、挑战、补充，全程不需要去设置里手动切。
+
+## 试过但没采用的词表
+
+L3 拆成四层之后，剩下的路只有「加更多词」。下面三条都实际抓过、解析过、算过净增词数，
+结论一致：**能拿到的词太少了，填不满 916 词的断崖**。合计 +214 词（+15%）。
+
+| 来源 | 净增 | 为什么没采用 |
+|---|---:|---|
+| 人教 PEP（另备）二下 | ≈21 | 源站有词表页但只有 21 词，且**换教材会和现有 L1 冲突**——项目用的是北京版，不是 PEP |
+| YLE Starters/Movers/Flyers | 189 | 三级**几乎不重叠**（Starters ∩ Movers 仅 33），插进去是 `43 → 53 → 959`，断崖基本没动；还要 189 次抓取。`scripts/parse_yle_lists.js` 已写好，解析结果存 `data/yle-words.json`，**留作后续可选增量** |
+| KET 中文主题表 | ≈25 | 按主题分（Natural World / Buildings / Time / Documents），正是本项目否掉的分法；清洗后 415 词条里「50 个新词」有一半是多词短语粘连，真正新单词仅 ≈25，不值得开一层 |
+
+**结论：不缺词，缺的是顺序。** 这也是为什么 v8 选择零抓取地切 A1/A2，而不是继续找词源。
+
+**版权边界**：KET / YLE 官方 PDF 都是 UCLES 的版权材料，**只用于本地解析，不入库**。
+抓取走公开 URL 的普通 HTTP 请求，解析脚本在 `scripts/` 下，本地跑。
+本项目不为百度文库 / 夸克文库这类站点做绕过付费墙的下载工具；xls/docx/pdf → 词表
+这种格式转换自己写脚本即可（`parse_ket_list.js` / `parse_yle_lists.js` 就是例子）。
 
 ## v7 修掉的问题
 
@@ -119,23 +154,51 @@ L1 里有 48 词和 L2 同源：源站对新版一年级下册没有词表页（
 两处空状态还写着「这本课本还没有词表」；`phWordsInBookOrder` 用的是「只取当前层」，
 和拼读页同一个毛病。
 
-## 体积：1462 词怎么塞进 1486 KB
+## v8 修掉的问题
 
-全量注入是 1.9 MB，产物会从 1247 KB 涨到 3543 KB。砍到 1486 KB 用了两刀，
+1. **`L2 43 词 → L3A 959 词` 的 916 词断崖**。整条梯子最陡的一刀，正好落在孩子最可能
+   放弃的位置。按 Oxford A1/A2 把 L3A 切成 L3A1（629）+ L3A2（330），最大单跳降到 629，
+   且不花一次抓取。上面那张表是为什么没选「加词」这条路。
+2. **`apply-emoji-l3.js` 读已删除的 `data/l3a-words.txt`**，跑起来直接抛异常——
+   v7 拆层时改了词表文件却漏了这个脚本。改成读四个文件并逐个检查存在性。
+3. **迁移断言是纸糊的**。`test-learning-pool.js` 原来用正则检查 bundle 里有没有
+   `m.settings.band === 'L3'...` 这行字——**注释里写一遍也能通过**。分层已经改名两次
+   （L3 → L3A → L3A1），每次都靠这条正则兜底。改成把 `load()` 从产物里整个抽出来、
+   配一个假 localStorage 实跑 9 份老存档，逐个断言落到哪一层。
+
+### 老存档迁移链
+
+分层改名会让老存档里的 `settings.band` 变成一个 `BAND_ORDER` 里没有的值。
+`learningPool()` 拿这种值时 `indexOf` 返回 -1，词池**静默塌回 L1**——
+孩子已经学过的词全部消失，而且界面不报错。所以每改名一次必须补一跳迁移：
+
+```
+settings.book (g1a/g1b/g2a) → L1     v5
+L3               → L3A               v7
+L3A              → L3A1              v8
+BAND_ORDER 里没有的值 → L1            兜底不变量
+```
+
+`L3A → L3A1` 而不是 `L3A2`：老存档记 L3A 意味着「已经能学 A1+A2」，挪到更窄的 A2
+反而收窄了原有覆盖面，方向反了。
+
+## 体积：1462 词怎么塞进 1490 KB
+
+全量注入是 1.9 MB，产物会从 1247 KB 涨到 3543 KB。砍到 1490 KB 用了两刀，
 都是「删掉用不上的数据」而不是压缩：
 
 | 手段 | 省下 | 理由 |
 |---|---:|---|
-| L3A/B/C 不注入 `pindu` + `examples` | 1230 KB | 这两块只在「学单词」词卡和「拼读」页渲染，闯关出题一个都不用。KET 三层是储备，绝大多数孩子几个月内碰不到 |
-| L3A/B/C 不进拼读字素索引 | 373 KB | 同上，索引只服务「拆词拼读」练习 |
+| L3 四层不注入 `pindu` + `examples` | 1230 KB | 这两块只在「学单词」词卡和「拼读」页渲染，闯关出题一个都不用。KET 四层是储备，绝大多数孩子几个月内碰不到 |
+| L3 四层不进拼读字素索引 | 373 KB | 同上，索引只服务「拆词拼读」练习 |
 | 英音/美音去重，存一个 `audioId` | 115 KB | 源站的英美录音是同一份文件挂在两个目录下，1462 词逐个核对 id 100% 一致 |
 
 净结果：**10.6 倍词量，体积 +19%**。L1/L2（137 词）保持全量，词卡和拼读完整；
-KET 三层只带出题必需的 `explains` + `audioId`，`data/words.json` 里数据齐全，随时可补。
-（拆分后从 1480 KB 微增到 1486 KB，是五层的 band 标签和每层的来源说明文案，1.4% 的代价。）
+KET 四层只带出题必需的 `explains` + `audioId`，`data/words.json` 里数据齐全，随时可补。
+（拆层只带来 band 标签和每层的来源说明文案，v6 1480 → v7 1486 → v8 1490 KB，每次 +0.4%。）
 
 瘦身名单由 `BAND_ORDER` 推导而不是手写集合：新增一层时忘了往名单里补一个键，
-那 959 个词会带着例句和逐音素音频进包，体积悄悄翻几倍而日志全绿。
+那 1325 个词会带着例句和逐音素音频进包，体积悄悄翻几倍而日志全绿。
 
 ## v6 修掉的问题
 
@@ -145,15 +208,15 @@ KET 三层只带出题必需的 `explains` + `audioId`，`data/words.json` 里�
    L2 已空、L3 满满，升级逻辑却在 L2 卡死，永远停在 L1。改成检查「任意更高层」。
 2. **产物比源码大 3 倍**。L3 的例句和逐音素数据占了 76%，见上面「体积」。
 3. **`band` 标签是手工标的**，忘了和 `books` 同步就会全落进兜底的 L3。
-   改成从 `books` 推导（`g1a/g2a/g1b → L1`，`l2 → L2`，`l3 → L3`），单一数据源。
+   改成从 `books` 推导（`g1a/g2a/g1b → L1`，`l2 → L2`，`l3a1/l3a2/l3b/l3c → L3A1/L3A2/L3B/L3C`），单一数据源。
 4. **`fetch_words.js` 第一次跑挂死 5 分 46 秒**。诊断发现 CPU 时间只有 0.01 秒，
    卡在单个 HTTP 请求上：超时设了 30 秒且无重试，一个慢响应就堵死整个队列。
    改成 8 秒超时 + 2 次重试 + 每 25 词落盘（可断点续跑）。
 
 ## 加词
 
-往 `data/l2-words.txt`（日常）、`data/l3a-words.txt`（拓展）、`data/l3b-words.txt`（挑战）、
-`data/l3c-words.txt`（补充）里一行一个词，然后：
+往 `data/l2-words.txt`（日常）、`data/l3a1-words.txt`（启程）、`data/l3a2-words.txt`（拓展）、
+`data/l3b-words.txt`（挑战）、`data/l3c-words.txt`（补充）里一行一个词，然后：
 
 ```bash
 node scripts/fetch_words.js   # 只抓新词（已在 words.json 里的跳过），补齐音标/音频/拼读/例句
@@ -165,9 +228,10 @@ node scripts/build.js         # 体检 + 分层自检 + 打包
 它也会顺手把已有词的 `books` 标签刷新一遍，所以**只调分层归属时不需要重新抓**——
 改词表文件、重跑 `fetch_words.js`（0 请求）、再 `build.js` 就行。
 
-`l3a/l3b/l3c` 是同一张 KET 词表按 CEFR 切出来的三份，不该手改。要重切就
-`git checkout data/l3-words.txt && node scripts/split-l3-bands.js`——
-它读 `data/oxford-cefr.json`（`fetch-oxford-cefr.js` 拉的，可重现）重新分桶，
+`l3a1/l3a2/l3b/l3c` 是同一张 KET 词表按 CEFR 切出来的四份，不该手改。要重切就
+`node scripts/split-l3-bands.js`——它读 `data/oxford-cefr.json`（`fetch-oxford-cefr.js`
+拉的，可重现）重新分桶，且是**幂等**的：读现存全部 `l3*` 文件求并集，
+不依赖已被它自己删掉的 `l3-words.txt` / `l3a-words.txt`。
 一个词出现在多个 Oxford 档时取**最低档**（源表是「一词一行 + 词性」，
 `but` 同时是 A1 连词和 B2 副词，取高档会把连词塞进孩子的最难一层）。
 
@@ -196,7 +260,7 @@ node scripts/build.js         # 体检 + 分层自检 + 打包
 顺序就是难度顺序，`BAND_ORDER` 错了整个升层链就错了——这一条构建期查不出来，
 只能靠 `node scripts/test-learning-pool.js`：它现在逐级断言「升到 L4 时池里不能混进 L5 的词」。
 
-**如果新词库排不进现有层**（比如二下的词该比 L3A 简单），要新开一层而不是塞进 L2。
+**如果新词库排不进现有层**（比如二下的词该比启程层简单），要新开一层而不是塞进 L2。
 判据只有一个：**这个词表和现有某一层是不是同一个难度坐标系**。
 二下词表和 L1/L2 同源（都是课本必背表），可以按 `g2b → L1` 的方式并进 L1；
 但如果它有自己的分级体系，就该单开一层，因为层是**边界**，边界重叠了干扰项就不可信。
@@ -210,17 +274,19 @@ node scripts/build.js         # 体检 + 分层自检 + 打包
 ```bash
 node scripts/fetch_textbooks.js   # 抓教材 → data/textbooks.json
 node scripts/parse_ket_list.js /path/to/ket.pdf   # 解析 KET 词表 → data/ket-words.json
+node scripts/parse_yle_lists.js /path/to/yle.pdf  # 解析 YLE 三级词表 → data/yle-words.json（未入库，见「试过但没采用的词表」）
 node scripts/fetch-oxford-cefr.js # 拉 Oxford 3000 的 CEFR 分级 → data/oxford-cefr.json
-node scripts/split-l3-bands.js    # 按 CEFR 把 L3 切成 l3a/l3b/l3c
+node scripts/split-l3-bands.js    # 按 CEFR 把 L3 切成 l3a1/l3a2/l3b/l3c
 node scripts/apply-emoji-l3.js    # 按具象词表批量配 emoji → data/visuals.json
 node scripts/fetch_words.js       # 抓单词（增量 + 断点续跑）→ data/words.json
 node scripts/build.js             # 纠错 + 体检 + 分层自检 + 瘦身 + 打包
-node scripts/test-learning-pool.js  # 词池场景测试（5 层升层链 + 边界 + 迁移）
+node scripts/test-learning-pool.js  # 词池场景测试（6 层升层链 + 边界 + 老存档迁移实跑）
 ```
 
 KET 词表 PDF 是 UCLES 版权，**不入库**，用到时从剑桥官网下载
 （*A2 Key Vocabulary List*, 31 页）。`parse_ket_list.js` 依赖 `pypdf`
 （`pip install pypdf`），也接受已提取好的 `.txt`。
+YLE 同理（*Starters / Movers / Flyers Word List*, 44 页），也不入库。
 
 ## 加词库后怎么验
 
@@ -232,7 +298,7 @@ KET 词表 PDF 是 UCLES 版权，**不入库**，用到时从剑桥官网下载
 ```bash
 node scripts/phonics-rules.js   # 纠错 + 体检当前 data/，有 ERROR 退出码 1
 node scripts/probe-phonics.js   # 查已构建的产物
-node scripts/test-learning-pool.js  # 词池场景：自动升层、越层词、空池回落
+node scripts/test-learning-pool.js  # 词池场景：自动升层、越层词、空池回落、老存档迁移
 ```
 
 规则全在 `scripts/phonics-rules.js`，构建和体检共用同一份判定，不会出现「体检绿灯、

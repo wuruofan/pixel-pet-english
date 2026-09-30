@@ -1,5 +1,5 @@
-# L3c 拓展·补充：KET 词表里 Oxford 3000 未收录的词（多为派生形和虚词，非"更难"）
-# 共 290 词。fetch_words.js 读这三个文件，tag 分别是 l3a/l3b/l3c。
+# L3c 补充：KET 词表里 Oxford 3000 未收录的词（多为派生形和虚词，非"更难"）
+# 共 290 词。fetch_words.js 读这四个文件，tag 分别是 l3a1/l3a2/l3b/l3c。
 able
 about
 above

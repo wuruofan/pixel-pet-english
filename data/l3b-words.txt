@@ -1,5 +1,5 @@
-# L3b 拓展·进阶：KET 词表里 Oxford 3000 标为 B1/B2 的词
-# 共 76 词。fetch_words.js 读这三个文件，tag 分别是 l3a/l3b/l3c。
+# L3b 挑战：KET 词表里 Oxford 3000 标为 B1/B2 的词
+# 共 76 词。fetch_words.js 读这四个文件，tag 分别是 l3a1/l3a2/l3b/l3c。
 block
 bother
 brave
