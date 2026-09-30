@@ -43,7 +43,7 @@
      already taken by the pet's growth stage). */
   var BAND_ORDER = ['L1', 'L2', 'L3A', 'L3B', 'L3C'];
   var BAND_META = {
-    L1: { label: '核心词', short: '核心', emoji: '⭐', note: '人教版一上/一下/二上必背表' },
+    L1: { label: '核心词', short: '核心', emoji: '⭐', note: '北京版一上/一下/二上必背表' },
     L2: { label: '日常词', short: '日常', emoji: '🌱', note: '课本正文出现 ≥4 次但必背表没收的词，可在 data/l2-words.txt 增删' },
     L3A: { label: '拓展词', short: '拓展', emoji: '🌳', note: '剑桥 KET 官方词表，Oxford 3000 标为 A1/A2 的 959 词' },
     L3B: { label: '挑战词', short: '挑战', emoji: '🎯', note: 'KET 词表里 Oxford 3000 标为 B1/B2 的 76 词，是其中最难的' },
