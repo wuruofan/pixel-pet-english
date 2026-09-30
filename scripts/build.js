@@ -28,15 +28,12 @@ for (const f of fs.readdirSync(spriteDir).filter((f) => f.endsWith('.png')).sort
     'data:image/png;base64,' + fs.readFileSync(path.join(spriteDir, f)).toString('base64');
 }
 
-/* Sentence UI was removed — only per-book word lists are needed at runtime.
-   Stripping units/sentences cuts the bundle a lot (per-sentence audio URL
-   tables were the bulk of the payload). */
-const textbooks = {
-  books: textbooksRaw.books.map((b) => ({
-    key: b.key, grade: b.grade, term: b.term, title: b.title,
-    publisher: b.publisher, version: b.version, words: b.words
-  }))
-};
+/* The textbook data is no longer bundled. Learning is organised by difficulty
+   band (words[*].band in words.json); the units/lessons/sentences and the
+   per-book word lists in data/textbooks.json stay on disk as the source that
+   scripts/fetch_textbooks.js refreshes and that the word-frequency pass reads,
+   but nothing at runtime needs them. Dropping __TEXTBOOKS__ from the bundle
+   saved ~200 KB. */
 
 /* ------------------------------------------------------------------
  * 自然拼读（phonics）数据层
@@ -125,7 +122,6 @@ ${css}
 <nav class="tabbar" id="tabbar"></nav>
 
 <script>
-window.__TEXTBOOKS__ = ${JSON.stringify(textbooks)};
 window.__WORDS__ = ${JSON.stringify(words)};
 window.__VISUALS__ = ${JSON.stringify(visuals)};
 window.__PHONICS__ = ${JSON.stringify(phonics)};
@@ -139,10 +135,44 @@ ${js}
 </html>
 `;
 
+/* ------------------------------------------------------------------
+ * 分层自检
+ *
+ * 分层是运行时唯一的分组依据（app.js 的 wordBand 读 words[*].band）。
+ * 出现过一次真实事故：数据里写的是 `band`，运行时读的是 `level`
+ * （那个键名被 pet.level 占了），结果 137 词全部落到兜底的 L3，
+ * 前两层显示「词库 0 词」，而构建日志一切正常、界面也不报错。
+ * 这里把「数据与运行时约定不一致」变成构建失败。
+ * ------------------------------------------------------------------ */
+const KNOWN_BANDS = new Set(['L1', 'L2', 'L3']);
+const bandCount = { L1: 0, L2: 0, L3: 0 };
+const badTags = [];
+for (const [w, v] of Object.entries(words.words)) {
+  const b = v.band;
+  if (!KNOWN_BANDS.has(b)) badTags.push(`${w}:${JSON.stringify(b)}`);
+  else bandCount[b]++;
+}
+const bandProblems = [];
+if (badTags.length)
+  bandProblems.push(`非法/缺失 band 标签 ${badTags.length} 个: ${badTags.slice(0, 5).join(' ')}`);
+// A declared band with no words renders as a dead row reading "词库 0 词".
+for (const b of ['L1', 'L2']) {
+  if (bandCount[b] === 0) bandProblems.push(`${b} 层没有词，分层切换会显示「词库 0 词」`);
+}
+if (bandProblems.length) {
+  console.error('构建中止：' + bandProblems.join('；'));
+  process.exit(1);
+}
+// app.js must read the same key the data uses.
+if (!/WORDS\[w\]\.band/.test(js) && !/v\.band/.test(js)) {
+  console.error('构建中止：src/app.js 没有读 words[*].band，与数据字段名不一致。');
+  process.exit(1);
+}
+
 fs.writeFileSync(outFile, html);
 const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(0);
 console.log(`built ${path.relative(process.cwd(), outFile)} — ${kb} KB`);
-console.log(`  books: ${textbooks.books.map((b) => b.key).join(', ')}`);
+console.log(`  bands: L1=${bandCount.L1} L2=${bandCount.L2} L3=${bandCount.L3}`);
 console.log(`  words: ${Object.keys(words.words).length}`);
 console.log(`  纠错: ${gate.fixed.length ? gate.fixed.join(' ') + ' 的双写辅音（抓反了，已改成前响后哑）' : '无'}`);
 console.log(`  phonics: ${phonics.groups.map((g) => g.id + ' ' + g.items.length).join(', ')}` +

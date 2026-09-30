@@ -245,20 +245,22 @@ function auditExercises(phonics, words, bookWords) {
 }
 
 /**
- * 每本书的词表。g1a / g2a 在 textbooks.json 里，g1b 靠 words.json 的 books 标签
- * （和 app.js 的 bookWords 同一套来源，见 build.js 顶上那句注释）。
+ * Word sets per difficulty band.
+ *
+ * Bands replaced textbooks as the learning axis (see app.js), so the phonics
+ * audit groups by `band` in words.json rather than by book. A word with no
+ * explicit band falls into L3 — the same default app.js applies — so the audit
+ * and the runtime always see the same membership.
  */
-function bookWordSets(words, textbooks) {
+const BAND_ORDER = ['L1', 'L2', 'L3'];
+
+function bookWordSets(words) {
   const out = {};
-  textbooks.books.forEach((b) => {
-    const list = (b.words || []).map((w) => String(w).toLowerCase()).filter((w) => words[w]);
-    out[b.key] = list;
-  });
+  BAND_ORDER.forEach((b) => (out[b] = []));
   Object.keys(words).forEach((w) => {
-    (words[w].books || []).forEach((bk) => {
-      if (!out[bk]) out[bk] = [];
-      if (out[bk].indexOf(w) < 0) out[bk].push(w);
-    });
+    const band = words[w].band || 'L3';
+    if (!out[band]) out[band] = [];
+    out[band].push(w);
   });
   return out;
 }
@@ -299,7 +301,7 @@ function check(words, textbooks, phonics) {
   const findings = [].concat(
     auditWords(words),
     auditPhonics(table),
-    auditExercises(table, words, bookWordSets(words, textbooks))
+    auditExercises(table, words, bookWordSets(words))
   );
   return { fixed: fixed, findings: findings, phonics: table };
 }

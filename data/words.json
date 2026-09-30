@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-02T01:08:14.184Z",
+ "generatedAt": "2026-09-30T02:42:43.714Z",
  "words": {
   "school": {
    "word": "school",
@@ -66,7 +66,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "classroom": {
    "word": "classroom",
@@ -147,7 +148,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "ruler": {
    "word": "ruler",
@@ -210,7 +212,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "book": {
    "word": "book",
@@ -274,7 +277,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "schoolbag": {
    "word": "schoolbag",
@@ -363,7 +367,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "eraser": {
    "word": "eraser",
@@ -430,7 +435,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "pencil": {
    "word": "pencil",
@@ -500,7 +506,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "family": {
    "word": "family",
@@ -585,7 +592,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "mother": {
    "word": "mother",
@@ -653,7 +661,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "sister": {
    "word": "sister",
@@ -728,7 +737,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "face": {
    "word": "face",
@@ -799,7 +809,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "mouth": {
    "word": "mouth",
@@ -854,7 +865,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "nose": {
    "word": "nose",
@@ -916,7 +928,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "father": {
    "word": "father",
@@ -984,7 +997,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "eyes": {
    "word": "eyes",
@@ -1041,7 +1055,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "brother": {
    "word": "brother",
@@ -1108,7 +1123,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "grandma": {
    "word": "grandma",
@@ -1177,7 +1193,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "ears": {
    "word": "ears",
@@ -1230,7 +1247,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "jiaozi": {
    "word": "jiaozi",
@@ -1288,7 +1306,8 @@
    "examples": [],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "fish": {
    "word": "fish",
@@ -1353,7 +1372,8 @@
    "books": [
     "g1a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "grandpa": {
    "word": "grandpa",
@@ -1422,7 +1442,8 @@
    ],
    "books": [
     "g1a"
-   ]
+   ],
+   "band": "L1"
   },
   "monday": {
    "word": "monday",
@@ -1496,7 +1517,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "cook": {
    "word": "cook",
@@ -1560,7 +1582,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "bus": {
    "word": "bus",
@@ -1615,7 +1638,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "tuesday": {
    "word": "tuesday",
@@ -1689,7 +1713,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "car": {
    "word": "car",
@@ -1742,7 +1767,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "bike": {
    "word": "bike",
@@ -1809,7 +1835,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "walk": {
    "word": "walk",
@@ -1873,7 +1900,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "wednesday": {
    "word": "wednesday",
@@ -1954,7 +1982,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "write": {
    "word": "write",
@@ -2016,7 +2045,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "draw": {
    "word": "draw",
@@ -2069,7 +2099,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "leg": {
    "word": "leg",
@@ -2125,7 +2156,8 @@
    "books": [
     "g2a",
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "rabbit": {
    "word": "rabbit",
@@ -2206,7 +2238,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "monkey": {
    "word": "monkey",
@@ -2280,7 +2313,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "bear": {
    "word": "bear",
@@ -2337,7 +2371,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "elephant": {
    "word": "elephant",
@@ -2425,7 +2460,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "dog": {
    "word": "dog",
@@ -2489,7 +2525,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "cat": {
    "word": "cat",
@@ -2544,7 +2581,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "tiger": {
    "word": "tiger",
@@ -2611,7 +2649,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "duck": {
    "word": "duck",
@@ -2675,7 +2714,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "thursday": {
    "word": "thursday",
@@ -2749,7 +2789,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "read": {
    "word": "read",
@@ -2809,7 +2850,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "friday": {
    "word": "friday",
@@ -2878,7 +2920,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "clean": {
    "word": "clean",
@@ -2942,7 +2985,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "saturday": {
    "word": "saturday",
@@ -3023,7 +3067,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "sunday": {
    "word": "sunday",
@@ -3092,7 +3137,8 @@
    ],
    "books": [
     "g2a"
-   ]
+   ],
+   "band": "L1"
   },
   "good": {
    "word": "good",
@@ -3152,7 +3198,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "fine": {
    "word": "fine",
@@ -3231,7 +3278,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "glad": {
    "word": "glad",
@@ -3291,7 +3339,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "again": {
    "word": "again",
@@ -3358,7 +3407,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "thank": {
    "word": "thank",
@@ -3420,7 +3470,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "happy": {
    "word": "happy",
@@ -3494,7 +3545,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "day": {
    "word": "day",
@@ -3547,7 +3599,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "morning": {
    "word": "morning",
@@ -3614,7 +3667,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "see": {
    "word": "see",
@@ -3667,7 +3721,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "one": {
    "word": "one",
@@ -3727,7 +3782,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "two": {
    "word": "two",
@@ -3780,7 +3836,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "three": {
    "word": "three",
@@ -3840,7 +3897,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "four": {
    "word": "four",
@@ -3893,7 +3951,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "five": {
    "word": "five",
@@ -3960,7 +4019,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "six": {
    "word": "six",
@@ -4015,7 +4075,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "seven": {
    "word": "seven",
@@ -4089,7 +4150,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "eight": {
    "word": "eight",
@@ -4142,7 +4204,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "nine": {
    "word": "nine",
@@ -4202,7 +4265,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "ten": {
    "word": "ten",
@@ -4262,7 +4326,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "panda": {
    "word": "panda",
@@ -4336,7 +4401,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "apple": {
    "word": "apple",
@@ -4405,7 +4471,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "orange": {
    "word": "orange",
@@ -4476,7 +4543,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "grapes": {
    "word": "grapes",
@@ -4543,7 +4611,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "banana": {
    "word": "banana",
@@ -4624,7 +4693,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "pear": {
    "word": "pear",
@@ -4677,7 +4747,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "fruit": {
    "word": "fruit",
@@ -4741,7 +4812,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "like": {
    "word": "like",
@@ -4812,7 +4884,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "red": {
    "word": "red",
@@ -4876,7 +4949,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "yellow": {
    "word": "yellow",
@@ -4954,7 +5028,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "blue": {
    "word": "blue",
@@ -5011,7 +5086,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "green": {
    "word": "green",
@@ -5070,7 +5146,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "colour": {
    "word": "colour",
@@ -5136,7 +5213,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "rainbow": {
    "word": "rainbow",
@@ -5205,7 +5283,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "flower": {
    "word": "flower",
@@ -5265,7 +5344,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "cake": {
    "word": "cake",
@@ -5327,7 +5407,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "bread": {
    "word": "bread",
@@ -5387,7 +5468,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "egg": {
    "word": "egg",
@@ -5440,7 +5522,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "noodles": {
    "word": "noodles",
@@ -5514,7 +5597,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "rice": {
    "word": "rice",
@@ -5581,7 +5665,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "food": {
    "word": "food",
@@ -5641,7 +5726,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "hungry": {
    "word": "hungry",
@@ -5715,7 +5801,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "run": {
    "word": "run",
@@ -5779,7 +5866,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "jump": {
    "word": "jump",
@@ -5850,7 +5938,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "swim": {
    "word": "swim",
@@ -5910,7 +5999,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "dance": {
    "word": "dance",
@@ -5988,7 +6078,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "sing": {
    "word": "sing",
@@ -6041,7 +6132,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "kite": {
    "word": "kite",
@@ -6108,7 +6200,8 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
   },
   "help": {
    "word": "help",
@@ -6174,7 +6267,3006 @@
    ],
    "books": [
     "g1b"
-   ]
+   ],
+   "band": "L1"
+  },
+  "play": {
+   "word": "play",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "戏剧；比赛"
+    },
+    {
+     "pos": "v",
+     "cn": "玩；演奏；扮演；播放"
+    }
+   ],
+   "uk": {
+    "ipa": "pleɪ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2574.mp3"
+   },
+   "us": {
+    "ipa": "pleɪ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2574.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "pl",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/pl.mp3",
+     "start": 0,
+     "end": 1,
+     "letters": "pl"
+    },
+    {
+     "sound": "eɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e%C9%AA.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "ay"
+    }
+   ],
+   "examples": [
+    {
+     "en": "She played a Bach prelude.",
+     "cn": "她演奏了一首巴赫的前奏曲。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20played%20a%20Bach%20prelude."
+    },
+    {
+     "en": "He’s learning to play the piano.",
+     "cn": "他在学习弹钢琴。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%E2%80%99s%20learning%20to%20play%20the%20piano."
+    },
+    {
+     "en": "Kids were playing and chasing each other.",
+     "cn": "孩子们在互相追逐嬉闹。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Kids%20were%20playing%20and%20chasing%20each%20other."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "name": {
+   "word": "name",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "姓名；名称"
+    },
+    {
+     "pos": "v",
+     "cn": "命名；提名；说出…的名字"
+    }
+   ],
+   "uk": {
+    "ipa": "neɪm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2241.mp3"
+   },
+   "us": {
+    "ipa": "neɪm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2241.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "n"
+    },
+    {
+     "sound": "eɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e%C9%AA.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "a"
+    },
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "me"
+    }
+   ],
+   "examples": [
+    {
+     "en": "The house is in my husband’s name.",
+     "cn": "房子归于我丈夫名下。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20house%20is%20in%20my%20husband%E2%80%99s%20name."
+    },
+    {
+     "en": "He didn’t want to do anything to damage the good name of the company.",
+     "cn": "他不想做任何有损公司良好声誉的事。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%20didn%E2%80%99t%20want%20to%20do%20anything%20to%20damage%20the%20good%20name%20of%20the%20company."
+    },
+    {
+     "en": "Her name is Mandy Wilson.",
+     "cn": "她的名字是曼迪•威尔逊。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Her%20name%20is%20Mandy%20Wilson."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "weekend": {
+   "word": "weekend",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "周末"
+    }
+   ],
+   "uk": {
+    "ipa": "ˌwiːkˈend",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5923.mp3"
+   },
+   "us": {
+    "ipa": "ˈwiːkend",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5923.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "w",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/w.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "w"
+    },
+    {
+     "sound": "iː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i%CB%90.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ee"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "k"
+    },
+    {
+     "sound": "e",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "e"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 5,
+     "end": 5,
+     "letters": "n"
+    },
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 6,
+     "end": 6,
+     "letters": "d"
+    }
+   ],
+   "examples": [
+    {
+     "en": "What you to do this weekend?",
+     "cn": "你这个周末准备干什么？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=What%20you%20to%20do%20this%20weekend%3F"
+    },
+    {
+     "en": "Tony has been unwell over the weekend .",
+     "cn": "托尼这个周末身体不舒服。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Tony%20has%20been%20unwell%20over%20the%20weekend%20."
+    },
+    {
+     "en": "What shall we do this weekend?",
+     "cn": "这个周末我们要做什么呢？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=What%20shall%20we%20do%20this%20weekend%3F"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "nice": {
+   "word": "nice",
+   "explains": [
+    {
+     "pos": "adj",
+     "cn": "令人愉快的；美好的"
+    }
+   ],
+   "uk": {
+    "ipa": "naɪs",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2283.mp3"
+   },
+   "us": {
+    "ipa": "naɪs",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2283.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "n"
+    },
+    {
+     "sound": "aɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/a%C9%AA.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "i"
+    },
+    {
+     "sound": "s",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/s.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "c"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 3,
+     "end": 3,
+     "letters": "e"
+    }
+   ],
+   "examples": [
+    {
+     "en": "a nice point of law",
+     "cn": "法律上的微妙难断之处",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20nice%20point%20of%20law"
+    },
+    {
+     "en": "One of the nice things about Christmas is having all the family together.",
+     "cn": "圣诞节的一个好处是全家可以聚首一堂。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=One%20of%20the%20nice%20things%20about%20Christmas%20is%20having%20all%20the%20family%20together."
+    },
+    {
+     "en": "Did you have a nice time?",
+     "cn": "你们玩得开心吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Did%20you%20have%20a%20nice%20time%3F"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "football": {
+   "word": "football",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "[英]足球；[美]橄榄球"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈfʊtbɔːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/1374.mp3"
+   },
+   "us": {
+    "ipa": "ˈfʊtbɔːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/1374.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "f",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/f.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "f"
+    },
+    {
+     "sound": "ʊ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%8A.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "oo"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "t"
+    },
+    {
+     "sound": "b",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/b.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "b"
+    },
+    {
+     "sound": "ɔː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%94%CB%90.mp3",
+     "start": 5,
+     "end": 5,
+     "letters": "a"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 6,
+     "end": 7,
+     "letters": "ll"
+    }
+   ],
+   "examples": [
+    {
+     "en": "My Dad took me to watch my first football match .",
+     "cn": "爸爸带我去看了我人生第一场足球比赛。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=My%20Dad%20took%20me%20to%20watch%20my%20first%20football%20match%20."
+    },
+    {
+     "en": "kids playing football in the street",
+     "cn": "在街上踢球的小孩子",
+     "audio": "https://dict.youdao.com/dictvoice?audio=kids%20playing%20football%20in%20the%20street"
+    },
+    {
+     "en": "Which football team do you support?",
+     "cn": "你支持哪个球队？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Which%20football%20team%20do%20you%20support%3F"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "big": {
+   "word": "big",
+   "explains": [
+    {
+     "pos": "adj",
+     "cn": "大的"
+    }
+   ],
+   "uk": {
+    "ipa": "bɪɡ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/520.mp3"
+   },
+   "us": {
+    "ipa": "bɪɡ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/520.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "b",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/b.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "b"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "i"
+    },
+    {
+     "sound": "ɡ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%A1.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "g"
+    }
+   ],
+   "examples": [
+    {
+     "en": "There was this great big spider in the sink.",
+     "cn": "洗涤槽里有只特大的蜘蛛。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=There%20was%20this%20great%20big%20%20spider%20in%20the%20sink."
+    },
+    {
+     "en": "The garage isn’t big enough for two cars.",
+     "cn": "这个车库不够大，停不下两辆汽车。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20garage%20isn%E2%80%99t%20big%20enough%20for%20two%20cars."
+    },
+    {
+     "en": "a big increase in crime",
+     "cn": "犯罪率的大幅上升",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20big%20increase%20in%20crime"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "long": {
+   "word": "long",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "长时间；长期"
+    },
+    {
+     "pos": "v",
+     "cn": "渴望；盼望"
+    },
+    {
+     "pos": "adj",
+     "cn": "长的；长时间的"
+    },
+    {
+     "pos": "adv",
+     "cn": "长久地；始终"
+    }
+   ],
+   "uk": {
+    "ipa": "lɒŋ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2018.mp3"
+   },
+   "us": {
+    "ipa": "lɔːŋ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2018.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "l"
+    },
+    {
+     "sound": "ɔː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%94%CB%90.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "o"
+    },
+    {
+     "sound": "ŋ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C5%8B.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "ng"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Reform of the law islong overdue.",
+     "cn": "这项法律早就该修改了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Reform%20of%20the%20law%20islong%20overdue."
+    },
+    {
+     "en": "Try to keep going foras long as possible.",
+     "cn": "能坚持多久就坚持多久。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Try%20to%20keep%20going%20foras%20long%20as%20possible."
+    },
+    {
+     "en": "He stretched out hislong legs.",
+     "cn": "他伸开两条长腿。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%20stretched%20out%20hislong%20legs."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "sport": {
+   "word": "sport",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "体育运动"
+    }
+   ],
+   "uk": {
+    "ipa": "spɔːt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5602.mp3"
+   },
+   "us": {
+    "ipa": "spɔːrt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5602.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "sp",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/sp.mp3",
+     "start": 0,
+     "end": 1,
+     "letters": "sp"
+    },
+    {
+     "sound": "ɔːr",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%94%CB%90r.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "or"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "t"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Eric was sporting a new camelhair coat.",
+     "cn": "埃里克得意地穿了一件新的驼绒大衣。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Eric%20was%20sporting%20a%20new%20camelhair%20coat."
+    },
+    {
+     "en": "a demonstration by people opposed to blood sports",
+     "cn": "反对猎杀动物运动的人士举行的示威游行",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20demonstration%20by%20people%20opposed%20to%20blood%20sports"
+    },
+    {
+     "en": "the sport of falconry",
+     "cn": "放鹰狩猎运动",
+     "audio": "https://dict.youdao.com/dictvoice?audio=the%20sport%20of%20falconry"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "match": {
+   "word": "match",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "比赛；火柴"
+    },
+    {
+     "pos": "v",
+     "cn": "相配"
+    }
+   ],
+   "uk": {
+    "ipa": "mætʃ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2088.mp3"
+   },
+   "us": {
+    "ipa": "mætʃ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2088.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "m"
+    },
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "a"
+    },
+    {
+     "sound": "tʃ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t%CA%83.mp3",
+     "start": 2,
+     "end": 4,
+     "letters": "tch"
+    }
+   ],
+   "examples": [
+    {
+     "en": "They’re preparing for a big match tomorrow.",
+     "cn": "他们在为明天的一场大赛做准备。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=They%E2%80%99re%20preparing%20for%20a%20big%20match%20tomorrow."
+    },
+    {
+     "en": "a beech dining table with four chairs to match",
+     "cn": "配有四把椅子的山毛榉餐桌",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20beech%20dining%20table%20with%20four%20chairs%20to%20match%20"
+    },
+    {
+     "en": "a box of matches",
+     "cn": "一盒火柴",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20box%20of%20matches"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "meet": {
+   "word": "meet",
+   "explains": [
+    {
+     "pos": "v",
+     "cn": "遇见；见面；满足"
+    }
+   ],
+   "uk": {
+    "ipa": "miːt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2120.mp3"
+   },
+   "us": {
+    "ipa": "miːt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2120.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "m"
+    },
+    {
+     "sound": "iː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i%CB%90.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ee"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "t"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I was worried I might meet Henry on the bus.",
+     "cn": "我担心可能会在公共汽车上遇到亨利。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20was%20worried%20I%20might%20meet%20Henry%20on%20the%20bus."
+    },
+    {
+     "en": "You’ll never guess who I met in town.",
+     "cn": "你绝对猜不出我在镇上碰到谁了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=You%E2%80%99ll%20never%20guess%20who%20I%20met%20in%20town."
+    },
+    {
+     "en": "I’ll meet you by the main reception desk.",
+     "cn": "我在总接待处等你。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%E2%80%99ll%20meet%20you%20by%20the%20main%20reception%20desk."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "o'clock": {
+   "word": "o'clock",
+   "explains": [
+    {
+     "pos": "adv",
+     "cn": "…点钟"
+    }
+   ],
+   "uk": {
+    "ipa": "əˈklɒk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2348.mp3"
+   },
+   "us": {
+    "ipa": "əˈklɑːk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2348.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "ə",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "o"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 1,
+     "end": 1,
+     "letters": "'"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "c"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "l"
+    },
+    {
+     "sound": "ɑː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%91%CB%90.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "o"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 5,
+     "end": 6,
+     "letters": "ck"
+    }
+   ],
+   "examples": [
+    {
+     "en": "It's already 9 o'clock.",
+     "cn": "已经9点钟了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=It's%20already%209%20o'clock."
+    },
+    {
+     "en": "The meeting is at 10 o'clock.",
+     "cn": "开会时间是10点钟。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20meeting%20is%20at%2010%20o'clock."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "round": {
+   "word": "round",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "圆；圆形物；巡回；回合"
+    },
+    {
+     "pos": "v",
+     "cn": "绕过；拐过；使成圆形"
+    },
+    {
+     "pos": "adj",
+     "cn": "圆的；球形的；十足的"
+    },
+    {
+     "pos": "adv",
+     "cn": "环绕；附近"
+    },
+    {
+     "pos": "prep",
+     "cn": "环绕；在…周围"
+    }
+   ],
+   "uk": {
+    "ipa": "raʊnd",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5389.mp3"
+   },
+   "us": {
+    "ipa": "raʊnd",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5389.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "r",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/r.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "r"
+    },
+    {
+     "sound": "aʊ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/a%CA%8A.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ou"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "n"
+    },
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "d"
+    }
+   ],
+   "examples": [
+    {
+     "en": "He put his arm gently round her waist.",
+     "cn": "他轻轻地搂着她的腰。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%20put%20his%20arm%20gently%20round%20her%20waist."
+    },
+    {
+     "en": "When he turned round I recognised him immediately.",
+     "cn": "他转过身来，我立即认出了他。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=When%20he%20turned%20round%20I%20recognised%20him%20immediately."
+    },
+    {
+     "en": "a big round table",
+     "cn": "一张大圆桌",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20big%20round%20table"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "week": {
+   "word": "week",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "周；星期；礼拜"
+    }
+   ],
+   "uk": {
+    "ipa": "wiːk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5921.mp3"
+   },
+   "us": {
+    "ipa": "wiːk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5921.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "w",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/w.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "w"
+    },
+    {
+     "sound": "iː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i%CB%90.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ee"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "k"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I can’t see you this week.",
+     "cn": "我这星期不能见你。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20can%E2%80%99t%20see%20you%20this%20week."
+    },
+    {
+     "en": "I work every week.",
+     "cn": "我每周都工作。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20work%20every%20week.%20"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "bed": {
+   "word": "bed",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "床；底；（花）坛"
+    }
+   ],
+   "uk": {
+    "ipa": "bed",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/487.mp3"
+   },
+   "us": {
+    "ipa": "bed",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/487.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "b",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/b.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "b"
+    },
+    {
+     "sound": "e",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "e"
+    },
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "d"
+    }
+   ],
+   "examples": [
+    {
+     "en": "You should go to bed early.",
+     "cn": "你应该早点上床。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=You%20should%20go%20to%20bed%20early."
+    },
+    {
+     "en": "She got into bed and turned out the light.",
+     "cn": "她上了床，关掉灯。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20got%20into%20bed%20and%20turned%20out%20the%20light."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "come": {
+   "word": "come",
+   "explains": [
+    {
+     "pos": "v",
+     "cn": "来；到来"
+    }
+   ],
+   "uk": {
+    "ipa": "kʌm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/840.mp3"
+   },
+   "us": {
+    "ipa": "kʌm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/840.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "c"
+    },
+    {
+     "sound": "ʌ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%8C.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "o"
+    },
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "m"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 3,
+     "end": 3,
+     "letters": "e"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Let me know when they come.",
+     "cn": "他们来了就告诉我。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Let%20me%20know%20when%20they%20come."
+    },
+    {
+     "en": "Can you come here for a minute?",
+     "cn": "你到这里来一会儿好吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Can%20you%20come%20here%20for%20a%20minute%3F"
+    },
+    {
+     "en": "Come a bit closer and you’ll be able to see better.",
+     "cn": "靠近一些就能看得更清楚。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Come%20a%20bit%20closer%20and%20you%E2%80%99ll%20be%20able%20to%20see%20better."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "love": {
+   "word": "love",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "爱；爱情；爱好的事物"
+    },
+    {
+     "pos": "v",
+     "cn": "爱；热爱"
+    }
+   ],
+   "uk": {
+    "ipa": "lʌv",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2030.mp3"
+   },
+   "us": {
+    "ipa": "lʌv",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2030.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "l"
+    },
+    {
+     "sound": "ʌ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%8C.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "o"
+    },
+    {
+     "sound": "v",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/v.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "v"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 3,
+     "end": 3,
+     "letters": "e"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I love you, Tracy.",
+     "cn": "我爱你，特雷西。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20love%20you%2C%20Tracy."
+    },
+    {
+     "en": "What these kids need is love and support.",
+     "cn": "这些孩子需要的是关心和支持。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=What%20these%20kids%20need%20is%20love%20and%20support."
+    },
+    {
+     "en": "He was the only man she had ever loved.",
+     "cn": "他是她唯一爱过的男人。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%20was%20the%20only%20man%20she%20had%20ever%20loved."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "picture": {
+   "word": "picture",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "图画；照片"
+    },
+    {
+     "pos": "v",
+     "cn": "想象；描述"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈpɪktʃər",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2542.mp3"
+   },
+   "us": {
+    "ipa": "ˈpɪktʃər",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2542.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "p"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "i"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "c"
+    },
+    {
+     "sound": "tʃər",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t%CA%83%C9%99r.mp3",
+     "start": 3,
+     "end": 6,
+     "letters": "ture"
+    }
+   ],
+   "examples": [
+    {
+     "en": "He asked her permission to paint her picture .",
+     "cn": "他请求她允许为她画像。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%20asked%20her%20permission%20to%20paint%20her%20picture%20%20."
+    },
+    {
+     "en": "a book with pictures in it",
+     "cn": "带插图的书",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20book%20with%20pictures%20in%20it"
+    },
+    {
+     "en": "That’s a great picture of you, Dad!",
+     "cn": "你的那张照片拍得真好，爸爸！",
+     "audio": "https://dict.youdao.com/dictvoice?audio=That%E2%80%99s%20a%20great%20picture%20of%20you%2C%20Dad!"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "ready": {
+   "word": "ready",
+   "explains": [
+    {
+     "pos": "v",
+     "cn": "使...准备好"
+    },
+    {
+     "pos": "adj",
+     "cn": "准备好的"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈredi",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2817.mp3"
+   },
+   "us": {
+    "ipa": "ˈredi",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2817.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "r",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/r.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "r"
+    },
+    {
+     "sound": "e",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ea"
+    },
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "d"
+    },
+    {
+     "sound": "i",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "y"
+    }
+   ],
+   "examples": [
+    {
+     "en": "They were ready to die for their beliefs.",
+     "cn": "他们愿意为信仰而献身。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=They%20were%20ready%20to%20die%20for%20their%20beliefs."
+    },
+    {
+     "en": "He's always ready to help his friends.",
+     "cn": "他总是乐意帮助朋友。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He's%20always%20ready%20to%20help%20his%20friends."
+    },
+    {
+     "en": "She was ready and willing to work hard.",
+     "cn": "她工作积极肯干。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20was%20ready%20and%20willing%20to%20work%20hard."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "basketball": {
+   "word": "basketball",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "篮球"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈbɑːskɪtbɔːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/467.mp3"
+   },
+   "us": {
+    "ipa": "ˈbæskɪtbɔːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/467.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "b",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/b.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "b"
+    },
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "a"
+    },
+    {
+     "sound": "s",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/s.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "s"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "k"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "e"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 5,
+     "end": 5,
+     "letters": "t"
+    },
+    {
+     "sound": "b",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/b.mp3",
+     "start": 6,
+     "end": 6,
+     "letters": "b"
+    },
+    {
+     "sound": "ɔː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%94%CB%90.mp3",
+     "start": 7,
+     "end": 7,
+     "letters": "a"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 8,
+     "end": 9,
+     "letters": "ll"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Do you like basketball?",
+     "cn": "你喜欢篮球吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Do%20you%20like%20basketball%3F"
+    },
+    {
+     "en": "His injury incapacitated him for playing basketball.",
+     "cn": "他因受伤而不能打篮球了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=His%20injury%20incapacitated%20him%20for%20playing%20basketball."
+    },
+    {
+     "en": "We love playing basketball.",
+     "cn": "我们爱打篮球。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=We%20love%20playing%20basketball."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "cool": {
+   "word": "cool",
+   "explains": [
+    {
+     "pos": "v",
+     "cn": "变凉；冷静下来"
+    },
+    {
+     "pos": "adj",
+     "cn": "凉的；凉爽的；冷静的；顶好的；酷的"
+    }
+   ],
+   "uk": {
+    "ipa": "kuːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/964.mp3"
+   },
+   "us": {
+    "ipa": "kuːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/964.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "c"
+    },
+    {
+     "sound": "uː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/u%CB%90.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "oo"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "l"
+    }
+   ],
+   "examples": [
+    {
+     "en": "The evening air was cool.",
+     "cn": "夜晚的空气很凉爽。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20evening%20air%20was%20cool."
+    },
+    {
+     "en": "‘I’m thinking of studying abroad.’ ‘Really? Cool.’",
+     "cn": "“我在考虑出国留学。”“真的？那好啊。”",
+     "audio": "https://dict.youdao.com/dictvoice?audio=%E2%80%98I%E2%80%99m%20thinking%20of%20studying%20abroad.%E2%80%99%20%E2%80%98Really%3F%20Cool.%E2%80%99"
+    },
+    {
+     "en": "You look cool in denim.",
+     "cn": "你穿牛仔服很酷。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=You%20look%20cool%20in%20denim."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "dictionary": {
+   "word": "dictionary",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "词典；字典"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈdɪkʃənri",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5069.mp3"
+   },
+   "us": {
+    "ipa": "ˈdɪkʃəneri",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5069.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "d"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "i"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "c"
+    },
+    {
+     "sound": "ʃ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%83.mp3",
+     "start": 3,
+     "end": 4,
+     "letters": "ti"
+    },
+    {
+     "sound": "ə",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99.mp3",
+     "start": 5,
+     "end": 5,
+     "letters": "o"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 6,
+     "end": 6,
+     "letters": "n"
+    },
+    {
+     "sound": "e",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e.mp3",
+     "start": 7,
+     "end": 7,
+     "letters": "a"
+    },
+    {
+     "sound": "r",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/r.mp3",
+     "start": 8,
+     "end": 8,
+     "letters": "r"
+    },
+    {
+     "sound": "i",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i.mp3",
+     "start": 9,
+     "end": 9,
+     "letters": "y"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I use a dictionary to find new words.",
+     "cn": "我用字典找到新单词。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20use%20a%20dictionary%20to%20find%20new%20words.%20"
+    },
+    {
+     "en": "I often consult the dictionary for vocabulary help.",
+     "cn": "我经常查阅字典以获取词汇帮助。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20often%20consult%20the%20dictionary%20for%20vocabulary%20help.%20"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "different": {
+   "word": "different",
+   "explains": [
+    {
+     "pos": "adj",
+     "cn": "不同的"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈdɪfrənt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5073.mp3"
+   },
+   "us": {
+    "ipa": "ˈdɪfrənt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5073.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "d"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "i"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 2,
+     "end": 2,
+     "letters": "f"
+    },
+    {
+     "sound": "f",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/f.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "f"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 4,
+     "end": 4,
+     "letters": "e"
+    },
+    {
+     "sound": "r",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/r.mp3",
+     "start": 5,
+     "end": 5,
+     "letters": "r"
+    },
+    {
+     "sound": "ə",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99.mp3",
+     "start": 6,
+     "end": 6,
+     "letters": "e"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 7,
+     "end": 7,
+     "letters": "n"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 8,
+     "end": 8,
+     "letters": "t"
+    }
+   ],
+   "examples": [
+    {
+     "en": "a slightly different way of doing things",
+     "cn": "稍有区别的做事方法",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20slightly%20different%20way%20of%20doing%20things"
+    },
+    {
+     "en": "It’s a different world here in London.",
+     "cn": "伦敦这儿的情况完全不同。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=It%E2%80%99s%20a%20different%20world%20here%20in%20London."
+    },
+    {
+     "en": "They are sold in many different colours.",
+     "cn": "这些有多种颜色供选购。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=They%20are%20sold%20in%20many%20different%20colours."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "great": {
+   "word": "great",
+   "explains": [
+    {
+     "pos": "adj",
+     "cn": "伟大的；大的；极好的"
+    },
+    {
+     "pos": "adv",
+     "cn": "很好地"
+    }
+   ],
+   "uk": {
+    "ipa": "ɡreɪt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/1535.mp3"
+   },
+   "us": {
+    "ipa": "ɡreɪt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/1535.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "ɡr",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%A1r.mp3",
+     "start": 0,
+     "end": 1,
+     "letters": "gr"
+    },
+    {
+     "sound": "eɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e%C9%AA.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "ea"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "t"
+    }
+   ],
+   "examples": [
+    {
+     "en": "It’s a great pity that none of his poems survive.",
+     "cn": "非常遗憾，他的诗歌没有一首保存下来。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=It%E2%80%99s%20a%20great%20pity%20that%20none%20of%20his%20poems%20survive."
+    },
+    {
+     "en": "one of the greatest scientific achievements of our time",
+     "cn": "我们这个时代最伟大的科学成就之一",
+     "audio": "https://dict.youdao.com/dictvoice?audio=one%20of%20the%20greatest%20scientific%20achievements%20of%20our%20time"
+    },
+    {
+     "en": "The paintings cost a great deal of money.",
+     "cn": "这些画价值不菲。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20paintings%20cost%20a%20great%20deal%20%20of%20money."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "night": {
+   "word": "night",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "夜晚；晚上"
+    }
+   ],
+   "uk": {
+    "ipa": "naɪt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2285.mp3"
+   },
+   "us": {
+    "ipa": "naɪt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2285.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "n"
+    },
+    {
+     "sound": "aɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/a%C9%AA.mp3",
+     "start": 1,
+     "end": 3,
+     "letters": "igh"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "t"
+    }
+   ],
+   "examples": [
+    {
+     "en": "It was a cold moonlit night.",
+     "cn": "那是个寒冷的月夜。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=It%20was%20a%20cold%20moonlit%20night."
+    },
+    {
+     "en": "I didn’t sleep too well last night.",
+     "cn": "我昨晚睡得不太好。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20didn%E2%80%99t%20sleep%20too%20well%20last%20night."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "animal": {
+   "word": "animal",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "动物"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈænɪml",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/4846.mp3"
+   },
+   "us": {
+    "ipa": "ˈænɪml",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/4846.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "a"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "n"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "i"
+    },
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "m"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 4,
+     "end": 5,
+     "letters": "al"
+    }
+   ],
+   "examples": [
+    {
+     "en": "The cosmetics have not been tested on animals.",
+     "cn": "这些化妆品没有进行过动物试验。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20cosmetics%20have%20not%20been%20tested%20on%20animals."
+    },
+    {
+     "en": "Beth is an animal lover .",
+     "cn": "贝丝是个喜欢动物的人。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Beth%20is%20an%20animal%20lover%20%20."
+    },
+    {
+     "en": "a diet rich in red meat and animal fats",
+     "cn": "摄入大量红肉和动物脂肪的饮食",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20diet%20rich%20in%20red%20meat%20and%20animal%20fats"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "fast": {
+   "word": "fast",
+   "explains": [
+    {
+     "pos": "v",
+     "cn": "禁食；斋戒"
+    },
+    {
+     "pos": "adj",
+     "cn": "快的；迅速的"
+    },
+    {
+     "pos": "adv",
+     "cn": "迅速"
+    }
+   ],
+   "uk": {
+    "ipa": "fɑːst",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/1277.mp3"
+   },
+   "us": {
+    "ipa": "fæst",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/1277.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "f",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/f.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "f"
+    },
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "a"
+    },
+    {
+     "sound": "st",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/st.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "st"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Slow down – you’re driving too fast.",
+     "cn": "慢点——你开得太快了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Slow%20down%20%E2%80%93%20you%E2%80%99re%20driving%20too%20fast."
+    },
+    {
+     "en": "He’s one of the fastest runners in the world.",
+     "cn": "他是世界上跑得最快的人之一。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%E2%80%99s%20one%20of%20the%20fastest%20runners%20in%20the%20world."
+    },
+    {
+     "en": "That can’t be the time - my watch must be fast.",
+     "cn": "不可能是这个时间——一定是我的表快了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=That%20can%E2%80%99t%20be%20the%20time%20-%20my%20watch%20must%20be%20fast."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "park": {
+   "word": "park",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "公园；停车场"
+    },
+    {
+     "pos": "v",
+     "cn": "停放；停车"
+    }
+   ],
+   "uk": {
+    "ipa": "pɑːk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2462.mp3"
+   },
+   "us": {
+    "ipa": "pɑːrk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2462.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "p"
+    },
+    {
+     "sound": "ɑːr",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%91%CB%90r.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ar"
+    },
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "k"
+    }
+   ],
+   "examples": [
+    {
+     "en": "You can’t park here - it’s private property.",
+     "cn": "不能把车停在这里——这是私人宅邸。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=You%20can%E2%80%99t%20park%20here%20-%20it%E2%80%99s%20private%20property."
+    },
+    {
+     "en": "Let’s go for a walk in the park.",
+     "cn": "我们去公园散步吧。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Let%E2%80%99s%20go%20for%20a%20walk%20in%20the%20park."
+    },
+    {
+     "en": "She parked the car on the drive.",
+     "cn": "她把车停在了私人车道上。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20parked%20the%20car%20on%20the%20drive."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "room": {
+   "word": "room",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "房间；空间"
+    }
+   ],
+   "uk": {
+    "ipa": "ruːm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5384.mp3"
+   },
+   "us": {
+    "ipa": "ruːm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5384.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "r",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/r.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "r"
+    },
+    {
+     "sound": "uː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/u%CB%90.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "oo"
+    },
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "m"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I looked around the room.",
+     "cn": "我四下看了看房间。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20looked%20around%20the%20room."
+    },
+    {
+     "en": "She nodded toward a man who was standing across the room .",
+     "cn": "她朝站在屋子另一头的一个男人点点头。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20nodded%20toward%20a%20man%20who%20was%20standing%20across%20the%20room%20%20."
+    },
+    {
+     "en": "Someone was laughing in the next room .",
+     "cn": "隔壁房间有人在笑。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Someone%20was%20laughing%20in%20the%20next%20room%20%20."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "together": {
+   "word": "together",
+   "explains": [
+    {
+     "pos": "adv",
+     "cn": "一起"
+    }
+   ],
+   "uk": {
+    "ipa": "təˈɡeðər",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5781.mp3"
+   },
+   "us": {
+    "ipa": "təˈɡeðər",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5781.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "t"
+    },
+    {
+     "sound": "ə",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "o"
+    },
+    {
+     "sound": "ɡ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%A1.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "g"
+    },
+    {
+     "sound": "e",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/e.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "e"
+    },
+    {
+     "sound": "ð",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%B0.mp3",
+     "start": 4,
+     "end": 5,
+     "letters": "th"
+    },
+    {
+     "sound": "ər",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99r.mp3",
+     "start": 6,
+     "end": 7,
+     "letters": "er"
+    }
+   ],
+   "examples": [
+    {
+     "en": "We’ve very much enjoyed working together .",
+     "cn": "我们在一起工作非常开心。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=We%E2%80%99ve%20very%20much%20enjoyed%20working%20together%20."
+    },
+    {
+     "en": "Together they went back inside the villa.",
+     "cn": "他们一起回到了别墅里。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Together%20they%20went%20back%20inside%20the%20villa."
+    },
+    {
+     "en": "They’ve decided to spend more time together.",
+     "cn": "他们决定要花更多时间在一起。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=They%E2%80%99ve%20decided%20to%20spend%20more%20time%20together."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "afternoon": {
+   "word": "afternoon",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "下午"
+    }
+   ],
+   "uk": {
+    "ipa": "ˌɑːftəˈnuːn",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/4809.mp3"
+   },
+   "us": {
+    "ipa": "ˌæftərˈnuːn",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/4809.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "a"
+    },
+    {
+     "sound": "f",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/f.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "f"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "t"
+    },
+    {
+     "sound": "ər",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99r.mp3",
+     "start": 3,
+     "end": 4,
+     "letters": "er"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 5,
+     "end": 5,
+     "letters": "n"
+    },
+    {
+     "sound": "uː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/u%CB%90.mp3",
+     "start": 6,
+     "end": 7,
+     "letters": "oo"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 8,
+     "end": 8,
+     "letters": "n"
+    }
+   ],
+   "examples": [
+    {
+     "en": "There’s a meeting on Thursday afternoon.",
+     "cn": "星期四下午有个会议。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=There%E2%80%99s%20a%20meeting%20on%20Thursday%20afternoon."
+    },
+    {
+     "en": "There’s a meeting on Thursday afternoon .",
+     "cn": "星期四下午有个会议。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=There%E2%80%99s%20a%20meeting%20on%20Thursday%20afternoon%20."
+    },
+    {
+     "en": "See you tomorrow afternoon .",
+     "cn": "明天下午见。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=See%20you%20tomorrow%20afternoon%20."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "ask": {
+   "word": "ask",
+   "explains": [
+    {
+     "pos": "v",
+     "cn": "问；询问；要求"
+    }
+   ],
+   "uk": {
+    "ipa": "ɑːsk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/4886.mp3"
+   },
+   "us": {
+    "ipa": "æsk",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/4886.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "a"
+    },
+    {
+     "sound": "sk",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/sk.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "sk"
+    }
+   ],
+   "examples": [
+    {
+     "en": "‘What’s your name?’ she asked.",
+     "cn": "“你叫什么名字？”她问道 。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=%E2%80%98What%E2%80%99s%20your%20name%3F%E2%80%99%20she%20asked."
+    },
+    {
+     "en": "That kid’s always asking awkward questions.",
+     "cn": "那孩子总是问一些尴尬的问题。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=That%20kid%E2%80%99s%20always%20asking%20awkward%20questions."
+    },
+    {
+     "en": "If you need anything, you only have to ask.",
+     "cn": "你需要什么，只要提出来就行。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=If%20you%20need%20anything%2C%20you%20only%20have%20to%20ask."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "dad": {
+   "word": "dad",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "爸爸"
+    }
+   ],
+   "uk": {
+    "ipa": "dæd",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/7254.mp3"
+   },
+   "us": {
+    "ipa": "dæd",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/7254.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "d"
+    },
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "a"
+    },
+    {
+     "sound": "d",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/d.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "d"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Dad, will you help me?",
+     "cn": "爸爸，帮我一下好吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Dad%2C%20will%20you%20help%20me%3F"
+    },
+    {
+     "en": "She lives with her mom and dad.",
+     "cn": "她和爸爸妈妈一起住。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20lives%20with%20her%20mom%20and%20dad."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "fly": {
+   "word": "fly",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "苍蝇"
+    },
+    {
+     "pos": "v",
+     "cn": "飞翔；飞行"
+    }
+   ],
+   "uk": {
+    "ipa": "flaɪ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/1362.mp3"
+   },
+   "us": {
+    "ipa": "flaɪ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/1362.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "fl",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/fl.mp3",
+     "start": 0,
+     "end": 1,
+     "letters": "fl"
+    },
+    {
+     "sound": "aɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/a%C9%AA.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "y"
+    }
+   ],
+   "examples": [
+    {
+     "en": "She’s flying back to the States tomorrow.",
+     "cn": "她明天乘飞机回美国。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%E2%80%99s%20flying%20back%20to%20the%20States%20tomorrow."
+    },
+    {
+     "en": "The mother bird will feed her chicks until they are able to fly.",
+     "cn": "母鸟将喂养小鸟直到它们会飞。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20mother%20bird%20will%20feed%20her%20chicks%20until%20they%20are%20able%20to%20fly."
+    },
+    {
+     "en": "The plane was attacked as it flew over restricted airspace.",
+     "cn": "飞机在飞越空中禁区时遭到了攻击。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20plane%20was%20attacked%20as%20it%20flew%20over%20restricted%20airspace."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "people": {
+   "word": "people",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "人们；人；人民"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈpiːpl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2503.mp3"
+   },
+   "us": {
+    "ipa": "ˈpiːpl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2503.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "p"
+    },
+    {
+     "sound": "iː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i%CB%90.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "eo"
+    },
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "p"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "l"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 5,
+     "end": 5,
+     "letters": "e"
+    }
+   ],
+   "examples": [
+    {
+     "en": "the people who live next door",
+     "cn": "住在隔壁的那些人",
+     "audio": "https://dict.youdao.com/dictvoice?audio=the%20people%20who%20live%20next%20door"
+    },
+    {
+     "en": "How many people were at the meeting?",
+     "cn": "有多少人到会？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=How%20many%20people%20were%20at%20the%20meeting%3F"
+    },
+    {
+     "en": "He pledged that he would never lie to the American people.",
+     "cn": "他保证绝不对美国人民撒谎。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=He%20pledged%20that%20he%20would%20never%20lie%20to%20the%20American%20people."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "small": {
+   "word": "small",
+   "explains": [
+    {
+     "pos": "adj",
+     "cn": "小的"
+    }
+   ],
+   "uk": {
+    "ipa": "smɔːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5541.mp3"
+   },
+   "us": {
+    "ipa": "smɔːl",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5541.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "sm",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/sm.mp3",
+     "start": 0,
+     "end": 1,
+     "letters": "sm"
+    },
+    {
+     "sound": "ɔː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%94%CB%90.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "a"
+    },
+    {
+     "sound": "l",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/l.mp3",
+     "start": 3,
+     "end": 4,
+     "letters": "ll"
+    }
+   ],
+   "examples": [
+    {
+     "en": "A much smaller proportion of women are employed in senior positions.",
+     "cn": "受雇担任高级职位的女性比例要小得多。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=A%20much%20smaller%20proportion%20of%20women%20are%20employed%20in%20senior%20positions."
+    },
+    {
+     "en": "a small dark woman",
+     "cn": "一个皮肤黝黑的小个子女人",
+     "audio": "https://dict.youdao.com/dictvoice?audio=a%20small%20dark%20woman"
+    },
+    {
+     "en": "The sweater comes in three sizes - small, medium and large.",
+     "cn": "这羊毛衫有三个尺寸: 小号、中号和大号。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20sweater%20comes%20in%20three%20sizes%20-%20small%2C%20medium%20and%20large."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "rope": {
+   "word": "rope",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "绳索；粗绳"
+    },
+    {
+     "pos": "v",
+     "cn": "（用绳索）捆绑"
+    }
+   ],
+   "uk": {
+    "ipa": "rəʊp",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5386.mp3"
+   },
+   "us": {
+    "ipa": "rəʊp",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5386.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "r",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/r.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "r"
+    },
+    {
+     "sound": "əʊ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%99%CA%8A.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "o"
+    },
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "pe"
+    }
+   ],
+   "examples": [
+    {
+     "en": "They tied a rope around my waist and pulled me up.",
+     "cn": "他们在我腰间系了一根粗绳子，把我拉了上去。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=They%20tied%20a%20rope%20around%20my%20waist%20and%20pulled%20me%20up."
+    },
+    {
+     "en": "The calves are roped and branded.",
+     "cn": "用绳套捉住牛犊后将其打上烙印。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20calves%20are%20roped%20and%20branded."
+    },
+    {
+     "en": "The man was coiling a length of rope.",
+     "cn": "那人正在卷一段绳子。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20man%20was%20coiling%20a%20length%20of%20rope."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "mum": {
+   "word": "mum",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "妈妈"
+    },
+    {
+     "pos": "adj",
+     "cn": "沉默的；不说话的"
+    }
+   ],
+   "uk": {
+    "ipa": "mʌm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/26986.mp3"
+   },
+   "us": {
+    "ipa": "mʌm",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/26986.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "m"
+    },
+    {
+     "sound": "ʌ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%8C.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "u"
+    },
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "m"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I have understood my mum. She has done all the things for the sake of me.",
+     "cn": "现在我对未来充满了信心，我理解了妈妈，她所做的一切都是为了我。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20have%20understood%20my%20mum.%20She%20has%20done%20all%20the%20things%20for%20the%20sake%20of%20me."
+    },
+    {
+     "en": "My mum loves gardening.",
+     "cn": "我妈妈喜欢园艺。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=My%20mum%20loves%20gardening."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "touch": {
+   "word": "touch",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "触摸；触觉；触感"
+    },
+    {
+     "pos": "v",
+     "cn": "触摸；接触；触动"
+    }
+   ],
+   "uk": {
+    "ipa": "tʌtʃ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/3287.mp3"
+   },
+   "us": {
+    "ipa": "tʌtʃ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/3287.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "t"
+    },
+    {
+     "sound": "ʌ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%8C.mp3",
+     "start": 1,
+     "end": 2,
+     "letters": "ou"
+    },
+    {
+     "sound": "tʃ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t%CA%83.mp3",
+     "start": 3,
+     "end": 4,
+     "letters": "ch"
+    }
+   ],
+   "examples": [
+    {
+     "en": "If your house has been burgled, you shouldn’t touch anything until the police arrive.",
+     "cn": "如果家中被盗，在警察赶到之前不要动任何物品。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=If%20your%20house%20has%20been%20burgled%2C%20you%20shouldn%E2%80%99t%20touch%20anything%20until%20the%20police%20arrive."
+    },
+    {
+     "en": "She reached out to touch his arm.",
+     "cn": "她伸手去碰他的胳膊。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=She%20reached%20out%20to%20touch%20his%20arm."
+    },
+    {
+     "en": "Her dress was so long that it was touching the ground.",
+     "cn": "她的裙子很长，都拖到地上了。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Her%20dress%20was%20so%20long%20that%20it%20was%20touching%20the%20ground."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "ping": {
+   "word": "ping",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "乒，砰"
+    },
+    {
+     "pos": "v",
+     "cn": "发出当（或砰）的响声"
+    }
+   ],
+   "uk": {
+    "ipa": "pɪŋ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2208889.mp3"
+   },
+   "us": {
+    "ipa": "pɪŋ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2208889.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "p"
+    },
+    {
+     "sound": "ɪŋ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA%C5%8B.mp3",
+     "start": 1,
+     "end": 3,
+     "letters": "ing"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I often play ping-pong or basketball.",
+     "cn": "我经常打乒乓球或篮球。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20often%20play%20ping-pong%20or%20basketball."
+    },
+    {
+     "en": "Can you play ping-pong?",
+     "cn": "你会打乒乓球吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Can%20you%20play%20ping-pong%3F"
+    },
+    {
+     "en": "We had a ping-pong match there.",
+     "cn": "我们在那里打了一场乒乓球比赛。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=We%20had%20a%20ping-pong%20match%20there."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "pong": {
+   "word": "pong",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "难闻的气味"
+    },
+    {
+     "pos": "v",
+     "cn": "发出难闻的气味"
+    }
+   ],
+   "uk": {
+    "ipa": "pɒŋ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2208890.mp3"
+   },
+   "us": {
+    "ipa": "pɑːŋ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2208890.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "p",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/p.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "p"
+    },
+    {
+     "sound": "ɑː",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%91%CB%90.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "o"
+    },
+    {
+     "sound": "ŋ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C5%8B.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "ng"
+    }
+   ],
+   "examples": [
+    {
+     "en": "I often play ping-pong or basketball.",
+     "cn": "我经常打乒乓球或篮球。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20often%20play%20ping-pong%20or%20basketball."
+    },
+    {
+     "en": "Can you play ping-pong?",
+     "cn": "你会打乒乓球吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Can%20you%20play%20ping-pong%3F"
+    },
+    {
+     "en": "We had a ping-pong match there.",
+     "cn": "我们在那里打了一场乒乓球比赛。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=We%20had%20a%20ping-pong%20match%20there."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "yummy": {
+   "word": "yummy",
+   "explains": [
+    {
+     "pos": "adj",
+     "cn": "美味的；可口的"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈjʌmi",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/2200238.mp3"
+   },
+   "us": {
+    "ipa": "ˈjʌmi",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/2200238.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "j",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/j.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "y"
+    },
+    {
+     "sound": "ʌ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%8C.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "u"
+    },
+    {
+     "sound": "",
+     "audio": "",
+     "start": 2,
+     "end": 2,
+     "letters": "m"
+    },
+    {
+     "sound": "m",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/m.mp3",
+     "start": 3,
+     "end": 3,
+     "letters": "m"
+    },
+    {
+     "sound": "i",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/i.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "y"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Yes, thanks. It's yummy!",
+     "cn": "是的，谢谢。它是美味的！",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Yes%2C%20thanks.%20It's%20yummy!"
+    },
+    {
+     "en": "Make something yummy, like popcorn or a cup of special herb tea, to make reading time something your daughter looks forward to.",
+     "cn": "做些美味的食品，比如说爆米花或一杯特别的香草茶，使你女儿更加期待阅读时光。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Make%20something%20yummy%2C%20like%20popcorn%20or%20a%20cup%20of%20special%20herb%20tea%2C%20to%20make%20reading%20time%20something%20your%20daughter%20looks%20forward%20to."
+    },
+    {
+     "en": "Spread low-fat cream cheese on a whole-wheat bagel and then top with sliced tomatoes for a yummy sandwich.",
+     "cn": "低脂全麦面包圈（或英式松饼）脂肪奶酪，然后用美味的三明治切片西红柿涂在上面。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Spread%20low-fat%20cream%20cheese%20on%20a%20whole-wheat%20bagel%20%20and%20then%20top%20with%20sliced%20tomatoes%20for%20a%20yummy%20sandwich."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "can't": {
+   "word": "can't",
+   "explains": [
+    {
+     "pos": "abbr",
+     "cn": "不能；不会；“cannot”的缩写"
+    }
+   ],
+   "uk": {
+    "ipa": "kɑːnt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/36618.mp3"
+   },
+   "us": {
+    "ipa": "kænt",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/36618.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "k",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/k.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "c"
+    },
+    {
+     "sound": "æ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C3%A6.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "a"
+    },
+    {
+     "sound": "n",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/n.mp3",
+     "start": 2,
+     "end": 2,
+     "letters": "n"
+    },
+    {
+     "sound": "t",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/t.mp3",
+     "start": 3,
+     "end": 4,
+     "letters": "'t"
+    }
+   ],
+   "examples": [
+    {
+     "en": "My friend can't speak and I can't run.",
+     "cn": "我的朋友不能说话，我也不能跑。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=My%20friend%20can't%20speak%20and%20I%20can't%20run."
+    },
+    {
+     "en": "I can't believe it!",
+     "cn": "我简直不敢相信！",
+     "audio": "https://dict.youdao.com/dictvoice?audio=I%20can't%20believe%20it!"
+    },
+    {
+     "en": "The others can't reach you.",
+     "cn": "其他人够不着你。",
+     "audio": "https://dict.youdao.com/dictvoice?audio=The%20others%20can't%20reach%20you."
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
+  },
+  "english": {
+   "word": "english",
+   "explains": [
+    {
+     "pos": "n",
+     "cn": "英语；英文"
+    },
+    {
+     "pos": "adj",
+     "cn": "英国的；英国人的；英语的"
+    }
+   ],
+   "uk": {
+    "ipa": "ˈɪŋɡlɪʃ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/uk/5190.mp3"
+   },
+   "us": {
+    "ipa": "ˈɪŋɡlɪʃ",
+    "audio": "https://static.suyang123.com/assets/yyld/word-base/us/5190.mp3"
+   },
+   "pindu": [
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 0,
+     "end": 0,
+     "letters": "E"
+    },
+    {
+     "sound": "ŋ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C5%8B.mp3",
+     "start": 1,
+     "end": 1,
+     "letters": "n"
+    },
+    {
+     "sound": "ɡl",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%A1l.mp3",
+     "start": 2,
+     "end": 3,
+     "letters": "gl"
+    },
+    {
+     "sound": "ɪ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%C9%AA.mp3",
+     "start": 4,
+     "end": 4,
+     "letters": "i"
+    },
+    {
+     "sound": "ʃ",
+     "audio": "https://static.suyang123.com/assets/yyld/word-base/syllable/%CA%83.mp3",
+     "start": 5,
+     "end": 6,
+     "letters": "sh"
+    }
+   ],
+   "examples": [
+    {
+     "en": "Do you speak English?",
+     "cn": "你会说英语吗？",
+     "audio": "https://dict.youdao.com/dictvoice?audio=Do%20you%20speak%20English%3F"
+    },
+    {
+     "en": "leaflets written in plain English",
+     "cn": "用简单英语写的传单",
+     "audio": "https://dict.youdao.com/dictvoice?audio=leaflets%20written%20in%20plain%20English"
+    }
+   ],
+   "books": [
+    "l2"
+   ],
+   "band": "L2"
   }
  }
 }

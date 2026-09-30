@@ -6,7 +6,6 @@
   'use strict';
 
   /* ---------------- data (injected by build) ---------------- */
-  var TEXTBOOKS = window.__TEXTBOOKS__.books;
   var WORDS = window.__WORDS__.words;
   var VISUALS = window.__VISUALS__;
   var PHONICS = window.__PHONICS__;
@@ -15,17 +14,42 @@
   var petTestParam = new URLSearchParams(window.location.search).get('pet-test');
   var PET_TEST_SPECIES = PET_TEST_KEYS.indexOf(petTestParam) >= 0 ? petTestParam : null;
 
-  var BOOK_META = {
-    g1a: { label: '一年级上册', short: '一上', emoji: '📗' },
-    g1b: { label: '一年级下册', short: '一下', emoji: '📘' },
-    g2a: { label: '二年级上册', short: '二上', emoji: '📙' }
-  };
-  var BOOK_ORDER = ['g1a', 'g1b', 'g2a'];
+  /* ---------------- difficulty bands ----------------
+     A "band" is a difficulty band, not a textbook. Books were the only thing
+     keeping a child's word pool bounded, and a band does that job while adding
+     something books never had: an ordering. Topic grouping was considered and
+     rejected — a finite topic (colours) is exhausted, and the app runs dry.
+     Bands don't: finish L1 and L2 is already open.
+       L1  core    94 words a publisher (or, for 一下, a hand) called 必背
+       L2  daily   words the lesson text uses >=4 times that no 必背 list covers
+       L3  wider   the official KET (A2 Key) list, not enabled yet
+     The L1/L2 line is "has textbook backing", NOT "is more frequent": 48 of the
+     94 L1 words were themselves picked out of 一下 lesson text back when the
+     source site had no word list, and 49 of those 57 meet L2's own >=4 cutoff.
+     See README「词库怎么组织的」for why they were not re-sorted.
 
-  /* Words curated for 一下 (source site has no official list for this edition) */
-  var G1B_TAGGED = Object.keys(WORDS).filter(function (w) {
-    return (WORDS[w].books || []).indexOf('g1b') >= 0;
+     words.json tags each word with `band` (NOT `level` — that key name is
+     already taken by the pet's growth stage). */
+  var BAND_ORDER = ['L1', 'L2', 'L3'];
+  var BAND_META = {
+    L1: { label: '核心词', short: '核心', emoji: '⭐' },
+    L2: { label: '日常词', short: '日常', emoji: '🌱' },
+    L3: { label: '拓展词', short: '拓展', emoji: '🌳' }
+  };
+  var wordBand = {};
+  Object.keys(WORDS).forEach(function (w) {
+    var b = WORDS[w].band;
+    // Untagged words belong to the widest band, and so does any tag this build
+    // doesn't know about — a typo in the data must not empty a band.
+    wordBand[w] = BAND_META[b] ? b : 'L3';
   });
+  function wordsInBand(lv) {
+    return Object.keys(WORDS).filter(function (w) { return wordBand[w] === lv; });
+  }
+  /* A word with no picture cannot be asked as a picture question — the option
+     would render as the 🔤 placeholder and the kid would be guessing between
+     identical tiles. Such words are simply excluded from those two modes. */
+  function hasVisual(w) { return !!(VISUALS[w] && VISUALS[w].emoji); }
 
   /* ---------------- storage ---------------- */
   var KEY = 'pixel-pet-english-v1';
@@ -39,7 +63,7 @@
        跟读是产出（要张嘴、要录音），闯关是辨认（选一选就行），拼读是拆音。
        一次要张嘴 8 次、只认 4 次是合理的，硬绑在一起反而不能调。
        老存档里只有 dailyGoal，另两个走 DEFAULT_STATE 的默认值。 */
-    settings: { dailyGoal: 8, quizGoal: 8, phGoal: 5, book: 'g1a', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
+    settings: { dailyGoal: 8, quizGoal: 8, phGoal: 5, band: 'L1', accent: 'us', autoNext: true, showIpa: false, asrKey: '', asrModel: 'XingChenAGI/XingChenASR-V3.2-Ultra' },
     hints: { swipe: 0 },   // 用过一次就记一笔：卡片可滑动这件事，提示两次就够了
     lastActive: null,
     streak: 0
@@ -72,6 +96,12 @@
       if (m.pet && m.pet.species === 'panda') m.pet.species = 'fox';
       /* 默认宠物名 "小火龙" 改为 "小恐龙"，老存档里名字仍是"小火龙"的同步替换 */
       if (m.pet && m.pet.name === '小火龙') m.pet.name = '小恐龙';
+      /* v5: 教材分册 → 难度分层。老存档记的是 settings.book（g1a/g1b/g2a），
+         新版读 settings.band（L1/L2/L3）。一上/一下/二上 大致对应 L1 起点，
+         但 L1 现在同时包含三册原有的 137 词，所以直接落到 L1 而不是逐册还原：
+         老进度落在 words 里是按词记的，不依赖册，切层不会丢任何进度。 */
+      if (m.settings && m.settings.book != null) { delete m.settings.book; m.settings.band = 'L1'; }
+      if (m.settings && !m.settings.band) m.settings.band = 'L1';
       return m;
     } catch (e) {
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -126,7 +156,6 @@
     return a;
   }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
-  function norm(w) { return String(w || '').toLowerCase().replace(/[^a-z']/g, ''); }
   function esc(t) {
     return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -270,32 +299,57 @@
     if (s < 18) return 4;
     return 5;
   }
-  function dueWords(bookKey) {
+  function dueWords(pool) {
     var now = Date.now();
-    var pool = bookKey ? bookWords(bookKey) : Object.keys(WORDS);
     return pool.filter(function (w) {
       var st = S.words[w];
       return !st || st.lastSeen === 0 || st.due <= now;
     });
   }
-  function bookWords(key) {
-    if (key === 'g1b') return G1B_TAGGED;
-    var b = TEXTBOOKS.filter(function (x) { return x.key === key; })[0];
-    return (b && b.words ? b.words : []).map(norm).filter(function (w) { return WORDS[w]; });
-  }
-  function currentBookWords() { return bookWords(S.settings.book); }
+  function bandWords(lv) { return wordsInBand(lv); }
+  function currentBandWords() { return bandWords(S.settings.band); }
 
-  /* 今日关卡练哪些词 —— 选词和首页展示必须共用这一个来源。
-     新词没学完就只给新词（掺复习会把新词进度顶掉）；学完了改给到期的词，
-     这时候艾宾浩斯该接手了 —— 课本只有 21 个词，dailyGoal 8 的话三天就轮完，
-     之后还按整本随机等于每天都点不亮第一盏灯。
-     到期词也可能有 0 个（SRS 间隔最长 9.8 天），此时退回整本随机，
-     免得孩子点进去是空队列。 */
-  function todayPool() {
-    var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
-    if (unseen.length) return { list: unseen, reviewing: false };
-    var due = dueWords(S.settings.book);
-    return { list: due.length ? due : currentBookWords(), reviewing: true };
+  /* The pool a child works through, in difficulty order.
+     This is the single source both the home screen and the quiz read from —
+     if they disagreed, the daily card and the actual questions would describe
+     different things.
+
+     The pool runs from L1 up to the band the child is on, and it AUTO-ADVANCES:
+     if every allowed word has been seen but a higher band still has unseen
+     words, the ceiling moves up one band at a time until there is something new
+     left. Without this the child would finish L1, find nothing to learn, and
+     have to notice a switch in the settings and press it — the app would be
+     "done" at 94 words and stay there.
+
+     New words come first, and only from the current band and below, so a
+     beginner never meets a word from the wide band. Once the new words run out,
+     Ebbinghaus takes over. The final fallback exists because a fully-learned
+     band can legitimately have zero due words (the SRS interval stretches to
+     60 days) and an empty queue is worse than a random one. */
+  function learningPool() {
+    var ceiling = BAND_ORDER.indexOf(S.settings.band);
+    if (ceiling < 0) ceiling = 0;
+    var allowed, unseen;
+    for (;;) {
+      allowed = [];
+      for (var i = 0; i <= ceiling; i++) allowed = allowed.concat(bandWords(BAND_ORDER[i]));
+      if (!allowed.length) allowed = Object.keys(WORDS);
+      unseen = allowed.filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
+      if (unseen.length || ceiling >= BAND_ORDER.length - 1) break;
+      // Everything reachable has been seen — is there new material above?
+      var next = BAND_ORDER[ceiling + 1];
+      var above = bandWords(next).some(function (w) { var st = S.words[w]; return !st || !st.seen; });
+      if (!above) break;
+      ceiling++;
+    }
+    if (unseen.length) return { list: unseen, reviewing: false, pool: allowed, band: BAND_ORDER[ceiling] };
+    var due = dueWords(allowed);
+    return {
+      list: due.length ? due : allowed,
+      reviewing: true,
+      pool: allowed,
+      band: BAND_ORDER[ceiling]
+    };
   }
 
   function grade(word, ok) {
@@ -1654,11 +1708,22 @@
     return '<span class="em"' + s + '>' + v.emoji + '</span>' + g;
   }
 
-  /* Build a distractor set. Stays inside the current book so the kid is never
-     shown a word they haven't met yet. Prefers a different emoji. */
-  function distractors(word, n) {
-    var pool = currentBookWords().filter(function (w) { return w !== word; });
-    if (pool.length < n) pool = Object.keys(WORDS).filter(function (w) { return w !== word; });
+  /* Build a distractor set.
+     Two rules, in priority order:
+     1. Never a word the child hasn't met. Options come from the same pool the
+        learning card is drawing from, and a word that is only in a level above
+        the current one is excluded outright. A distractor you don't know is not
+        a distractor, it's noise.
+     2. For picture questions the distractors must also HAVE a picture — three
+        🔤 tiles beside one 🏫 is not a choice the child can make.
+     Prefers a different emoji so the answer isn't guessable from the artwork. */
+  function distractors(word, n, needVisual) {
+    var pool = learningPool().pool.filter(function (w) { return w !== word; });
+    if (needVisual) pool = pool.filter(hasVisual);
+    if (pool.length < n) {
+      pool = Object.keys(WORDS).filter(function (w) { return w !== word; });
+      if (needVisual) pool = pool.filter(hasVisual);
+    }
     var vw = visualOf(word).emoji;
     var diff = shuffle(pool.filter(function (w) { return visualOf(w).emoji !== vw; }));
     var same = shuffle(pool.filter(function (w) { return visualOf(w).emoji === vw; }));
@@ -1669,27 +1734,27 @@
   }
 
   function makeQuestion(word) {
-    var modes = ['en2pic', 'pic2en', 'listen2en', 'en2cn', 'cn2en'];
+    /* A picture question needs a picture on the stem AND on all four options.
+       Words with no visual (the weekday glyphs) drop those two modes rather
+       than putting a 🔤 placeholder in front of the child. */
+    var modes = ['listen2en', 'en2cn', 'cn2en'];
+    if (hasVisual(word)) modes = modes.concat(['en2pic', 'pic2en']);
     var mode = pick(modes);
-    var opts = shuffle([word].concat(distractors(word, 3)));
+    var needVisual = mode === 'en2pic' || mode === 'pic2en';
+    var opts = shuffle([word].concat(distractors(word, 3, needVisual)));
     return { word: word, mode: mode, opts: opts };
   }
 
   function buildQueue(kind) {
-    var book = S.settings.book;
-    var due = dueWords(book);
+    var lp = learningPool();
     /* 出多少题 = 设置里闯关要几题。以前是 Math.max(goal, 10)：无论设多少
        至少给 10 题，于是「今日闯关 0/5」的达标线和手上 10 道题对不上。
        现在按设置的量给，池子不够就按池子（min），两边说的是同一件事。 */
     var goal = S.settings.quizGoal;
-    var pool;
+    var pool = lp.list;
     if (kind === 'new') {
-      var unseen = currentBookWords().filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
-      pool = unseen.length ? unseen : (due.length ? due : currentBookWords());
-    } else if (kind === 'review') {
-      pool = due.length ? due : currentBookWords();
-    } else {
-      pool = due.length ? due : currentBookWords();
+      var unseen = lp.pool.filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
+      pool = unseen.length ? unseen : lp.list;
     }
     var q = shuffle(pool).slice(0, Math.min(goal, pool.length)).map(makeQuestion);
     quiz.queue = q; quiz.idx = 0; quiz.results = []; quiz.sessionStart = Date.now();
@@ -1736,7 +1801,7 @@
     var v = $('#view');
     v.innerHTML = '';
     var pill = $('#book-pill');
-    if (pill) pill.textContent = BOOK_META[S.settings.book].emoji + ' ' + BOOK_META[S.settings.book].short;
+    if (pill) pill.textContent = BAND_META[S.settings.band].emoji + ' ' + BAND_META[S.settings.band].short;
     if (tab === 'home') renderHome(v);
     else if (tab === 'learn') renderLearn(v);
     else if (tab === 'phonics') renderPhonics(v);
@@ -1765,14 +1830,14 @@
     var goal = S.settings.dailyGoal;
     var quizGoal = S.settings.quizGoal;
     var phGoal = S.settings.phGoal;
-    /* 第一项跟着 todayPool() 的阶段走：新词没学完是「学单词」，学完了自动
+    /* 第一项跟着 learningPool() 的阶段走：新词没学完是「学单词」，学完了自动
        变成「复习到期词」。cap 取 min(goal, 池子大小) —— 池子就是 buildTodayQueue
        真正会抽的那批，所以首页写的数字和进去之后练到的数量永远一致。
        （原来这里是 Math.min(goal, 8, ...)：那个 8 是魔数硬顶，设置里选了
        「12 词」也还是显示 8，和实际队列对不上，12 档等于半残。）
        复习阶段用 d.reviewOk 而不是 d.newWords：课本学完后没有「首次接触」，
        拿 newWords 去比会永远是 0/8，第一盏灯就再也点不亮了。 */
-    var pool = todayPool();
+    var pool = learningPool();
     var cap = Math.min(goal, pool.list.length);
     var doneN = Math.min(pool.reviewing ? (d.reviewOk || 0) : (d.newWords || 0), cap);
     var phDone = Math.min(d.phonics || 0, phGoal);
@@ -2206,7 +2271,7 @@
 
   /* 全部词库模式：保留原来的"我记住了 / 上一个 / 下一个"自由翻词体验 */
   function renderLearnBrowse(v) {
-    var list = currentBookWords();
+    var list = bandWords(S.settings.band);
     if (!list.length) { v.appendChild(empty('这本课本还没有词表')); return; }
     if (learnIdx >= list.length) learnIdx = 0;
     var word = list[learnIdx];
@@ -2581,7 +2646,7 @@
     /* 复习进度只写在这里（不写进共享的 grade()），因为闯关也调 grade()，
        答对的复习题不该记到学单词头上。新词进度不另记：grade() 里
        st.seen === 1 那次自增就是「首次接触」，哪个 tab 首次遇到都算。
-       两个阶段分开记，是因为 todayPool() 会在新词耗尽的那一刻把任务从
+       两个阶段分开记，是因为 learningPool() 会在新词耗尽的那一刻把任务从
        「学单词」切成「复习到期词」，进度条必须各自从 0 起算，
        否则切换瞬间直接满格。 */
     if (wstate(word).seen > 1) dayStat().reviewOk = (dayStat().reviewOk || 0) + 1;
@@ -2608,7 +2673,7 @@
 
   /* 全部词库模式下的"我记住了"按钮同样走 grade，但不走跟读 */
   function finishBrowseWord() {
-    var list = currentBookWords();
+    var list = bandWords(S.settings.band);
     var word = list[learnIdx];
     grade(word, true);
     gainXp(3, 'food', 2);
@@ -2651,7 +2716,7 @@
     b.innerHTML =
       '<button id="learn-browse" class="browse-entry">' +
         '<span>📚 翻词库</span>' +
-        '<span class="muted" style="font-size:var(--fs-xs)">全部 ' + currentBookWords().length + ' 词 ›</span>' +
+        '<span class="muted" style="font-size:var(--fs-xs)">全部 ' + bandWords(S.settings.band).length + ' 词 ›</span>' +
       '</button>';
     v.appendChild(b);
     $('#learn-browse').onclick = enterBrowseMode;
@@ -2675,13 +2740,13 @@
     go('learn');
   }
   function buildTodayQueue() {
-    /* 池子由 todayPool() 定（见那里的理由：学完新词就换成到期复习），
+    /* 池子由 learningPool() 定（见那里的理由：学完新词就换成到期复习），
        这里只负责抽 dailyGoal 个。队列仅在会话内有效（不落 storage），
        故同一会话内稳定；重新进入今日模式会基于剩余词重抽一批。
        learnReviewing 跟着队列一起定下来：队列在会话内不变，进度卡和
        结果卡的文案就不该中途改口（新词说成复习会让孩子以为自己学错了）。 */
     var goal = Math.max(1, S.settings.dailyGoal);
-    var p = todayPool();
+    var p = learningPool();
     learnReviewing = p.reviewing;
     return shuffle(p.list).slice(0, goal);
   }
@@ -2805,7 +2870,7 @@
      it.words 是三本课本混在一起的，插入顺序不代表相关性 —— 一上学的孩子先看到
      orange 再看到 jiaozi 没有意义。稳定排序，课本内的相对顺序保持原样。 */
   function phWordsInBookOrder(item) {
-    var book = currentBookWords();
+    var book = bandWords(S.settings.band);
     var rank = function (w) { var i = book.indexOf(w); return i < 0 ? 1e9 : i; };
     return (item.words || []).filter(function (w) { return WORDS[w]; })
       .sort(function (a, b) { return rank(a) - rank(b); });
@@ -3138,7 +3203,7 @@
   function resetBuildLetterRow() { buildLetterRow = {}; }
 
   function pickBuildWord() {
-    var pool = currentBookWords().filter(function (w) {
+    var pool = bandWords(S.settings.band).filter(function (w) {
       var ph = PHONEMES_BY_WORD[w];
       return ph && ph.length >= 2 && ph.length <= 5;
     });
@@ -3574,8 +3639,8 @@
       '</div>';
     v.appendChild(c2);
 
-    var book = S.settings.book;
-    var list = currentBookWords();
+    var lv = S.settings.band;
+    var list = bandWords(S.settings.band);
     var boxCount = [0, 0, 0, 0, 0, 0];
     list.forEach(function (w) {
       var st = S.words[w];
@@ -3583,7 +3648,7 @@
     });
     var mastered = boxCount[4] + boxCount[5];
     var c3 = el('div', 'card');
-    c3.innerHTML = '<h2 class="section">' + BOOK_META[book].label + ' · 掌握进度 ' + mastered + '/' + list.length + '</h2>' +
+    c3.innerHTML = '<h2 class="section">' + BAND_META[lv].label + ' · 掌握进度 ' + mastered + '/' + list.length + '</h2>' +
       '<div class="bar"><i style="width:' + (list.length ? Math.round(mastered / list.length * 100) : 0) + '%"></i></div>' +
       '<div class="row wrap" style="gap:var(--sp-2);margin-top:var(--sp-3)">' +
       boxCount.map(function (n, i) {
@@ -3655,45 +3720,45 @@
     if (tbTimers.anim) { clearInterval(tbTimers.anim); tbTimers.anim = null; }
     v.innerHTML = '';
 
-    /* --- 教材与词库 --- */
+    /* --- 难度分层与词库 --- */
     var c1 = el('div', 'card');
-    c1.innerHTML = '<h2 class="section">教材与词库</h2>' +
-      '<div class="muted" style="margin-bottom:var(--sp-3)">切换学习教材，或展开查看每本教材的完整词库</div>' +
-      BOOK_ORDER.map(function (k) {
-        var m = BOOK_META[k];
-        var list = bookWords(k);
+    c1.innerHTML = '<h2 class="section">难度分层</h2>' +
+      '<div class="muted" style="margin-bottom:var(--sp-3)">按难度而非教材划分。选中的层级决定新词范围，展开可查看该层完整词库</div>' +
+      BAND_ORDER.map(function (k) {
+        var m = BAND_META[k];
+        var list = bandWords(k);
         var learned = list.filter(function (w) { return S.words[w] && S.words[w].seen; }).length;
-        var cur = S.settings.book === k;
+        var cur = S.settings.band === k;
         return '<div class="bk-row' + (cur ? ' on' : '') + '">' +
           '<span class="bk-em">' + m.emoji + '</span>' +
           '<span class="bk-main"><b>' + m.label + '</b>' +
           '<span class="muted">词库 ' + list.length + ' 词 · 已学 ' + learned + '</span></span>' +
           (cur
             ? '<span class="chip on" style="pointer-events:none">使用中</span>'
-            : '<button class="chip" data-setbk="' + k + '">切换</button>') +
-          '<button class="chip" data-viewbk="' + k + '">' + (settingsBookOpen === k ? '收起 ▴' : '词库 ▾') + '</button>' +
+            : '<button class="chip" data-setband="' + k + '">切换</button>') +
+          '<button class="chip" data-viewband="' + k + '">' + (settingsBookOpen === k ? '收起 ▴' : '词库 ▾') + '</button>' +
           '</div>' +
           (settingsBookOpen === k
             ? '<div class="wtable" style="margin:var(--sp-1) 0 var(--sp-2)">' +
               (list.length ? list.map(function (w) {
                 var st = S.words[w];
                 return '<button class="wpill b' + (st ? boxFromS(st.s) : 0) + '" data-bw="' + w + '"><span class="dot"></span>' + w + '</button>';
-              }).join('') : '<span class="muted">这本教材还没有词表</span>') + '</div>' +
-              (k === 'g1b' ? '<div class="muted" style="margin:var(--sp-1) 0 var(--sp-3)">※ 一下词表为人工整理，欢迎对照课本指正</div>' : '')
+              }).join('') : '<span class="muted">这一层还没有词</span>') + '</div>' +
+              (k === 'L2' ? '<div class="muted" style="margin:var(--sp-1) 0 var(--sp-3)">※ 日常词 = 课本正文出现 ≥4 次但必背表没收的词，可在 data/custom-words.txt 增删</div>' : '')
             : '');
       }).join('') +
       '<div class="muted">词库里的词点一下可以听发音，颜色代表掌握程度（绿色越深越熟）。</div>';
     v.appendChild(c1);
-    $$('#set-body [data-setbk]').forEach(function (b) {
+    $$('#set-body [data-setband]').forEach(function (b) {
       b.onclick = function () {
-        S.settings.book = b.dataset.setbk; save();
+        S.settings.band = b.dataset.setband; save();
         render(); renderSettings();
-        toast('已切换到 ' + BOOK_META[b.dataset.setbk].label);
+        toast('已切换到 ' + BAND_META[b.dataset.setband].label);
       };
     });
-    $$('#set-body [data-viewbk]').forEach(function (b) {
+    $$('#set-body [data-viewband]').forEach(function (b) {
       b.onclick = function () {
-        var k = b.dataset.viewbk;
+        var k = b.dataset.viewband;
         settingsBookOpen = settingsBookOpen === k ? null : k;
         renderSettings();
       };

@@ -1,16 +1,30 @@
 #!/usr/bin/env node
 /**
- * Fetch per-word pronunciation data for all textbook vocabulary.
+ * Fetch per-word pronunciation data for the whole vocabulary.
  *
- * Word lists:
- *  - g1a / g2a: official 必背单词 harvested from the textbook pages.
- *  - g1b: the source site has NO word list for the new (2025) edition, so the
- *    list below is curated by hand from the lesson text itself. Every entry is
- *    a word that literally appears in a 一年级下册 lesson.
+ * Word lists, and what each one actually is:
+ *
+ *  - g1a / g2a (46 words) — the source site's official 必背 list, harvested from
+ *    the 一上 / 二上 textbook pages. These carry the strongest claim on being
+ *    "core": someone published them as the words a child must memorise.
+ *
+ *  - G1B_WORDS below (57 words) — the source site has NO word list for the new
+ *    一下 edition, so this list is curated by hand from the lesson text. Every
+ *    entry literally appears in a 一年级下册 lesson, but the selection is ours,
+ *    not a publisher's. Note this makes 48 of the 94 L1 words same-origin as
+ *    Level 2; the L1/L2 line is "has textbook backing", not "is more frequent".
+ *
+ *  - data/custom-words.txt (Level 2) — words the lesson text uses ≥4 times that
+ *    no 必背 list covers. One word per line, `#` comments.
+ *
+ * Only words that are NOT already in the output file are fetched, so re-running
+ * this after editing the custom list costs one request per new word instead of
+ * the whole library. Pass --all to force a full refetch.
  *
  * Output: data/words.json
  *   { "school": { word, explains:[{pos, cn}], uk:{ipa,audio}, us:{ipa,audio},
- *                 pindu:[{sound, audio, word_start, word_end}], examples:[...] } }
+ *                 pindu:[{sound, audio, word_start, word_end}], examples:[...],
+ *                 level: 1|2, books:[...] } }
  */
 const fs = require('fs');
 const path = require('path');
@@ -107,26 +121,58 @@ async function fetchWord(word) {
   for (const b of books.books) for (const w of b.words) add(w, b.key);
   for (const w of G1B_WORDS) add(w, 'g1b');
 
+  /* Level 2 additions. Kept out of `books` deliberately: the level is the
+     learning axis now, not the textbook a word was harvested from. */
+  const customPath = path.join(__dirname, '..', 'data', 'custom-words.txt');
+  const custom = fs.existsSync(customPath)
+    ? fs
+        .readFileSync(customPath, 'utf8')
+        .split('\n')
+        .map((l) => l.replace(/#.*$/, '').trim())
+        .filter(Boolean)
+    : [];
+  for (const w of custom) add(w, 'l2');
+
+  const force = process.argv.includes('--all');
+  let prev = {};
+  if (!force && fs.existsSync(OUT)) {
+    try {
+      prev = JSON.parse(fs.readFileSync(OUT, 'utf8')).words || {};
+    } catch (e) {
+      /* unreadable cache -> refetch everything */
+    }
+  }
+
   const out = {};
   const words = [...set.keys()];
-  process.stderr.write(`Fetching ${words.length} words...\n`);
+  const todo = force ? words : words.filter((w) => !prev[w]);
+  process.stderr.write(
+    `Fetching ${todo.length} words (${words.length - todo.length} already cached)...\n`
+  );
   let fail = 0;
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i];
+  for (let i = 0; i < todo.length; i++) {
+    const w = todo[i];
     try {
       out[w] = await fetchWord(w);
       out[w].books = [...set.get(w)];
-      process.stderr.write(`  [${i + 1}/${words.length}] ${w} ok\n`);
+      process.stderr.write(`  [${i + 1}/${todo.length}] ${w} ok\n`);
     } catch (e) {
       fail++;
-      process.stderr.write(`  [${i + 1}/${words.length}] ${w} FAIL ${e.message}\n`);
+      process.stderr.write(`  [${i + 1}/${todo.length}] ${w} FAIL ${e.message}\n`);
     }
     await sleep(200);
   }
-  fs.writeFileSync(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), words: out }, null, 1));
-  const withAudio = Object.values(out).filter((w) => w.us && w.us.audio).length;
-  const withPindu = Object.values(out).filter((w) => w.pindu && w.pindu.length).length;
+  // Keep every previously fetched word; only the tag sets are refreshed so a
+  // word that gains/losses a book label is corrected without a refetch.
+  const merged = Object.assign({}, prev, out);
+  for (const w of Object.keys(merged)) {
+    if (set.has(w)) merged[w].books = [...set.get(w)];
+  }
+  fs.writeFileSync(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), words: merged }, null, 1));
+  const all = Object.values(merged);
+  const withAudio = all.filter((w) => w.us && w.us.audio).length;
+  const withPindu = all.filter((w) => w.pindu && w.pindu.length).length;
   process.stdout.write(
-    `${Object.keys(out).length} words (${fail} failed) | ${withAudio} with audio | ${withPindu} with 自然拼读\n-> ${OUT}\n`
+    `${all.length} words total (${fail} failed this run) | ${withAudio} with audio | ${withPindu} with 自然拼读\n-> ${OUT}\n`
   );
 })();
