@@ -1,0 +1,70 @@
+# 北京版二年级下册 词频候选（ernianji/bjb_xiace）
+# 抓取 7 个单元 / 670 句；出现 >= 2 次的有 202 个词。
+# 词库已有 1462 词，其中 140 个在此书出现（已剔除），
+# 下面 62 个是词库没有的候选。
+# 这是**候选**，不是词表：功能词（sh all / there / very）和内容词会一起出现，需要人工筛。
+# L2 的口径是 >=4 次；这里默认放宽到 2 次，因为本册词量更少。
+
+# word	出现次数	首次中文	例句
+is	60	春天是温暖的。	Spring is warm.
+let's	45	一起唱一唱	Let's Sing
+unit	29	第一单元 美丽的四季	Unit One Lovely Seasons
+it's	26	天气很暖和。	It's warm.
+are	23	一年中有四个季节。	There are four seasons in a year.
+a	20	我们经常游泳。	We swim a lot.
+may	19	五月	MAY
+april	18	三月、四月、五月、	March, April, May,
+march	18	三月、四月、五月、	March, April, May,
+december	16	十月、十一月和十二月。	October, November and December.
+june	16	六月、七月、八月、九月、	June, July, August, September,
+january	14	一月、二月、	January, February,
+july	14	六月、七月、八月、九月、	June, July, August, September,
+days	13	二十八天？	28 days?
+october	13	十月、十一月和十二月。	October, November and December.
+september	13	六月、七月、八月、九月、	June, July, August, September,
+august	12	六月、七月、八月、九月、	June, July, August, September,
+february	12	一月、二月、	January, February,
+november	12	十月、十一月和十二月。	October, November and December.
+flowers	11	我们看着花儿绽放。	We see flowers bloom.
+don't	9	别担心。	Don't worry.
+how's	9	今天天气怎么样，妈妈？	How's the weather today, Mum?
+rainy	8	下雨了。	It's rainy.
+months	7	第三单元 你好，月份！	Unit Three Hello, Months!
+s	7	一起读一读	Let’s Read
+seasons	7	第一单元 美丽的四季	Unit One Lovely Seasons
+i'm	6	对不起。	I'm sorry.
+magic	6	第五单元 五句神奇的话语	Unit Five The Five Magic Words
+will	6	本单元结束时，我将能够……	By the end of this unit, I will be able to
+assessment	5	自我评估	Self-assessment
+chant	5	一起诵一诵	Let's chant
+leaves	5	叶子小小的。	The leaves are small.
+self	5	自我评估	Self-assessment
+snowy	5	现在下雪了。	It's snowy now.
+words	5	第五单元 五句神奇的话语	Unit Five The Five Magic Words
+apples	4	我的苹果是青色的。	My apples are green.
+cupcake	4	当你需要一个纸杯蛋糕时，你会说什么？	When you need a cupcake, What do you say?
+mum's	4	第十一课 妈妈的生日	Lesson 11 Mum's Birthday
+ok	4	没关系。	That's OK.
+season	4	你最喜欢哪个季节？	Which season do you like best?
+t	4	我们需要T恤衫。	We need our T-shirts.
+that's	4	没关系。	That's OK.
+an	3	第五课 令人惊叹的一天	Lesson 5 An Amazing Day
+beijing	3	北京的天气怎么样？	How's the weather in Beijing?
+blooming	3	花儿绽放。	The flowers are blooming.
+friends	3	选择一张天气卡片，和朋友们交谈。	Choose a weather card, and talk with your friends.
+jack	3	杰克有只猫，	Jack has a cat,
+pick	3	我可以帮你把它们捡起来。	I can help you pick them up.
+am	2	我披上了银装。	I am all in white.
+balloons	2	我可以帮你挂气球。	I can help you put up the balloons.
+birthdays	2	谈论我家人和朋友们的生日。	talk about my family and friends' birthdays.
+coats	2	我们需要毛衣和外套。	We need our sweaters and coats.
+looking	2	我看见三月正看着我。	I see March looking at me.
+m	2	我……。	I’m ... .
+maomao	2	你好，毛毛！	Hello, Maomao!
+ouch	2	哎哟！	Ouch!
+raincoats	2	我们需要雨衣。	We need our raincoats.
+says	2	它说道：“谢谢你这样做。”	It says, "Thank you for that."
+shirts	2	我们需要T恤衫。	We need our T-shirts.
+step	2	第一步 制作你的名片，并把它放在写着你的生日月份的蛋糕旁边。	Step 1 Make your name card and put it next to the cake with your birthday month.
+sweaters	2	我们需要毛衣和外套。	We need our sweaters and coats.
+you're	2	不客气。	You're welcome.
