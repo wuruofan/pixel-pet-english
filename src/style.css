@@ -124,13 +124,13 @@ body {
     radial-gradient(1100px 520px at 12% -8%, #ffe6c2 0%, transparent 60%),
     radial-gradient(900px 480px at 100% 0%, #ffe0ec 0%, transparent 55%),
     var(--bg);
-  /* 不能用 100vh：安卓 Chrome 的地址栏会随滚动伸缩，vh 固定为「地址栏收起时」的
-     高度。地址栏一弹出，视口变矮而 body 不变，多出的那段就成了幽灵滚动区 ——
-     上划时页面纹丝不动，浏览器把那几十像素全用来收起/展示地址栏。
-     dvh 跟着可视视口实时变，svh 是地址栏收起时的稳定高度，作为回退。 */
-  min-height: 100vh;
-  min-height: 100svh;
-  min-height: 100dvh;
+  /* 刻意不设 min-height:100vh/dvh/svh。
+     vh 家族的单位都会把文档高度绑到视口高度上：地址栏一伸缩，
+     文档高度就跟着变，浏览器会重新计算滚动区间 —— 手指已经划出去的
+     那一下被「吃掉」，于是表现为「划两下才动一下，之后又不响应」。
+     dvh 只是让幽灵区不常驻，并不能解决滚动区间抖动。
+     背景铺满由 html 上的 --bg 负责（html 已有同样的底色），
+     内容不足一屏时也不会露白。 */
 }
 
 #app { max-width: 860px; margin: 0 auto; padding: var(--sp-4) var(--sp-4) 108px; }
