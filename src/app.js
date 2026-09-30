@@ -252,10 +252,23 @@
   }
 
   /* Word pronunciation: real recording -> youdao TTS -> browser TTS */
+  /* Audio URL for a word.
+     Slimmed words (the L3 reserve) carry a single `audioId` instead of a pair
+     of full URLs — the source site's British and American recordings are the
+     same file under two paths, verified identical for all 1462 words, so
+     storing both was 115 KB of duplicate string. */
+  var AUDIO_BASE = (window.__WORDS__.audioBase) || '';
+  function audioUrlOf(w, accent) {
+    if (!w) return null;
+    if (w.us && w.us.audio) {
+      if (accent !== 'uk') return w.us.audio;
+      return (w.uk && w.uk.audio) || w.us.audio;
+    }
+    if (w.audioId && AUDIO_BASE) return AUDIO_BASE + accent + '/' + w.audioId + '.mp3';
+    return null;
+  }
   function speakWord(word) {
-    var w = WORDS[word];
-    var url = w && S.settings.accent === 'uk' && w.uk && w.uk.audio ? w.uk.audio
-      : w && w.us && w.us.audio ? w.us.audio : null;
+    var url = audioUrlOf(WORDS[word], S.settings.accent);
     if (url) {
       return playRange(url, 0, 0).then(function (ok) {
         return ok ? true : playRange(youdaoUrl(word), 0, 0).then(function (ok2) {
@@ -336,9 +349,19 @@
       if (!allowed.length) allowed = Object.keys(WORDS);
       unseen = allowed.filter(function (w) { var st = S.words[w]; return !st || !st.seen; });
       if (unseen.length || ceiling >= BAND_ORDER.length - 1) break;
-      // Everything reachable has been seen — is there new material above?
-      var next = BAND_ORDER[ceiling + 1];
-      var above = bandWords(next).some(function (w) { var st = S.words[w]; return !st || !st.seen; });
+      /* Is there unseen material ANYWHERE above, not just in the very next
+         band? Checking only BAND_ORDER[ceiling + 1] dead-ends: a child who
+         learned L2 out of order (or whose L2 was added to the library after
+         they finished it) has an empty L2 above a full L3, and the climb
+         stops at L1 forever. The wide band is the whole reason the library
+         has a ceiling at all — skip to it. */
+      var above = false;
+      for (var k = ceiling + 1; k < BAND_ORDER.length; k++) {
+        if (bandWords(BAND_ORDER[k]).some(function (w) { var st = S.words[w]; return !st || !st.seen; })) {
+          above = true;
+          break;
+        }
+      }
       if (!above) break;
       ceiling++;
     }

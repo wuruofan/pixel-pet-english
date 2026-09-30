@@ -45,7 +45,14 @@ const G1B_WORDS = [
   'run', 'jump', 'swim', 'dance', 'sing', 'kite', 'help',
 ];
 
-function get(url) {
+/* A 30s timeout with no retry is how a 1341-word run turns into an apparent
+   hang: one slow response parks the whole queue. 8s is ~40x the observed
+   200ms median, so a real timeout means something is actually wrong, and
+   retrying it twice gets past the occasional dropped connection. */
+const REQ_TIMEOUT = 8000;
+const RETRIES = 2;
+
+function getOnce(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { headers: { 'User-Agent': UA, Accept: 'text/html' } }, (res) => {
       if (res.statusCode !== 200) {
@@ -58,8 +65,21 @@ function get(url) {
       res.on('end', () => resolve(buf));
     });
     req.on('error', reject);
-    req.setTimeout(30000, () => req.destroy(new Error('timeout')));
+    req.setTimeout(REQ_TIMEOUT, () => req.destroy(new Error(`timeout ${REQ_TIMEOUT}ms`)));
   });
+}
+
+async function get(url) {
+  let last;
+  for (let i = 0; i <= RETRIES; i++) {
+    try {
+      return await getOnce(url);
+    } catch (e) {
+      last = e;
+      if (i < RETRIES) await sleep(600 * (i + 1));
+    }
+  }
+  throw last;
 }
 
 function parseNuxt(html) {
@@ -121,17 +141,22 @@ async function fetchWord(word) {
   for (const b of books.books) for (const w of b.words) add(w, b.key);
   for (const w of G1B_WORDS) add(w, 'g1b');
 
-  /* Level 2 additions. Kept out of `books` deliberately: the level is the
-     learning axis now, not the textbook a word was harvested from. */
-  const customPath = path.join(__dirname, '..', 'data', 'custom-words.txt');
-  const custom = fs.existsSync(customPath)
-    ? fs
-        .readFileSync(customPath, 'utf8')
-        .split('\n')
-        .map((l) => l.replace(/#.*$/, '').trim())
-        .filter(Boolean)
-    : [];
-  for (const w of custom) add(w, 'l2');
+  /* Our own additions, split by difficulty band. Each file is one word per
+     line, `#` starts a comment. `books` records the band (l1/l2/l3) rather
+     than a textbook, which is fine — books was always only used to answer
+     "which group is this word in", and that question is now about difficulty.
+       data/l2-words.txt   日常词：课文正文出现 >=4 次、必背表没收的实义词
+       data/l3-words.txt   拓展词：剑桥 A2 Key (KET) 官方词表 */
+  const readList = (p) =>
+    fs.existsSync(p)
+      ? fs
+          .readFileSync(p, 'utf8')
+          .split('\n')
+          .map((l) => l.replace(/#.*$/, '').trim())
+          .filter(Boolean)
+      : [];
+  for (const w of readList(path.join(__dirname, '..', 'data', 'l2-words.txt'))) add(w, 'l2');
+  for (const w of readList(path.join(__dirname, '..', 'data', 'l3-words.txt'))) add(w, 'l3');
 
   const force = process.argv.includes('--all');
   let prev = {};
@@ -150,6 +175,16 @@ async function fetchWord(word) {
     `Fetching ${todo.length} words (${words.length - todo.length} already cached)...\n`
   );
   let fail = 0;
+  /* Checkpoint every 25 words. A 1341-word run takes minutes; if it is
+     interrupted (or a word wedges the queue) the work already done survives,
+     and the next run resumes instead of starting over. */
+  const checkpoint = () => {
+    const merged = Object.assign({}, prev, out);
+    for (const w of Object.keys(merged)) {
+      if (set.has(w)) merged[w].books = [...set.get(w)];
+    }
+    fs.writeFileSync(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), words: merged }, null, 1));
+  };
   for (let i = 0; i < todo.length; i++) {
     const w = todo[i];
     try {
@@ -160,6 +195,7 @@ async function fetchWord(word) {
       fail++;
       process.stderr.write(`  [${i + 1}/${todo.length}] ${w} FAIL ${e.message}\n`);
     }
+    if ((i + 1) % 25 === 0) checkpoint();
     await sleep(200);
   }
   // Keep every previously fetched word; only the tag sets are refreshed so a

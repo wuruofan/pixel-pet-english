@@ -430,5 +430,668 @@
  },
  "mum": {
   "emoji": "👩‍🦰"
+ },
+ "airport": {
+  "emoji": "✈️"
+ },
+ "arm": {
+  "emoji": "💪"
+ },
+ "autumn": {
+  "emoji": "🍂"
+ },
+ "back": {
+  "emoji": "🔙"
+ },
+ "bag": {
+  "emoji": "🎒"
+ },
+ "ball": {
+  "emoji": "⚽"
+ },
+ "balloon": {
+  "emoji": "🎈"
+ },
+ "bank": {
+  "emoji": "🏦"
+ },
+ "bathroom": {
+  "emoji": "🛁"
+ },
+ "battery": {
+  "emoji": "🔋"
+ },
+ "beach": {
+  "emoji": "🏖️"
+ },
+ "bee": {
+  "emoji": "🐝"
+ },
+ "belt": {
+  "emoji": "👖"
+ },
+ "bird": {
+  "emoji": "🐦"
+ },
+ "birthday": {
+  "emoji": "🎂"
+ },
+ "boat": {
+  "emoji": "⛵"
+ },
+ "boot": {
+  "emoji": "🥾"
+ },
+ "bottle": {
+  "emoji": "🍶"
+ },
+ "bowl": {
+  "emoji": "🥣"
+ },
+ "box": {
+  "emoji": "📦"
+ },
+ "breakfast": {
+  "emoji": "🥞"
+ },
+ "bridge": {
+  "emoji": "🌉"
+ },
+ "butterfly": {
+  "emoji": "🦋"
+ },
+ "camera": {
+  "emoji": "📷"
+ },
+ "candy": {
+  "emoji": "🍭"
+ },
+ "card": {
+  "emoji": "🃏"
+ },
+ "carrot": {
+  "emoji": "🥕"
+ },
+ "chair": {
+  "emoji": "🪑"
+ },
+ "cheese": {
+  "emoji": "🧀"
+ },
+ "chocolate": {
+  "emoji": "🍫"
+ },
+ "cinema": {
+  "emoji": "🎬"
+ },
+ "city": {
+  "emoji": "🏙️"
+ },
+ "clock": {
+  "emoji": "🕐"
+ },
+ "closed": {
+  "emoji": "🔒"
+ },
+ "clothes": {
+  "emoji": "👕"
+ },
+ "cloud": {
+  "emoji": "☁️"
+ },
+ "coat": {
+  "emoji": "🧥"
+ },
+ "coffee": {
+  "emoji": "☕"
+ },
+ "cold": {
+  "emoji": "🧊"
+ },
+ "comb": {
+  "emoji": "💈"
+ },
+ "computer": {
+  "emoji": "💻"
+ },
+ "cow": {
+  "emoji": "🐄"
+ },
+ "cup": {
+  "emoji": "☕"
+ },
+ "cycling": {
+  "emoji": "🚴"
+ },
+ "dinner": {
+  "emoji": "🍽️"
+ },
+ "dirty": {
+  "emoji": "🪣"
+ },
+ "door": {
+  "emoji": "🚪"
+ },
+ "dress": {
+  "emoji": "👗"
+ },
+ "drum": {
+  "emoji": "🥁"
+ },
+ "ear": {
+  "emoji": "👂"
+ },
+ "eye": {
+  "emoji": "👁️"
+ },
+ "farm": {
+  "emoji": "🚜"
+ },
+ "fat": {
+  "emoji": "🐷"
+ },
+ "field": {
+  "emoji": "🌾"
+ },
+ "finger": {
+  "emoji": "👆"
+ },
+ "fire": {
+  "emoji": "🔥"
+ },
+ "foot": {
+  "emoji": "🦶"
+ },
+ "forest": {
+  "emoji": "🌲"
+ },
+ "fork": {
+  "emoji": "🍴"
+ },
+ "funny": {
+  "emoji": "😂"
+ },
+ "garden": {
+  "emoji": "🌷"
+ },
+ "glass": {
+  "emoji": "🥛"
+ },
+ "glasses": {
+  "emoji": "👓"
+ },
+ "glove": {
+  "emoji": "🧤"
+ },
+ "grape": {
+  "emoji": "🍇"
+ },
+ "grass": {
+  "emoji": "🌿"
+ },
+ "guitar": {
+  "emoji": "🎸"
+ },
+ "hair": {
+  "emoji": "💇"
+ },
+ "hand": {
+  "emoji": "✋"
+ },
+ "hat": {
+  "emoji": "🧢"
+ },
+ "head": {
+  "emoji": "🧠"
+ },
+ "heart": {
+  "emoji": "❤️"
+ },
+ "holiday": {
+  "emoji": "🏖️"
+ },
+ "home": {
+  "emoji": "🏠"
+ },
+ "horse": {
+  "emoji": "🐴"
+ },
+ "hospital": {
+  "emoji": "🏥"
+ },
+ "hot": {
+  "emoji": "🔥"
+ },
+ "hotel": {
+  "emoji": "🏨"
+ },
+ "house": {
+  "emoji": "🏠"
+ },
+ "ice": {
+  "emoji": "🧊"
+ },
+ "island": {
+  "emoji": "🏝️"
+ },
+ "juice": {
+  "emoji": "🧃"
+ },
+ "key": {
+  "emoji": "🔑"
+ },
+ "kitchen": {
+  "emoji": "🍳"
+ },
+ "knife": {
+  "emoji": "🔪"
+ },
+ "lamp": {
+  "emoji": "💡"
+ },
+ "lemon": {
+  "emoji": "🍋"
+ },
+ "letter": {
+  "emoji": "✉️"
+ },
+ "library": {
+  "emoji": "📚"
+ },
+ "lion": {
+  "emoji": "🦁"
+ },
+ "loud": {
+  "emoji": "🔊"
+ },
+ "lunch": {
+  "emoji": "🍱"
+ },
+ "map": {
+  "emoji": "🗺️"
+ },
+ "market": {
+  "emoji": "🛒"
+ },
+ "meat": {
+  "emoji": "🍖"
+ },
+ "medicine": {
+  "emoji": "💊"
+ },
+ "milk": {
+  "emoji": "🥛"
+ },
+ "mirror": {
+  "emoji": "🪞"
+ },
+ "money": {
+  "emoji": "💰"
+ },
+ "moon": {
+  "emoji": "🌙"
+ },
+ "mountain": {
+  "emoji": "⛰️"
+ },
+ "mouse": {
+  "emoji": "🐭"
+ },
+ "museum": {
+  "emoji": "🏛️"
+ },
+ "new": {
+  "emoji": "🆕"
+ },
+ "old": {
+  "emoji": "📜"
+ },
+ "open": {
+  "emoji": "📂"
+ },
+ "painting": {
+  "emoji": "🖼️"
+ },
+ "paper": {
+  "emoji": "📄"
+ },
+ "pen": {
+  "emoji": "🖊️"
+ },
+ "pet": {
+  "emoji": "🐕"
+ },
+ "phone": {
+  "emoji": "📱"
+ },
+ "piano": {
+  "emoji": "🎹"
+ },
+ "pizza": {
+  "emoji": "🍕"
+ },
+ "plane": {
+  "emoji": "✈️"
+ },
+ "plate": {
+  "emoji": "🍽️"
+ },
+ "playground": {
+  "emoji": "🛝"
+ },
+ "potato": {
+  "emoji": "🥔"
+ },
+ "present": {
+  "emoji": "🎁"
+ },
+ "quiet": {
+  "emoji": "🤫"
+ },
+ "radio": {
+  "emoji": "📻"
+ },
+ "rain": {
+  "emoji": "🌧️"
+ },
+ "restaurant": {
+  "emoji": "🍴"
+ },
+ "ring": {
+  "emoji": "💍"
+ },
+ "road": {
+  "emoji": "🛣️"
+ },
+ "running": {
+  "emoji": "🏃"
+ },
+ "sad": {
+  "emoji": "😢"
+ },
+ "same": {
+  "emoji": "🟰"
+ },
+ "sandwich": {
+  "emoji": "🥪"
+ },
+ "scarf": {
+  "emoji": "🧣"
+ },
+ "scissors": {
+  "emoji": "✂️"
+ },
+ "sea": {
+  "emoji": "🌊"
+ },
+ "sheep": {
+  "emoji": "🐑"
+ },
+ "ship": {
+  "emoji": "🚢"
+ },
+ "shirt": {
+  "emoji": "👕"
+ },
+ "shoe": {
+  "emoji": "👟"
+ },
+ "shop": {
+  "emoji": "🏪"
+ },
+ "short": {
+  "emoji": "📐"
+ },
+ "skating": {
+  "emoji": "⛸️"
+ },
+ "ski": {
+  "emoji": "⛷️"
+ },
+ "skirt": {
+  "emoji": "👗"
+ },
+ "slow": {
+  "emoji": "🐌"
+ },
+ "snack": {
+  "emoji": "🍿"
+ },
+ "snake": {
+  "emoji": "🐍"
+ },
+ "snow": {
+  "emoji": "❄️"
+ },
+ "soap": {
+  "emoji": "🧼"
+ },
+ "sock": {
+  "emoji": "🧦"
+ },
+ "soup": {
+  "emoji": "🍲"
+ },
+ "spoon": {
+  "emoji": "🥄"
+ },
+ "spring": {
+  "emoji": "🌷"
+ },
+ "star": {
+  "emoji": "⭐"
+ },
+ "station": {
+  "emoji": "🚉"
+ },
+ "strawberry": {
+  "emoji": "🍓"
+ },
+ "street": {
+  "emoji": "🛣️"
+ },
+ "strong": {
+  "emoji": "💪"
+ },
+ "sugar": {
+  "emoji": "🍬"
+ },
+ "summer": {
+  "emoji": "☀️"
+ },
+ "sun": {
+  "emoji": "☀️"
+ },
+ "swimming": {
+  "emoji": "🏊"
+ },
+ "table": {
+  "emoji": "🪑"
+ },
+ "tall": {
+  "emoji": "🦒"
+ },
+ "taxi": {
+  "emoji": "🚕"
+ },
+ "tea": {
+  "emoji": "🍵"
+ },
+ "tennis": {
+  "emoji": "🎾"
+ },
+ "thirsty": {
+  "emoji": "💧"
+ },
+ "ticket": {
+  "emoji": "🎫"
+ },
+ "tomato": {
+  "emoji": "🍅"
+ },
+ "tooth": {
+  "emoji": "🦷"
+ },
+ "towel": {
+  "emoji": "🧻"
+ },
+ "toy": {
+  "emoji": "🧸"
+ },
+ "train": {
+  "emoji": "🚆"
+ },
+ "tree": {
+  "emoji": "🌳"
+ },
+ "umbrella": {
+  "emoji": "☂️"
+ },
+ "village": {
+  "emoji": "🏡"
+ },
+ "wall": {
+  "emoji": "🧱"
+ },
+ "watch": {
+  "emoji": "⌚"
+ },
+ "water": {
+  "emoji": "💧"
+ },
+ "wind": {
+  "emoji": "🌬️"
+ },
+ "window": {
+  "emoji": "🪟"
+ },
+ "winter": {
+  "emoji": "⛄"
+ },
+ "young": {
+  "emoji": "🧒"
+ },
+ "zoo": {
+  "emoji": "🦁"
+ },
+ "album": {
+  "emoji": "📔"
+ },
+ "ambulance": {
+  "emoji": "🚑"
+ },
+ "armchair": {
+  "emoji": "🪑"
+ },
+ "bedroom": {
+  "emoji": "🛏️"
+ },
+ "blanket": {
+  "emoji": "🛏️"
+ },
+ "cafe": {
+  "emoji": "☕"
+ },
+ "calendar": {
+  "emoji": "📆"
+ },
+ "camel": {
+  "emoji": "🐫"
+ },
+ "campsite": {
+  "emoji": "⛺"
+ },
+ "chess": {
+  "emoji": "♟️"
+ },
+ "circus": {
+  "emoji": "🎪"
+ },
+ "crossing": {
+  "emoji": "🚸"
+ },
+ "curtain": {
+  "emoji": "🪟"
+ },
+ "desert": {
+  "emoji": "🏜️"
+ },
+ "dessert": {
+  "emoji": "🍰"
+ },
+ "diary": {
+  "emoji": "📔"
+ },
+ "doll": {
+  "emoji": "🪆"
+ },
+ "dolphin": {
+  "emoji": "🐬"
+ },
+ "envelope": {
+  "emoji": "✉️"
+ },
+ "garage": {
+  "emoji": "🏠"
+ },
+ "gate": {
+  "emoji": "🚪"
+ },
+ "hill": {
+  "emoji": "⛰️"
+ },
+ "motorway": {
+  "emoji": "🛣️"
+ },
+ "mushroom": {
+  "emoji": "🍄"
+ },
+ "party": {
+  "emoji": "🎉"
+ },
+ "pillow": {
+  "emoji": "🛏️"
+ },
+ "platform": {
+  "emoji": "🛤️"
+ },
+ "postcard": {
+  "emoji": "💌"
+ },
+ "roof": {
+  "emoji": "🏠"
+ },
+ "roundabout": {
+  "emoji": "🌀"
+ },
+ "salad": {
+  "emoji": "🥗"
+ },
+ "shelf": {
+  "emoji": "🗄️"
+ },
+ "sofa": {
+  "emoji": "🛋️"
+ },
+ "space": {
+  "emoji": "🌌"
+ },
+ "stamp": {
+  "emoji": "📮"
+ },
+ "supermarket": {
+  "emoji": "🛒"
+ },
+ "toilet": {
+  "emoji": "🚽"
+ },
+ "toothbrush": {
+  "emoji": "🪥"
+ },
+ "uniform": {
+  "emoji": "👔"
+ },
+ "whale": {
+  "emoji": "🐳"
  }
 }

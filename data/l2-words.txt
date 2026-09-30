@@ -1,3 +1,5 @@
+# L2 日常词：课本正文出现 >=4 次、但没有必背表收录的实义词
+# 43 词。改这个文件就能加日常词。
 play
 name
 weekend
@@ -40,5 +42,4 @@ ping
 pong
 yummy
 can't
-tock
 english
