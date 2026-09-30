@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The app is a single self-contained HTML file, so there is nothing to
+      # install. build.js is offline-only and byte-for-byte reproducible.
+      - name: Build
+        run: node scripts/build.js
+
+      # The file is committed as pixel-pet-english.html, but Pages needs it
+      # served at the site root. Publish it as index.html so the repo's Pages
+      # URL resolves without a redirect.
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          cp pixel-pet-english.html _site/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

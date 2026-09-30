@@ -15,5 +15,13 @@ Thumbs.db
 *.swp
 *.swo
 
+# Pages deploy staging dir (see .github/workflows/deploy.yml)
+_site/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
 # Workbuddy local session memory (not for version control)
 .workbuddy/
