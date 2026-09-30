@@ -142,11 +142,17 @@ async function fetchWord(word) {
   for (const w of G1B_WORDS) add(w, 'g1b');
 
   /* Our own additions, split by difficulty band. Each file is one word per
-     line, `#` starts a comment. `books` records the band (l1/l2/l3) rather
+     line, `#` starts a comment. `books` records the band (g1a/l2/l3a...) rather
      than a textbook, which is fine — books was always only used to answer
      "which group is this word in", and that question is now about difficulty.
        data/l2-words.txt   日常词：课文正文出现 >=4 次、必背表没收的实义词
-       data/l3-words.txt   拓展词：剑桥 A2 Key (KET) 官方词表 */
+       data/l3a-words.txt  拓展词：KET 词表 ∩ Oxford 3000 A1/A2
+       data/l3b-words.txt  挑战词：KET 词表 ∩ Oxford 3000 B1/B2
+       data/l3c-words.txt  补充词：KET 词表 - Oxford 3000（未收录）
+     The three l3 files are one KET list split by CEFR level, not three lists —
+     scripts/split-l3-bands.js regenerates all three from data/l3-words.txt.
+     Driven by a loop so adding a band is a one-line change; a forgotten file
+     would otherwise tag nothing and quietly shrink that band. */
   const readList = (p) =>
     fs.existsSync(p)
       ? fs
@@ -155,8 +161,14 @@ async function fetchWord(word) {
           .map((l) => l.replace(/#.*$/, '').trim())
           .filter(Boolean)
       : [];
-  for (const w of readList(path.join(__dirname, '..', 'data', 'l2-words.txt'))) add(w, 'l2');
-  for (const w of readList(path.join(__dirname, '..', 'data', 'l3-words.txt'))) add(w, 'l3');
+  for (const tag of ['l2', 'l3a', 'l3b', 'l3c']) {
+    const p = path.join(__dirname, '..', 'data', `${tag}-words.txt`);
+    if (!fs.existsSync(p)) {
+      console.error(`缺少词表文件 ${p}，${tag} 层会是空的`);
+      process.exit(1);
+    }
+    for (const w of readList(p)) add(w, tag);
+  }
 
   const force = process.argv.includes('--all');
   let prev = {};

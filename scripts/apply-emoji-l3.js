@@ -17,7 +17,6 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const VISUALS = path.join(ROOT, 'data', 'visuals.json');
-const L3 = path.join(ROOT, 'data', 'l3-words.txt');
 
 /* Concrete nouns and a few adjectives/verbs a child can actually picture.
    A word absent from this table is left alone on purpose. */
@@ -117,11 +116,28 @@ const EMOJI = {
 };
 
 const visuals = JSON.parse(fs.readFileSync(VISUALS, 'utf8'));
-const l3 = fs
-  .readFileSync(L3, 'utf8')
-  .split('\n')
-  .map((l) => l.replace(/#.*$/, '').trim())
-  .filter(Boolean);
+/* The KET vocabulary is one list split across three CEFR files. Read all three
+   rather than the undivided l3-words.txt that v7 retired — reading a deleted
+   file would throw, and reading only one of the three would quietly skip two
+   thirds of the words this script exists to cover. */
+const L3_FILES = ['l3a-words.txt', 'l3b-words.txt', 'l3c-words.txt'].map((f) =>
+  path.join(ROOT, 'data', f)
+);
+const missing = L3_FILES.filter((p) => !fs.existsSync(p));
+if (missing.length) {
+  console.error(
+    `缺少词表文件：\n  ${missing.join('\n  ')}\n` +
+      '用 node scripts/split-l3-bands.js 重新生成，或 git checkout data/l3-words.txt 后重跑。'
+  );
+  process.exit(1);
+}
+const l3 = L3_FILES.flatMap((p) =>
+  fs
+    .readFileSync(p, 'utf8')
+    .split('\n')
+    .map((l) => l.replace(/#.*$/, '').trim())
+    .filter(Boolean)
+);
 
 let added = 0;
 const noEmoji = [];

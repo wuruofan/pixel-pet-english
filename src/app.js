@@ -20,28 +20,41 @@
      something books never had: an ordering. Topic grouping was considered and
      rejected — a finite topic (colours) is exhausted, and the app runs dry.
      Bands don't: finish L1 and L2 is already open.
-       L1  core    94 words a publisher (or, for 一下, a hand) called 必背
-       L2  daily   words the lesson text uses >=4 times that no 必背 list covers
-       L3  wider   the official KET (A2 Key) list, not enabled yet
+       L1   core       94   words a publisher (or, for 一下, a hand) called 必背
+       L2   daily      43   lesson-text words used >=4 times that no 必背 list covers
+       L3A  wider     959   KET list, Oxford 3000 A1+A2 — the everyday KET core
+       L3B  challenge  76   KET list, Oxford 3000 B1+B2 — the genuinely hard tail
+       L3C  extra     290   KET list, absent from the Oxford 3000
      The L1/L2 line is "has textbook backing", NOT "is more frequent": 48 of the
      94 L1 words were themselves picked out of 一下 lesson text back when the
      source site had no word list, and 49 of those 57 meet L2's own >=4 cutoff.
      See README「词库怎么组织的」for why they were not re-sorted.
 
+     L3A/L3B/L3C come from one split of the KET list, not three sources, so the
+     L3 prefix keeps them reading as one block in the data. L3C being its own
+     band rather than a tail of L3B is the honest reading of the source: the
+     Oxford 3000 is a *deduplicated* keyword list, so absence means "Oxford
+     didn't call it a priority word", not "Oxford rates it B2". Its 290 words are
+     mostly function words (about, able, across), nouns a child already knows
+     (ball, pizza, beach) and plurals (glasses, feelings). Filing those under a
+     🎯 label would invent a difficulty the data never claimed.
+
      words.json tags each word with `band` (NOT `level` — that key name is
      already taken by the pet's growth stage). */
-  var BAND_ORDER = ['L1', 'L2', 'L3'];
+  var BAND_ORDER = ['L1', 'L2', 'L3A', 'L3B', 'L3C'];
   var BAND_META = {
-    L1: { label: '核心词', short: '核心', emoji: '⭐' },
-    L2: { label: '日常词', short: '日常', emoji: '🌱' },
-    L3: { label: '拓展词', short: '拓展', emoji: '🌳' }
+    L1: { label: '核心词', short: '核心', emoji: '⭐', note: '人教版一上/一下/二上必背表' },
+    L2: { label: '日常词', short: '日常', emoji: '🌱', note: '课本正文出现 ≥4 次但必背表没收的词，可在 data/l2-words.txt 增删' },
+    L3A: { label: '拓展词', short: '拓展', emoji: '🌳', note: '剑桥 KET 官方词表，Oxford 3000 标为 A1/A2 的 959 词' },
+    L3B: { label: '挑战词', short: '挑战', emoji: '🎯', note: 'KET 词表里 Oxford 3000 标为 B1/B2 的 76 词，是其中最难的' },
+    L3C: { label: '补充词', short: '补充', emoji: '📦', note: 'KET 词表里 Oxford 3000 未收录的 290 词——多是虚词、复数和派生形，不是「更难」，只是 Oxford 没列为优先关键词' }
   };
   var wordBand = {};
   Object.keys(WORDS).forEach(function (w) {
     var b = WORDS[w].band;
     // Untagged words belong to the widest band, and so does any tag this build
     // doesn't know about — a typo in the data must not empty a band.
-    wordBand[w] = BAND_META[b] ? b : 'L3';
+    wordBand[w] = BAND_META[b] ? b : 'L3C';
   });
   function wordsInBand(lv) {
     return Object.keys(WORDS).filter(function (w) { return wordBand[w] === lv; });
@@ -97,11 +110,20 @@
       /* 默认宠物名 "小火龙" 改为 "小恐龙"，老存档里名字仍是"小火龙"的同步替换 */
       if (m.pet && m.pet.name === '小火龙') m.pet.name = '小恐龙';
       /* v5: 教材分册 → 难度分层。老存档记的是 settings.book（g1a/g1b/g2a），
-         新版读 settings.band（L1/L2/L3）。一上/一下/二上 大致对应 L1 起点，
+         新版读 settings.band（L1/L2/L3A/L3B/L3C）。一上/一下/二上 大致对应 L1 起点，
          但 L1 现在同时包含三册原有的 137 词，所以直接落到 L1 而不是逐册还原：
          老进度落在 words 里是按词记的，不依赖册，切层不会丢任何进度。 */
       if (m.settings && m.settings.book != null) { delete m.settings.book; m.settings.band = 'L1'; }
       if (m.settings && !m.settings.band) m.settings.band = 'L1';
+      /* v7: KET 层按 Oxford CEFR 拆成 L3A/L3B/L3C。v6 的存档把 1325 个 KET 词
+         统称 L3，落到 L3A（959 词，与原 L3 覆盖面最接近），而不是 L3B/L3C——
+         孩子原本够得着的那部分就是 A1/A2。 */
+      if (m.settings && m.settings.band === 'L3') m.settings.band = 'L3A';
+      /* 不变量兜底，而不是继续往上加 if。learningPool() 拿到一个 BAND_ORDER
+         里没有的 band 时 indexOf 返回 -1，词池会静默塌回 L1：孩子已经学完的
+         层全部消失，且界面不报错。改名后的老存档正是这个形状。任何遗留值一律
+         回落 L1（最保守的一层），宁可少学也不假装。 */
+      if (m.settings && BAND_ORDER.indexOf(m.settings.band) < 0) m.settings.band = 'L1';
       return m;
     } catch (e) {
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -364,6 +386,16 @@
       }
       if (!above) break;
       ceiling++;
+    }
+    /* 学完整个词库的孩子原来会被锁死在设置档自己那一层：全库都没有新词，
+       升层循环就地 break，ceiling 停在起点，"复习"队列只剩 L1 的 94 个词。
+       这正是分层想消灭的"学完即废"，只是换了个位置发生。
+       到了这一步，「层」已经不是边界了——没有新词需要挡住，层与层的差别
+       只剩复习轮换的顺序，所以放开成全库。上面那条 unseen 分支保证这里
+       只在整库学完时触发：只要还有新词，unseen 非空就直接跳过。 */
+    if (!unseen.length) {
+      var everything = Object.keys(WORDS);
+      if (everything.length > allowed.length) allowed = everything;
     }
     if (unseen.length) return { list: unseen, reviewing: false, pool: allowed, band: BAND_ORDER[ceiling] };
     var due = dueWords(allowed);
@@ -2053,7 +2085,7 @@
      翻词不用底部按钮，改成配图两侧的尖括号（纯 CSS/SVG，不依赖素材）。 */
   function renderLearnToday(v) {
     if (!learnQueue.length) { learnQueue = buildTodayQueue(); learnPos = 0; }
-    if (!learnQueue.length) { v.appendChild(empty('这本课本还没有词表')); appendBrowseEntry(v); return; }
+    if (!learnQueue.length) { v.appendChild(empty('这一层还没有词')); appendBrowseEntry(v); return; }
     if (learnPos >= learnQueue.length) { renderLearnDone(v); appendBrowseEntry(v); return; }
 
     var word = learnQueue[learnPos];
@@ -2295,7 +2327,7 @@
   /* 全部词库模式：保留原来的"我记住了 / 上一个 / 下一个"自由翻词体验 */
   function renderLearnBrowse(v) {
     var list = bandWords(S.settings.band);
-    if (!list.length) { v.appendChild(empty('这本课本还没有词表')); return; }
+    if (!list.length) { v.appendChild(empty('这一层还没有词')); return; }
     if (learnIdx >= list.length) learnIdx = 0;
     var word = list[learnIdx];
     var pd = WORDS[word].pindu || [];
@@ -2889,11 +2921,16 @@
     take(pool);
     return out.slice(0, n);
   }
-  /* 这个字素的例词，现学的这本课本里有的排前面。
-     it.words 是三本课本混在一起的，插入顺序不代表相关性 —— 一上学的孩子先看到
-     orange 再看到 jiaozi 没有意义。稳定排序，课本内的相对顺序保持原样。 */
-  function phWordsInBookOrder(item) {
-    var book = bandWords(S.settings.band);
+  /* 这个字素的例词，当前层里有的排前面。
+     it.words 是整库混在一起的，插入顺序不代表相关性 —— 刚学 L1 的孩子先看到
+     orange 再看到 jiaozi 没有意义。稳定排序，层内的相对顺序保持原样。
+     同样按「层是上限」的口径取到当前层为止，否则选了挑战/补充时 book 是空的，
+     排序会静默退化成插入顺序。 */
+  function phWordsInBandOrder(item) {
+    var upTo = BAND_ORDER.indexOf(S.settings.band);
+    if (upTo < 0) upTo = 0;
+    var book = [];
+    for (var i = 0; i <= upTo; i++) book = book.concat(bandWords(BAND_ORDER[i]));
     var rank = function (w) { var i = book.indexOf(w); return i < 0 ? 1e9 : i; };
     return (item.words || []).filter(function (w) { return WORDS[w]; })
       .sort(function (a, b) { return rank(a) - rank(b); });
@@ -3067,7 +3104,7 @@
     v.innerHTML = '';
     if (!PH_FLAT.length) return;
     var idx = phCardsIdx, f = PH_FLAT[idx], it = f.it;
-    var words = phWordsInBookOrder(it);
+    var words = phWordsInBandOrder(it);
 
     /* 主卡只管「这个音本身」：字、类目、音标、第几种读法、怎么听。
        例词一律交给下面那张卡，避免同一个词在两处各出现一次。 */
@@ -3226,10 +3263,21 @@
   function resetBuildLetterRow() { buildLetterRow = {}; }
 
   function pickBuildWord() {
-    var pool = bandWords(S.settings.band).filter(function (w) {
-      var ph = PHONEMES_BY_WORD[w];
-      return ph && ph.length >= 2 && ph.length <= 5;
-    });
+    /* The band is a ceiling, not a filter — a child on 挑战 can still drill
+       phonics on words from 核心, and the quiz/word-card pools already work
+       that way. Scoping this to the selected band alone left the whole 拼读
+       tab empty for 🎯挑战 and 📦补充: only L1/L2 carry a phonics index (the
+       KET bands are slimmed out of it to save 416 KB), so those two bands had
+       nothing to offer and the tab looked broken. */
+    var upTo = BAND_ORDER.indexOf(S.settings.band);
+    if (upTo < 0) upTo = 0;
+    var pool = [];
+    for (var i = 0; i <= upTo; i++) {
+      pool = pool.concat(bandWords(BAND_ORDER[i]).filter(function (w) {
+        var ph = PHONEMES_BY_WORD[w];
+        return ph && ph.length >= 2 && ph.length <= 5;
+      }));
+    }
     if (!pool.length) return null;
     var unmastered = pool.filter(function (w) {
       return PHONEMES_BY_WORD[w].some(function (p) { return !isPhMastered(p.letters); });
@@ -3252,7 +3300,7 @@
     v.innerHTML = '';
     if (!phBuild) {
       var w = pickBuildWord();
-      if (!w) { v.appendChild(empty('这本课本暂时没有可拆的词')); return; }
+      if (!w) { v.appendChild(empty('这一层暂时没有可拆的词')); return; }
       /* Build parts in one pass: keep `kind` for the classification label,
        * add `idx` so the slot data-idx attribute matches the parts index.
        * The two cannot be done in separate `.map` calls because the
@@ -3767,7 +3815,7 @@
                 var st = S.words[w];
                 return '<button class="wpill b' + (st ? boxFromS(st.s) : 0) + '" data-bw="' + w + '"><span class="dot"></span>' + w + '</button>';
               }).join('') : '<span class="muted">这一层还没有词</span>') + '</div>' +
-              (k === 'L2' ? '<div class="muted" style="margin:var(--sp-1) 0 var(--sp-3)">※ 日常词 = 课本正文出现 ≥4 次但必背表没收的词，可在 data/custom-words.txt 增删</div>' : '')
+              (m.note ? '<div class="muted" style="margin:var(--sp-1) 0 var(--sp-3)">※ ' + m.note + '</div>' : '')
             : '');
       }).join('') +
       '<div class="muted">词库里的词点一下可以听发音，颜色代表掌握程度（绿色越深越熟）。</div>';
