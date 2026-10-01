@@ -153,9 +153,23 @@ body {
   display: flex; align-items: center; gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-1) var(--sp-3);
 }
-.brand { display: flex; align-items: center; gap: var(--sp-3); font-weight: 900; font-size: var(--fs-h2); letter-spacing: .3px; }
-.brand .logo { font-size: var(--icon-md); }
+/* min-width:0 + ellipsis 是兜底：极端窄屏下宁可省略号，也不许把右侧控件顶出屏幕。 */
+.brand { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; font-weight: 900; font-size: var(--fs-h2); letter-spacing: .3px; }
+/* 品牌名永远不折行。中文可以在任意两个字之间断行（「皮克学英」/「语」），
+   之前没有 nowrap，flex 收缩把 span 压到 63px（需要 97px）就断了。 */
+.brand > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand .logo { font-size: var(--icon-md); flex: 0 0 auto; }
 .topbar .spacer { flex: 1; }
+/* 词库 pill 的文字在窄屏隐藏，只留 emoji。
+   实测 360px：内容区 328px，孩子合计需要 342px（品牌 97 + logo 26 + 词库 79 + 图标 92
+   + gap 48），超 14px。⭐🌱⛅🌳🎯📦 六个 emoji 本身就是六个词库的视觉标识，
+   文字在 ⚙️设置 和学单词页仍然完整可见，首页只是不再重复一遍。 */
+.book-pill-txt { display: inline; }
+@media (max-width: 420px) {
+  .book-pill-txt { display: none; }
+  .topbar { gap: var(--sp-2); }
+  .topbar .pill { padding: var(--sp-1) var(--sp-2); }
+}
 .pill {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   background: var(--card); border: 2px solid var(--line);
@@ -888,6 +902,26 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .ph-tag em      { font-size: var(--fs-xs); opacity: .85; font-style: normal; font-weight: 700; }
 
 /* ---------- home 今日任务清单 ---------- */
+/* 今日任务头：标题 + 两组指标挤在一行，实测 360px 时指标组被压到 23px
+   （需要 148px）而中文可任意断行，整句被拆成阶梯状。
+   两层都要允许换行，缺一层就还是溢出：
+   .task-head   —— 装不下时整组指标换到标题下一行；
+   .task-metrics —— 指标组自己（148+155=303px）在 292px 的行里也放不下，
+                   必须允许内部换行让 pill 掉到第三行。
+   组内 nowrap 保证「正确率 0% · 今日 0 分钟」永远完整一行，不被拆碎。
+   min-width:0 允许该组被压缩到行宽，flex-wrap 才能真正生效。 */
+.task-head { flex-wrap: wrap; }
+.task-metrics { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.task-metrics .task-acc { white-space: nowrap; }
+/* 窄屏只保留「正确率」和「连续 N 天」：
+   .mins（今日学习时长）在统计页有完整版，.task-prog（doneN/plan.length）
+   和下面任务清单每行右边的 badge 是同一件事。两处都是 display:none 而不是
+   不渲染 —— 宽屏还要，所以留在 DOM 里用一个类控制。 */
+@media (max-width: 420px) {
+  .task-acc .mins, .task-metrics .task-prog { display: none; }
+  .plan-item .pi-why { display: none; }
+}
+
 .plan-list { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); }
 .plan-item {
   display: flex; align-items: center; gap: var(--sp-3); text-align: left;

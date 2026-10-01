@@ -1873,7 +1873,14 @@
     var v = $('#view');
     v.innerHTML = '';
     var pill = $('#book-pill');
-    if (pill) pill.textContent = BAND_META[S.settings.band].emoji + ' ' + BAND_META[S.settings.band].short;
+    /* 词库 pill：emoji 独立一段，文字包在 .book-pill-txt 里。
+       窄屏（≤420px）CSS 只隐藏文字、保留 emoji —— 六个 emoji 本身就是
+       词库标识，完整文字在 ⚙️设置 / 学单词页仍能看到。
+       不要退回 textContent：那会抹掉 span，窄屏隐藏就失效了。 */
+    if (pill) {
+      pill.innerHTML = '<span class="book-pill-ico">' + BAND_META[S.settings.band].emoji
+        + '</span><span class="book-pill-txt">' + BAND_META[S.settings.band].short + '</span>';
+    }
     if (tab === 'home') renderHome(v);
     else if (tab === 'learn') renderLearn(v);
     else if (tab === 'phonics') renderPhonics(v);
@@ -1920,6 +1927,9 @@
          quizOk），不共用 d.right：学单词的跟读通过和闯关答题都写 d.right，
          共用会让「先做完跟读、闯关立刻满格」。 */
       { ic: pool.reviewing ? '🔁' : '📖', title: pool.reviewing ? '复习到期词' : '学单词',
+        /* 副标题在窄屏整行隐藏（见 .pi-why 的媒体查询）：标题已经说了
+           「学单词 / 复习到期词」，右侧 badge 又是「doneN/cap」，
+           这里把动作和数字各说一遍是冗余，宽屏才值得展开成完整句子。 */
         why: pool.reviewing
           ? '新词学完了，今天复习 ' + (cap - doneN) + ' 个到期的词'
           : '今天要学 ' + (cap - doneN) + ' 个新词',
@@ -1991,14 +2001,23 @@
     var doneN = plan.filter(function (t) { return t.done; }).length;
     var c2 = el('div', 'card');
     c2.innerHTML =
-      '<div class="row" style="justify-content:space-between;align-items:baseline;gap:var(--sp-2)">' +
+      /* 头部三段：标题 + 两组指标。窄屏下指标曾被 flex 压到 23px（需要 148px）
+         而中文可任意断行，于是「正确率 0% · 今日 0 分钟」被拆成多行、错成阶梯状。
+         修法全在 CSS 的 .task-head / .task-metrics：两层都允许换行，
+         宁可整块换行也不许把一句话压碎。
+
+         窄屏只留「正确率」和「连续 N 天」：
+         - 今日学习时长挪到统计页（renderStats 里有「学习时长」），首页不重复；
+         - 「· doneN/plan.length」和下面任务清单每行的 badge 重复，也删掉。
+         两条都在 .task-acc .mins / .task-prog 里，窄屏 display:none。 */
+      '<div class="row task-head" style="justify-content:space-between;align-items:baseline;gap:var(--sp-2)">' +
       '<h2 class="section" style="margin:0;font-size:var(--fs-h2);color:var(--ink)">今天的任务</h2>' +
-      /* 状态指标（正确率 / 学习时长）和打卡的指标（连续天数 / 任务进度）
-         性质相同，并排放在标题右侧更紧凑：左侧 muted 写"今天"的两项，
-         右侧 pill 写"打卡"的两项 */
-      '<div class="row" style="gap:var(--sp-2);align-items:baseline">' +
-      '<span class="muted" style="font-size:var(--fs-label)">正确率 ' + acc + '% · 今日 ' + Math.round((d.ms || 0) / 60000) + ' 分钟</span>' +
-      '<span class="pill">🔥 连续 <span class="n">' + (S.streak || 0) + '</span> 天 · ' + doneN + '/' + plan.length + '</span>' +
+      /* 状态指标（正确率）和打卡的指标（连续天数）性质相同，并排放在标题右侧更紧凑 */
+      '<div class="row task-metrics" style="gap:var(--sp-2);align-items:baseline">' +
+      '<span class="muted task-acc" style="font-size:var(--fs-label)">正确率 ' + acc + '%' +
+      '<span class="mins"> · 今日 ' + Math.round((d.ms || 0) / 60000) + ' 分钟</span></span>' +
+      '<span class="pill">🔥 连续 <span class="n">' + (S.streak || 0) + '</span> 天' +
+      '<span class="task-prog"> · ' + doneN + '/' + plan.length + '</span></span>' +
       '</div></div>' +
       '<div class="plan-list">' +
       plan.map(function (t, i) {
@@ -3821,6 +3840,7 @@
           '<span class="bk-em">' + m.emoji + '</span>' +
           '<span class="bk-main"><b>' + m.label + '</b>' +
           '<span class="muted">词库 ' + list.length + ' 词 · 已学 ' + learned + '</span></span>' +
+          /* 「使用中」是状态不是按钮，和「切换」互斥，所以用 span + pointer-events:none */
           (cur
             ? '<span class="chip on" style="pointer-events:none">使用中</span>'
             : '<button class="chip" data-setband="' + k + '">切换</button>') +
