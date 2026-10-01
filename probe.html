@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<title>主页实测 · 皮克学英语</title>
+<style>
+  html, body { margin: 0; background: #111; color: #4ade80; font: 14px/1.5 -apple-system, system-ui, sans-serif; }
+  #boot { padding: 20px 16px; }
+  #boot a { color: #ffd479; }
+</style>
+</head>
+<body>
+<div id="boot">正在载入主页…（1.5MB）</div>
+<script>
+/* 把真实主页原样 document.write 到顶层文档（不是 iframe），再压一条常驻读数条。
+   目的：拿到「主页本体在顶层文档里」的 innerHeight / maxScroll / scrollY，
+   以及手指滑动时的 touch 事件计数。用 ?m= 逐条关掉可疑规则做二分。 */
+(function () {
+  var MODES = {
+    base: '',
+    noos: 'html,body{overscroll-behavior-y:auto!important}',
+    noox: 'html,body{overflow-x:visible!important}',
+    nosa: '.tabbar{padding-bottom:8px!important}',
+    all: 'html,body{overscroll-behavior-y:auto!important;overflow-x:visible!important}.tabbar{padding-bottom:8px!important}'
+  };
+  var NAMES = { base: '原样', noos: '去overscroll', noox: '去overflow-x', nosa: '去动态安全区', all: '全去' };
+  var m = (location.search.match(/[?&]m=([a-z]+)/) || [])[1] || 'base';
+  var css = MODES[m] || '';
+
+  var nav = Object.keys(NAMES).map(function (k) {
+    return '<a href="probe.html?m=' + k + '" style="pointer-events:auto;text-decoration:none;color:' +
+      (k === m ? '#fff' : '#ffd479') + '">' + (k === m ? '[' + NAMES[k] + ']' : NAMES[k]) + '</a>';
+  }).join(' · ');
+
+  var INNER = [
+    '<div style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(0,0,0,.88);',
+    'color:#4ade80;font:11px/1.45 ui-monospace,Menlo,monospace;padding:4px 6px;pointer-events:none">',
+    '<div id="__rep" style="white-space:pre-wrap">measuring…</div>',
+    '<div style="margin-top:2px">' + nav + ' · <span style="color:#888">在页面上滑给我看</span></div>',
+    '</div>',
+    '<scr' + 'ipt>',
+    '(function(){',
+    'var ts=0,tm=0;',
+    'document.addEventListener("touchstart",function(){ts++;},true);',
+    'document.addEventListener("touchmove",function(){tm++;},true);',
+    'function snap(){',
+    ' var de=document.documentElement,cs=getComputedStyle(de),cb=getComputedStyle(document.body);',
+    ' var tb=document.querySelector(".tabbar");',
+    ' var el=document.elementFromPoint(innerWidth/2,innerHeight/2),chain="",n=el;',
+    ' while(n&&n!==document.documentElement){chain+=n.tagName.toLowerCase()+"."+String(n.className).slice(0,12)+"["+getComputedStyle(n).touchAction+"]>";n=n.parentElement;}',
+    ' return "iW"+innerWidth+" iH"+innerHeight+" sh"+de.scrollHeight+" max"+(de.scrollHeight-innerHeight)+" y"+Math.round(window.scrollY)',
+    '  +"\\nscrollingEl="+(document.scrollingElement===de?"html":"body")+" htmlOvY="+cs.overflowY+" bodyOvY="+cb.overflowY+" osY="+cs.overscrollBehaviorY',
+    '  +"\\ntabPadB="+(tb?getComputedStyle(tb).paddingBottom:"-")+"  tabFilter="+(tb?getComputedStyle(tb).backdropFilter:"-")+" safeBottom="+safe()',
+    '  +"\\ntouchStart="+ts+" touchMove="+tm+"\\ncenter="+chain;',
+    '}',
+    'function safe(){var d=document.createElement("div");d.style.cssText="position:absolute;left:-9999px;width:1px;height:1px";',
+    ' d.style.bottom="env(safe-area-inset-bottom, 0px)";document.body.appendChild(d);var v=getComputedStyle(d).bottom;d.remove();return v;}',
+    'var rep=document.getElementById("__rep");function paint(){rep.textContent=snap();}',
+    'setInterval(paint,400);',
+    'window.addEventListener("scroll",paint,{passive:true});',
+    'setTimeout(function(){window.scrollTo(0,120);setTimeout(paint,300);},1500);',
+    '})();',
+    '</scr' + 'ipt>'
+  ].join('');
+
+  fetch('index.html', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (html) {
+    if (css) html = html.replace('</head>', '<style>' + css + '</style></head>');
+    html = html.replace('</body>', INNER + '</body>');
+    document.open();
+    document.write(html);
+    document.close();
+  }).catch(function (e) {
+    document.getElementById('boot').textContent = '载入失败：' + e;
+  });
+})();
+</script>
+</body>
+</html>
