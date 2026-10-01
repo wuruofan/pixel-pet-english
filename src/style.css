@@ -792,6 +792,22 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .ph-card .w { font-size: var(--fs-micro); color: var(--ink-soft); font-weight: 700; }
 .ph-card:active { transform: scale(.96); }
 
+/* ---------- 字素表「全览」网格 ----------
+   格子复用 .ph-card / .ph-grid，只加两处：
+   1) minmax 收窄到 64px —— 244 个格子用 84px 一列太宽，窄屏一行放不下几个，
+      「一眼看到全部」就失去了意义；
+   2) 绿勾缩到角上（.gph-ok 是 40px 的大圆盘，那是给 124px 主卡用的，
+      塞进 64px 格子会盖住音标）。 */
+.ph-grid.gph-all { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: var(--sp-2); }
+.gph-all .ph-card { position: relative; padding: var(--sp-2) var(--sp-1); gap: 2px; }
+.gph-all .ph-card .l { font-size: var(--fs-h2); padding: var(--sp-1) var(--sp-2); letter-spacing: .5px; }
+/* 音标是这格的主信息：老师靠它判断「我要教的音长这样」，不能被绿勾压住 */
+.gph-all .ph-card .w { font-size: var(--fs-micro); line-height: 1.2; word-break: break-all; }
+.gph-all .gph-ok-mini {
+  position: absolute; top: 2px; right: 3px;
+  font-size: var(--fs-micro); font-weight: 900; color: var(--green-dk);
+}
+
 /* ---------- 字素卡：翻卡式浏览，骨架照搬翻词库的词卡 ---------- */
 /* 箭头改以「字母块那一层」为定位上下文，不沿用整卡：字素主卡比词卡高（多了一行
    例词和一行提示），用整卡定位箭头会正好压在例词上。高度由 padding 撑开，

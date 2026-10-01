@@ -3028,6 +3028,11 @@
   }
 
   /* ---------- 字素表：一次看一个字素，翻卡浏览 ---------- */
+  /* 全览模式：把 244 个字素按类目铺成网格，点哪一格直接翻到那张卡。
+     老师教课时要的是「快速定位到某个音」，一页页翻太慢。
+     phCardsGrid 只是「同一个下标空间的两种呈现」，不新增第二套翻页逻辑：
+     网格格子携带 PH_FLAT 下标，仍然调 phCardsJump。 */
+  var phCardsGrid = false;
   /* 翻卡顺序 = 分组顺序展平。卡面要显示「这是哪一类」，所以这里带上 group 引用；
      同一个字母的第几种读法也靠展平位置现算 —— 数据里没有这个字段，但关掉音标
      之后连着三张 a / a / a 长得一模一样，不给区分孩子只会以为页面卡住了。 */
@@ -3099,14 +3104,27 @@
     var header = el('div', 'card');
     header.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
-        '<span class="muted">🗂 字素表 · ' + (phCardsIdx + 1) + '/' + PH_FLAT.length + '</span>' +
-        '<button class="pill pill-btn" id="ph-back">← 返回拼读</button>' +
+        '<span class="muted">🗂 字素表 · ' + (phCardsGrid ? PH_FLAT.length + ' 个 · 点一个进详情' : (phCardsIdx + 1) + '/' + PH_FLAT.length) + '</span>' +
+        /* 全览 / 翻卡 是同一视图的两种呈现，所以开关和「返回」并排 */
+        '<div class="row" style="gap:var(--sp-2)">' +
+          '<button class="pill pill-btn" id="ph-mode">' + (phCardsGrid ? '▤ 翻卡' : '▦ 全览') + '</button>' +
+          '<button class="pill pill-btn" id="ph-back">← 返回拼读</button>' +
+        '</div>' +
       '</div>';
     v.appendChild(header);
     $('#ph-back').onclick = function () { stopAudio(); renderPhonics($('#view')); };
+    $('#ph-mode').onclick = function () {
+      stopAudio();
+      phCardsGrid = !phCardsGrid;
+      renderPhCardsView($('#view'));
+      /* 切到全览从顶部开始（网格是「重新找」的场景），切回翻卡留在原处 */
+      if (phCardsGrid) window.scrollTo(0, 0);
+    };
 
     /* 类目跳转：点一下落到那一组的第一个字素。整页只有这一个"选择器"，
-     其余操作（换字素、听例词、跳同音写法）都长在当前这张卡上。 */
+     其余操作（换字素、听例词、跳同音写法）都长在当前这张卡上。
+     全览模式下 chips 依然有用，但点了要先切回翻卡视图：从「辅音字母」跳过去
+     应该直接看到那张卡，而不是停在一堆格子上。 */
     var jumps = el('div', 'unit-chips');
     PHONICS.groups.forEach(function (g) {
       var target = 0;
@@ -3114,13 +3132,17 @@
         if (PH_FLAT[i].g === g) { target = i; break; }
       }
       var b = el('button', 'chip' + (g === cur.g ? ' on' : ''), esc(g.label) + ' ' + g.items.length);
-      b.onclick = function () { phCardsJump(target); };
+      b.onclick = function () {
+        phCardsGrid = false;
+        phCardsJump(target);
+      };
       jumps.appendChild(b);
     });
     v.appendChild(jumps);
 
     v.appendChild(el('div', '', '<div id="ph-cards-body"></div>'));
-    renderPhCards($('#ph-cards-body'));
+    if (phCardsGrid) renderPhCardsGrid($('#ph-cards-body'));
+    else renderPhCards($('#ph-cards-body'));
   }
 
   /* 翻到第 target 个字素。整页重画（和翻词库翻词一个道理），但按住滚动位置：
@@ -3131,6 +3153,57 @@
     stopAudio();
     renderPhCardsView($('#view'));
     window.scrollTo(0, y);
+  }
+
+  /* 全览网格：244 个字素按类目铺开，点哪一格直接翻到那张卡。
+     老师备课时要的是「三秒找到要教的音」，一页页翻做不到。
+
+     两条不能省的约束：
+     1) 配色用 PH_FLAT[i].g.id（经 PB_TAG 映射），不能用 phonicsTagOf(it.letters)。
+        后者走 PHONIC_MAP[letters] 反查，而同一个字母有多读法时后者会被
+        覆盖 —— 实测 139 个字母有多读法（s→/s/ /z/、c→/k/ /s/…），
+        用它上色会让同字母的所有格子串成一个颜色。
+     2) 纯只读：不调 phTrack / pgrade。「看一眼」不该给首页的 d.phonics 计一次，
+        否则老师备课就把孩子今天的拼读进度刷满了。 */
+  function renderPhCardsGrid(v) {
+    v.innerHTML = '';
+    if (!PH_FLAT.length) return;
+    /* letters|sound -> PH_FLAT 下标。同一格子可能有多读法，键要带 sound 才唯一。 */
+    var idxOf = {};
+    PH_FLAT.forEach(function (f, i) { idxOf[f.it.letters + '|' + (f.it.sound || '')] = i; });
+
+    PHONICS.groups.forEach(function (g) {
+      var sec = el('div', 'card');
+      sec.innerHTML = '<h2 class="section">' + esc(g.label) + ' · ' + g.items.length + ' 个</h2>';
+      var grid = el('div', 'ph-grid gph-all');
+      g.items.forEach(function (it) {
+        var idx = idxOf[it.letters + '|' + (it.sound || '')];
+        var ok = isPhMastered(it.letters);
+        var cell = el('button', 'ph-card pb-tag-' + PB_TAG[g.id] + (ok ? ' ok' : ''));
+        cell.setAttribute('data-idx', idx);
+        cell.setAttribute('aria-label', it.letters + (it.sound ? ' ' + it.sound : ' 不发音')
+          + (ok ? '，已掌握' : ''));
+        /* 格子里只放字母 + 音标。例词塞进来会把 84px 的格子撑爆，
+           而且点格子本来就是为了进详情听整词，例词在详情卡里更完整。 */
+        cell.innerHTML =
+          '<span class="l">' + esc(it.letters) + '</span>' +
+          /* 不发音的没有音标，显示「不发音」而不是留空（空格子看不出是缺数据还是没内容） */
+          '<span class="w">' + (it.sound ? esc(it.sound) : '不发音') + '</span>' +
+          (ok ? '<span class="gph-ok-mini">✓</span>' : '');
+        cell.onclick = function () {
+          /* 先切回翻卡视图再跳：格子只负责「定位」，详情页才是教读的地方。
+             也走 phCardsJump，保持和箭头/滑动/chips 同一条路径。 */
+          phCardsGrid = false;
+          phCardsJump(idx);
+        };
+        grid.appendChild(cell);
+      });
+      sec.appendChild(grid);
+      v.appendChild(sec);
+    });
+
+    v.appendChild(el('div', 'card',
+      '<div class="muted" style="text-align:center">点任意一个，进入它的详细讲读</div>'));
   }
 
   /* 一张字素卡 = 主卡（字本身）+ 例词 + 同音异形。
