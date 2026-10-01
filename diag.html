@@ -16,12 +16,22 @@
   .filler { height: 170px; border: 1px dashed #bbb; border-radius: 8px; margin: 8px 0;
             display: flex; align-items: center; justify-content: center; color: #666;
             background: repeating-linear-gradient(45deg, #ececec, #ececec 12px, #f7f7f7 12px, #f7f7f7 24px); }
+  h2 { font-size: 15px; margin: 16px 0 6px; }
+  iframe { width: 100%; height: 280px; border: 2px solid #111; border-radius: 8px; background: #fff; display: block; }
+  .note { font-size: 12px; color: #b45309; font-weight: 700; margin: 6px 0 8px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>滚动诊断</h1>
-  <div class="hint">请把下面黑框里的内容<b>截图</b>或点「复制结果」发给我。</div>
+  <div class="hint">把黑框里的内容<b>截图</b>或点「复制结果」发给我即可，不用手动填。</div>
+
+  <h2>① 主页自动二分（iframe 同源实测）</h2>
+  <iframe id="fr" src="./index.html?v=2"></iframe>
+  <div class="note">↑ 请在这个方框里用手指上下滑一下，看画面会不会跟着动。</div>
+  <pre id="appout">app: loading…</pre>
+
+  <h2>② 本页自身指标</h2>
   <pre id="out">collecting…</pre>
   <button id="copy">复制结果</button>
   <button id="auto">自动滚到 300px</button>
@@ -95,13 +105,81 @@
   window.addEventListener('scroll', function () { log.textContent = 'scrollY = ' + window.scrollY; }, { passive: true });
   document.getElementById('auto').onclick = function () { window.scrollTo(0, 300); setTimeout(render, 400); };
   document.getElementById('copy').onclick = function () {
-    var t = collect();
+    var t = document.getElementById('appout').textContent + '\n\n' + collect();
     if (navigator.clipboard) {
       navigator.clipboard.writeText(t).then(
         function () { log.textContent = '已复制到剪贴板'; },
         function () { log.textContent = '复制失败，请手动截图'; });
     } else { log.textContent = '复制失败，请手动截图'; }
   };
+})();
+</script>
+<script>
+/* 把主页塞进同源 iframe，逐条关掉可疑 CSS，每次都试着 scrollTo(300)，
+   看滚动位置到底有没有变。全自动，用户只要打开这一页。 */
+(function () {
+  var MODES = [
+    { label: '原样',              css: '' },
+    { label: '去 backdrop-filter', css: '.tabbar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}' },
+    { label: '去 overscroll',     css: 'html,body{overscroll-behavior-y:auto!important}' },
+    { label: '去 overflow-x',     css: 'html,body{overflow-x:visible!important}' },
+    { label: '隐藏底栏',          css: '.tabbar{display:none!important}' },
+    { label: '全去',              css: '.tabbar{display:none!important}html,body{overscroll-behavior-y:auto!important;overflow-x:visible!important}' }
+  ];
+  var lines = [], started = false, timer = null;
+  var out = document.getElementById('appout');
+  function flush() { out.textContent = lines.join('\n'); }
+  function pad(s, n) { s = String(s); while (s.length < n) s += ' '; return s; }
+
+  function begin(doc, win) {
+    if (started) return;
+    started = true;
+    if (timer) clearTimeout(timer);
+    var de = doc.documentElement, tb = doc.querySelector('.tabbar');
+    lines.push('innerW x innerH: ' + win.innerWidth + ' x ' + win.innerHeight);
+    lines.push('scrollHeight: ' + de.scrollHeight + '   maxScroll: ' + (de.scrollHeight - win.innerHeight));
+    lines.push('html overflowY: ' + win.getComputedStyle(de).overflowY +
+               '   body overflowY: ' + win.getComputedStyle(doc.body).overflowY);
+    lines.push('底栏 backdropFilter: ' + (tb ? win.getComputedStyle(tb).backdropFilter : '(页面上没有 .tabbar)'));
+    lines.push('');
+    flush();
+
+    var st = doc.createElement('style');
+    doc.head.appendChild(st);
+    var i = 0;
+    (function next() {
+      if (i >= MODES.length) { lines.push('--- 二分结束 ---'); flush(); return; }
+      var m = MODES[i++];
+      st.textContent = m.css;
+      setTimeout(function () {
+        win.scrollTo(0, 300);
+        setTimeout(function () {
+          var y = Math.round(win.scrollY || 0);
+          win.scrollTo(0, 0);
+          lines.push(pad(m.label, 20) + ' scrollTo(300) -> ' + pad(y, 4) +
+                     (y > 100 ? '  OK 能滚' : '  BLOCKED 卡住'));
+          flush();
+          next();
+        }, 400);
+      }, 160);
+    })();
+  }
+
+  function tryStart() {
+    var fr = document.getElementById('fr'), doc, win;
+    try { doc = fr.contentDocument; win = fr.contentWindow; } catch (e) { return false; }
+    if (doc && win && doc.readyState === 'complete' && doc.getElementById('app')) { begin(doc, win); return true; }
+    return false;
+  }
+  if (!tryStart()) {
+    var fr = document.getElementById('fr');
+    fr.addEventListener('load', function () {
+      try { begin(fr.contentDocument, fr.contentWindow); } catch (e) { lines.push('无法访问 iframe 文档'); flush(); }
+    });
+    timer = setTimeout(function () {
+      if (!started) { lines.push('主页 iframe 加载超时（文件 1.5MB，可能太慢）'); flush(); }
+    }, 20000);
+  }
 })();
 </script>
 </body>

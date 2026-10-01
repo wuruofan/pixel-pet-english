@@ -170,8 +170,11 @@ body {
      thrashing，它会直接拒绝让底部工具栏（chin）随滚动收起。改成恒定不变的 max 安全区
      （不支持时回退动态值、再回退 0），padding 不再随下颚移动而变，Chrome 才会正常收起工具栏。 */
   padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  background: rgba(255, 255, 255, .93);
-  backdrop-filter: blur(12px);
+  /* 不要给这个固定底栏加 backdrop-filter。Firefox for Android 154 上 backdrop-filter
+     会退回软件合成，固定层每帧都要重算背后的模糊背景，滚动时整页停止重绘 ——
+     手指划得动、地址栏也在动，但画面纹丝不动，看起来就是「页面滚不动」。
+     底栏本来就 96% 不透明，去掉模糊视觉上几乎无差。 */
+  background: rgba(255, 255, 255, .96);
   border-top: 2px solid var(--line);
 }
 .tab {
