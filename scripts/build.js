@@ -169,6 +169,24 @@ for (const word of Object.keys(words.words)) {
  * ------------------------------------------------------------------ */
 const AUDIO_BASE = 'https://static.suyang123.com/assets/yyld/word-base/';
 const SLIM_BANDS = new Set(BAND_ORDER.filter((b) => b !== 'L1' && b !== 'L2'));
+
+/* 字素表要引用的词，即使在 L3 层也要留下 pindu —— 例词高亮靠它逐段定位，
+   缺了就整行不高亮（above 的 v 曾因此是死的：字素表的例词大量来自 L3）。
+   只留高亮真正读的 letters / sound：
+   - audio 是 f(sound)，逐条核对全库 6055 个有音段 100% 等于
+     AUDIO_BASE + 'syllable/' + encodeURIComponent(sound) + '.mp3'，运行时可推；
+   - start / end 是 pindu 自身的冗余（就是按段累加出来的偏移），运行时按段累加。
+   396 个 L3 词：完整 pindu 222 KB → 精简 20 KB，体检脚本仍拿到它要的字段。 */
+const PHONICS_EXAMPLE_WORDS = new Set();
+for (const g of phonics.groups) {
+  for (const it of g.items) for (const w of it.words || []) PHONICS_EXAMPLE_WORDS.add(w);
+}
+/* 兜底体检：字素表引用的词若没有 pindu，高亮必然失效，而现在不会在构建期暴露。 */
+const missingPindu = [...PHONICS_EXAMPLE_WORDS].filter((w) => !(words.words[w] && words.words[w].pindu));
+if (missingPindu.length) {
+  console.error('构建中止：字素表例词 ' + missingPindu.length + ' 个词没有 pindu，例词高亮会失效：' + missingPindu.slice(0, 8).join(' '));
+  process.exit(1);
+}
 const wordsForBundle = {};
 let slimmed = 0;
 let ukDeduplicated = 0;
@@ -184,6 +202,12 @@ for (const [w, v] of Object.entries(words.words)) {
   slimmed++;
   const usId = audioIdOf(v.us && v.us.audio);
   const ukId = audioIdOf(v.uk && v.uk.audio);
+  /* pinduLite 只在字素表引用到这个词时带上。给 slim 词加 slimPindu 标记：
+     运行时「拼一拼」那一整块（逐音素按钮 + 逐段音频）对 L3 词本来就不显示，
+     有了标记就不会因为多了个 pindu 而把它误判成可拼读的词。 */
+  const lite = PHONICS_EXAMPLE_WORDS.has(w)
+    ? { pindu: v.pindu.map((p) => [p.letters, p.sound]), slimPindu: true }
+    : null;
   if (usId && ukId && usId === ukId) {
     // One id covers both accents — the app rebuilds the URL per accent.
     ukDeduplicated++;
@@ -194,6 +218,7 @@ for (const [w, v] of Object.entries(words.words)) {
       band: v.band,
       books: v.books,
       slim: true,
+      ...lite,
     };
     continue;
   }
@@ -206,6 +231,7 @@ for (const [w, v] of Object.entries(words.words)) {
     band: v.band,
     books: v.books,
     slim: true,
+    ...lite,
   };
 }
 const bundleWords = { generatedAt: words.generatedAt, words: wordsForBundle, audioBase: AUDIO_BASE };

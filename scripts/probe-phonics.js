@@ -73,33 +73,47 @@ console.log('PHONEMES_BY_WORD probe OK: ' + Object.keys(PHONEMES_BY_WORD).length
  * ------------------------------------------------------------------ */
 const APPJS = path.join(ROOT, 'src', 'app.js');
 const appSrc = fs.readFileSync(APPJS, 'utf8');
-const fnSrc = appSrc.match(/function phWordHtml[\s\S]*?\n  \}/);
-assert.ok(fnSrc, 'phWordHtml must exist in src/app.js');
+const fnSrc = appSrc.match(/function phPinduSeg[\s\S]*?\n  \}[\s\S]*?function phWordHtml[\s\S]*?\n  \}/);
+assert.ok(fnSrc, 'phPinduSeg + phWordHtml must exist in src/app.js');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const phWordHtml = new Function('WORDS', 'esc', fnSrc[0] + '\nreturn phWordHtml;')(
+/* esc() 的逆运算，用来把转义后的前缀还原成原文长度 */
+const decodeHtml = (s) => String(s)
+  .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const { phWordHtml, phPinduSeg } = new Function('WORDS', 'esc', fnSrc[0] + '\nreturn {phWordHtml, phPinduSeg};')(
   extractGlobal('WORDS').words, esc);
 
 const PHONICS = extractGlobal('PHONICS');
 const ALL = [];
 PHONICS.groups.forEach((g) => g.items.forEach((it) => ALL.push(it)));
 
-let marks = 0;
+let marks = 0, fromSlim = 0;
 for (const it of ALL) {
   for (const word of it.words || []) {
+    const rec = extractGlobal('WORDS').words[word];
     const html = phWordHtml(word, it.letters, it.sound);
     const m = html.match(/<b class="ph-hl">(.*?)<\/b>/);
-    assert.ok(m, word + ' /' + (it.sound || '静') + '/ 例词没有高亮出来');
-    const at = html.indexOf('<b'), seg = m[1].toLowerCase(), sound = it.sound || '';
+    assert.ok(m, word + ' /' + (it.sound || '静') + '/ 例词没有高亮出来（pindu ' +
+      (rec.pindu ? '有' : '缺失') + '）');
+    /* 高亮偏移必须从「渲染前的原文」取，不能用 html.indexOf('<b')：
+       esc() 会把 ' 变成 &#39;、& 变成 &amp;，转义后前缀就变长了。
+       o'clock 的第 4 个字母 o 因此被当成第 8 位 —— 这条断言曾一直报假失败。
+       用 decodeHtml 把 <b> 之前那段转义文本还原回原文，长度就是原词偏移。 */
+    const before = html.slice(0, html.indexOf('<b'));
+    const at = decodeHtml(before).length, seg = m[1].toLowerCase(), sound = it.sound || '';
     /* 高亮位置回代到 pindu：那一段必须同时满足「字母相同」和「音相同」 */
     let off = 0, hit = false;
-    for (const p of extractGlobal('WORDS').words[word].pindu) {
-      if (off === at && p.letters.toLowerCase() === seg && (p.sound || '') === sound) hit = true;
-      off += p.letters.length;
+    for (const p of rec.pindu) {
+      const s = phPinduSeg(p);
+      if (off === at && s.letters.toLowerCase() === seg && s.sound === sound) hit = true;
+      off += s.letters.length;
     }
     assert.ok(hit, word + ' /' + sound + '/ 高亮落在第 ' + at + ' 位的「' + m[1] +
       '」，不是带这个音的那一段');
+    if (rec.slim) fromSlim++;
     marks++;
   }
 }
-console.log('字素例词高亮 probe OK: ' + marks + ' 处都落在 (字母, 音) 对得上的那一段');
+console.log('字素例词高亮 probe OK: ' + marks + ' 处都落在 (字母, 音) 对得上的那一段' +
+  '（其中 ' + fromSlim + ' 处来自 L3 精简词）');

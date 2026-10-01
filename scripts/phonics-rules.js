@@ -51,6 +51,12 @@ const GROUPS = [
 ];
 
 function classify(letters, sound) {
+  /* 非字母的「块」不是字素。o'clock 的 pindu 把它切成 "'"（不发音），
+     于是撇号被当成一个字素进了「不发音的字母」组，孩子会看到一张
+     「' —— 不发音」的卡，而例词高亮又会去高亮那个撇号。
+     判据是「letters 必须全是英文字母」，而不是逐个列黑名单 ——
+     连字符、软连字这类以后再出现也照样挡得住。 */
+  if (!/^[a-z]+$/i.test(letters)) return null;
   if (!sound) return 'silent';            // 不发音的字母（magic-e、双写等）
   const L = letters.toLowerCase();
   if (RCTRL.has(L)) return 'rctrl';

@@ -603,6 +603,16 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 /* ---------- sentences ---------- */
 .unit-chips { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-1); margin-bottom: var(--sp-3); }
 .unit-chips::-webkit-scrollbar { display: none; }
+/* 字素表「全览」的类目 tabs 吸顶。几百个格子滑下去就看不到 tabs 了，想换一类
+   得一路滚回顶；吸顶后 tab 一直在手边，配合滚动联动（当前读的那一类高亮）
+   才真的像「页签」。底色用和页面同一个 --bg 实色 —— 吸顶条会盖住下面的内容，
+   而 backdrop-filter 有实测过的滚动掉帧（见 .tabbar 注释），不给。
+   上下各留 --sp-2：吸顶时卡片不会贴着 tab 文字，未吸顶时也把 gap 匀开。 */
+.unit-chips.ph-tabs {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--bg);
+  padding: var(--sp-2) 0;
+}
 .chip {
   flex: 0 0 auto; border: 2px solid var(--line); background: #fff; border-radius: var(--r-pill);
   padding: var(--sp-2) var(--sp-4); font-size: var(--fs-label); font-weight: 800; cursor: pointer; font-family: var(--font); color: var(--ink);
@@ -794,7 +804,7 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 
 /* ---------- 字素表「全览」网格 ----------
    格子复用 .ph-card / .ph-grid，只加两处：
-   1) minmax 收窄到 64px —— 244 个格子用 84px 一列太宽，窄屏一行放不下几个，
+   1) minmax 收窄到 64px —— 全量格子用 84px 一列太宽，窄屏一行放不下几个，
       「一眼看到全部」就失去了意义；
    2) 绿勾缩到角上（.gph-ok 是 40px 的大圆盘，那是给 124px 主卡用的，
       塞进 64px 格子会盖住音标）。 */

@@ -290,6 +290,18 @@
     });
   }
 
+  /* 一个词的「可拼读分段」—— 词卡的字素块 / 拼一拼 / 逐段发音都走这里。
+     L3 分量的词在打包时被瘦身掉 pindu（连例句一起，省 1.2 MB），但字素表
+     例词高亮要的那部分会以 [letters, sound] 元组留着，并打 slimPindu 标记。
+     那份是给「定位」用的，没有逐段音频 —— 直接拿它渲染拼读块会得到一排
+     点下去没声的按钮。所以交互侧一律走 fullPindu()，它只认完整形状；
+     唯一例外是字素表高亮（phPinduSeg），那里要的正是「能定位就行」。 */
+  function fullPindu(word) {
+    var rec = WORDS[word];
+    if (!rec || rec.slimPindu) return [];
+    return rec.pindu || [];
+  }
+
   /* Word pronunciation: real recording -> youdao TTS -> browser TTS */
   /* Audio URL for a word.
      Slimmed words (the L3 reserve) carry a single `audioId` instead of a pair
@@ -1703,11 +1715,12 @@
   function dropPoop() {
     S.pet.poop.n = Math.min(3, (S.pet.poop.n || 0) + 1);
     toast(S.pet.name + ' 悄悄拉了粑粑，点它或洗澡清理吧');
-    /* Full tab switch (go sets tab, re-renders the tabbar and the home view).
-     * The poop can fire while the child is on another tab (the walk+poop
-     * animation spans ~3s), so a bare renderHome() left the bottom highlight
-     * stuck on the old tab. */
-    go('home');
+    /* 只在首页时才重画。拉屎从触发到落地要 2.7s（走到角落 + 蹲下），这期间
+       孩子很可能已经翻到别的页去了 —— 以前这里无条件 go('home')，于是在
+       字素表/翻词库里看着一半被强行拽回首页，正在读的内容整个换掉。
+       数据本来就存住了（S.pet.poop.n），下次回首页 renderPoops() 自然补上，
+       粑粑晚一会儿出现完全没关系，被打断才是真问题。 */
+    if (tab === 'home') renderPoops();
     save();
   }
   function renderPoops() {
@@ -2331,7 +2344,7 @@
      刻意不含说明文字：图标自己会说话，小朋友点两下就懂了。
      nav 为可选的左右翻词箭头，塞进配图那一层的两侧。 */
   function learnWordCardHtml(word, nav) {
-    var pd = WORDS[word].pindu || [];
+    var pd = fullPindu(word);
     var ipa = (WORDS[word].us && WORDS[word].us.ipa) || '';
     var phoneBlock = pd.length
       ? '<div class="phonics-blocks" id="wc-phon">' +
@@ -2366,7 +2379,7 @@
     if (!list.length) { v.appendChild(empty('这一层还没有词')); return; }
     if (learnIdx >= list.length) learnIdx = 0;
     var word = list[learnIdx];
-    var pd = WORDS[word].pindu || [];
+    var pd = fullPindu(word);
 
     /* 顶部：第 N 个词 / 总数 + "回到今日关卡"入口 */
     var header = el('div', 'card');
@@ -2843,7 +2856,7 @@
   }
 
   function playPhoneme(word, i, btn) {
-    var p = WORDS[word].pindu[i];
+    var p = fullPindu(word)[i];
     if (!p) return;
     if (btn) {
       $$('#pindu button').forEach(function (b) { b.classList.remove('playing'); });
@@ -2855,7 +2868,7 @@
     });
   }
   function playPhonemes(word) {
-    var pd = WORDS[word].pindu || [];
+    var pd = fullPindu(word);
     var i = 0;
     (function step() {
       if (i >= pd.length) return;
@@ -3020,19 +3033,21 @@
     cardsLink.style.cursor = 'pointer';
     cardsLink.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
-        '<span>🗂 字素表 <span class="muted" style="font-weight:600">· ' + allPhonemes().length + ' 个字素 · 左右翻，点一下听读音</span></span>' +
+        '<span>🗂 字素表 <span class="muted" style="font-weight:600">· ' + allPhonemes().length + ' 个字素 · 左右翻</span></span>' +
         '<span class="muted" style="font-size:var(--fs-h2)">›</span>' +
       '</div>';
     v.appendChild(cardsLink);
-    cardsLink.onclick = function () { stopAudio(); renderPhCardsView(v); };
+    cardsLink.onclick = function () { phOpenOverview(); };
   }
 
-  /* ---------- 字素表：一次看一个字素，翻卡浏览 ---------- */
-  /* 全览模式：把 244 个字素按类目铺成网格，点哪一格直接翻到那张卡。
-     老师教课时要的是「快速定位到某个音」，一页页翻太慢。
-     phCardsGrid 只是「同一个下标空间的两种呈现」，不新增第二套翻页逻辑：
-     网格格子携带 PH_FLAT 下标，仍然调 phCardsJump。 */
-  var phCardsGrid = false;
+  /* ---------- 字素表：两级浏览（全览 → 讲读卡） ---------- */
+  /* 第一级是全览：全部字素按类目铺成网格（数量随数据变，别在注释里写死），
+     顶上的 tabs 直接跳到某一类，
+     点哪一格才进那张卡。老师备课时要的是「三秒找到要教的音」，一页页翻太慢。
+     第二级是讲读卡：一次一个字素，左右箭头 / 左右滑动换字，返回退回全览。
+     phCardsGrid 就是这两级（true = 全览，false = 讲读卡），全览的格子携带
+     PH_FLAT 下标，进卡走 phOpenCard —— 不新增第二套翻页逻辑。 */
+  var phCardsGrid = true;
   /* 翻卡顺序 = 分组顺序展平。卡面要显示「这是哪一类」，所以这里带上 group 引用；
      同一个字母的第几种读法也靠展平位置现算 —— 数据里没有这个字段，但关掉音标
      之后连着三张 a / a / a 长得一模一样，不给区分孩子只会以为页面卡住了。 */
@@ -3071,16 +3086,23 @@
      光按 letters 找还是不够：同一个字母在一词里出现多次、读音不同时，只认字母
      会标错那一处。rabbit 的第一个 b 发 /b/、第二个 b 才是哑的，「不发音的 b」
      那张卡要标的是第二个。所以先按 (字母, 音) 配对，配不上才退回第一个同字母。
-     逐段比对一旦对不上就整个放弃高亮：宁可少标，也不要标错。 */
+     逐段比对一旦对不上就整个放弃高亮：宁可少标，也不要标错。
+
+     段有两种形状：L1/L2 是 {letters, sound, audio, start, end}，L3 词为了省体积
+     由 build 压成 [letters, sound]。这里只读 letters / sound，两种都吃。 */
+  function phPinduSeg(p) {
+    if (Array.isArray(p)) return { letters: p[0] || '', sound: p[1] || '' };
+    return { letters: p.letters || '', sound: p.sound || '' };
+  }
   function phWordHtml(word, letters, sound) {
     var pd = (WORDS[word] && WORDS[word].pindu) || [];
     var low = word.toLowerCase(), want = (letters || '').toLowerCase();
     var pos = 0, at = -1, len = 0, fbAt = -1, fbLen = 0;
     for (var i = 0; i < pd.length; i++) {
-      var seg = (pd[i].letters || '').toLowerCase();
+      var seg = phPinduSeg(pd[i]).letters.toLowerCase();
       if (low.slice(pos, pos + seg.length) !== seg) return esc(word);
       if (seg === want) {
-        if (at < 0 && (pd[i].sound || '') === (sound || '')) { at = pos; len = seg.length; }
+        if (at < 0 && phPinduSeg(pd[i]).sound === (sound || '')) { at = pos; len = seg.length; }
         if (fbAt < 0) { fbAt = pos; fbLen = seg.length; }
       }
       pos += seg.length;
@@ -3091,58 +3113,88 @@
       esc(word.slice(at + len));
   }
 
-  /* 单独的字素表浏览入口（不走 segbar / phMode）：一次一张卡，
-     左右箭头 + 左右滑动翻页，操作和翻词库一模一样。 */
+  /* 单独的字素表浏览入口（不走 segbar / phMode）：两级结构。
+     进门先落在全览上「找」，点进某一格才进讲读卡「学」。 */
   function renderPhCardsView(v) {
     v = v || $('#view');
+    phUnbindTabs();
     v.innerHTML = '';
     if (!PH_FLAT.length) { v.appendChild(empty('字素数据还没生成')); return; }
     if (phCardsIdx >= PH_FLAT.length) phCardsIdx = 0;
     var cur = PH_FLAT[phCardsIdx];
 
-    /* 顶部：沿用翻词库的骨架 —— 左「第几个 / 共几个」，右「返回」 */
+    /* 顶部：两级各有各的出口 —— 全览回拼读，讲读卡只回全览（要回拼读再点一次，
+       不跳级）。左边的计数跟着换语义：全览是「一共有多少」，卡片是「第几个」。 */
     var header = el('div', 'card');
     header.innerHTML =
       '<div class="row" style="justify-content:space-between;align-items:center">' +
-        '<span class="muted">🗂 字素表 · ' + (phCardsGrid ? PH_FLAT.length + ' 个 · 点一个进详情' : (phCardsIdx + 1) + '/' + PH_FLAT.length) + '</span>' +
-        /* 全览 / 翻卡 是同一视图的两种呈现，所以开关和「返回」并排 */
-        '<div class="row" style="gap:var(--sp-2)">' +
-          '<button class="pill pill-btn" id="ph-mode">' + (phCardsGrid ? '▤ 翻卡' : '▦ 全览') + '</button>' +
-          '<button class="pill pill-btn" id="ph-back">← 返回拼读</button>' +
-        '</div>' +
+        '<span class="muted">🗂 字素表 · ' +
+          (phCardsGrid ? PH_FLAT.length + ' 个字素' : (phCardsIdx + 1) + ' / ' + PH_FLAT.length) + '</span>' +
+        '<button class="pill pill-btn" id="ph-back">' + (phCardsGrid ? '← 返回拼读' : '← 返回全览') + '</button>' +
       '</div>';
     v.appendChild(header);
-    $('#ph-back').onclick = function () { stopAudio(); renderPhonics($('#view')); };
-    $('#ph-mode').onclick = function () {
+    $('#ph-back').onclick = function () {
       stopAudio();
-      phCardsGrid = !phCardsGrid;
-      renderPhCardsView($('#view'));
-      /* 切到全览从顶部开始（网格是「重新找」的场景），切回翻卡留在原处 */
-      if (phCardsGrid) window.scrollTo(0, 0);
+      if (phCardsGrid) renderPhonics($('#view'));
+      else phBackToOverview();
     };
 
-    /* 类目跳转：点一下落到那一组的第一个字素。整页只有这一个"选择器"，
-     其余操作（换字素、听例词、跳同音写法）都长在当前这张卡上。
-     全览模式下 chips 依然有用，但点了要先切回翻卡视图：从「辅音字母」跳过去
-     应该直接看到那张卡，而不是停在一堆格子上。 */
-    var jumps = el('div', 'unit-chips');
+    /* 类目 tabs：全览时点了是把那一类滚到眼前（几百个格子一路滑下去找太慢），
+       讲读卡时点了是从那一类的第一张开始读。 */
+    var jumps = el('div', 'unit-chips' + (phCardsGrid ? ' ph-tabs' : ''));
     PHONICS.groups.forEach(function (g) {
       var target = 0;
       for (var i = 0; i < PH_FLAT.length; i++) {
         if (PH_FLAT[i].g === g) { target = i; break; }
       }
-      var b = el('button', 'chip' + (g === cur.g ? ' on' : ''), esc(g.label) + ' ' + g.items.length);
+      var b = el('button', 'chip' + (!phCardsGrid && g === cur.g ? ' on' : ''),
+        esc(g.label) + ' ' + g.items.length);
+      b.setAttribute('data-gid', g.id);
       b.onclick = function () {
-        phCardsGrid = false;
-        phCardsJump(target);
+        if (phCardsGrid) phScrollToGroup(g.id);
+        else phCardsJump(target);
       };
       jumps.appendChild(b);
     });
     v.appendChild(jumps);
 
     v.appendChild(el('div', '', '<div id="ph-cards-body"></div>'));
-    if (phCardsGrid) renderPhCardsGrid($('#ph-cards-body'));
+    if (phCardsGrid) { renderPhCardsGrid($('#ph-cards-body')); phBindTabs(); }
     else renderPhCards($('#ph-cards-body'));
+  }
+
+  /* ---------- 字素表的三条导航路径 ----------
+     每条各有一件必须做对的事，别混用：
+     - phOpenOverview：从拼读页进门（入口在最底下）要回到视口顶部，否则刚点开
+       就停在网格中段；
+     - phOpenCard：全览 → 讲读卡同样要归零 —— 全览滚到底再点格子时，不归零
+       卡片一进来就停在自己的半截上（孩子看到的是「例词」而不是那个音）；
+     - phBackToOverview：退回全览要回到离开时的那一屏，而不是从顶重找。
+     卡与卡之间的左右翻不在此列 —— 那是 phCardsJump，按住位置（见其注释）。 */
+  var phOverviewY = 0;
+
+  function phOpenOverview() {
+    phCardsGrid = true;
+    phOverviewY = 0;
+    stopAudio();
+    renderPhCardsView($('#view'));
+    window.scrollTo(0, 0);
+  }
+
+  function phOpenCard(idx) {
+    phOverviewY = window.scrollY;
+    phCardsGrid = false;
+    phCardsIdx = (idx + PH_FLAT.length) % PH_FLAT.length;
+    stopAudio();
+    renderPhCardsView($('#view'));
+    window.scrollTo(0, 0);
+  }
+
+  function phBackToOverview() {
+    phCardsGrid = true;
+    stopAudio();
+    renderPhCardsView($('#view'));
+    window.scrollTo(0, phOverviewY);
   }
 
   /* 翻到第 target 个字素。整页重画（和翻词库翻词一个道理），但按住滚动位置：
@@ -3155,7 +3207,91 @@
     window.scrollTo(0, y);
   }
 
-  /* 全览网格：244 个字素按类目铺开，点哪一格直接翻到那张卡。
+  /* ---------- 全览的 tabs：跳过去 + 滚到哪亮哪个 ---------- */
+  /* 每一类在网格里的锚点。tabs 的「跳过去」和「滚到哪儿亮哪个」都按它找卡片。 */
+  function phSecId(gid) { return 'ph-sec-' + gid; }
+
+  /* 把某一类滚到视口顶部。自己算偏移而不用 scrollIntoView + scroll-margin：
+     tabs 吸顶后「顶部」不是 0 而是 tabs 的下沿，这个数只有这里知道，
+     写进 CSS 就得两边各维护一份。 */
+  function phScrollToGroup(gid) {
+    var sec = document.getElementById(phSecId(gid));
+    if (!sec) return;
+    var tabs = $('.ph-tabs');
+    window.scrollTo({
+      top: sec.getBoundingClientRect().top + window.scrollY - (tabs ? tabs.offsetHeight : 0),
+      behavior: 'smooth'
+    });
+  }
+
+  /* 窄屏一行放不下 6 个类目，把点亮的那颗横向带进视野 —— 不然读了半天也看不出
+     自己在哪一类（高亮跑到屏幕外了）。手算差值而不用 scrollIntoView：后者会连带
+     调整祖先滚动，可能把整页的纵向位置一起动了。 */
+  function phRevealChip(tabs, chip) {
+    if (!chip) return;
+    var tr = tabs.getBoundingClientRect(), cr = chip.getBoundingClientRect();
+    if (cr.left < tr.left) tabs.scrollLeft -= tr.left - cr.left + 8;
+    else if (cr.right > tr.right) tabs.scrollLeft += cr.right - tr.right + 8;
+  }
+
+  /* tabs 和阅读位置联动：滚到哪一类，哪个 tab 就点亮。不联动的话吸顶的 tabs
+     会一直停在「刚点的那一类」，滑过去之后就和眼前的内容对不上。
+     监听器挂在 window 上 —— 「谁在听」不会跟着 DOM 一起被清掉，所以换页时主动
+     解绑；万一哪条路径漏了，onScroll 里还会自查 tabs 是否还在文档里。 */
+  var phTabsOff = null;
+  function phUnbindTabs() {
+    if (phTabsOff) { phTabsOff(); phTabsOff = null; }
+  }
+  function phBindTabs() {
+    phUnbindTabs();
+    var tabs = $('.ph-tabs');
+    if (!tabs) return;
+    var chips = $$('[data-gid]', tabs);
+    var secs = PHONICS.groups.map(function (g) { return document.getElementById(phSecId(g.id)); })
+      .filter(function (s) { return !!s; });
+    if (!secs.length) return;
+    /* 只在「读到另一类了」时动 DOM：调样式 + 横滚带进视野。每帧都做的话，
+       孩子自己横向拨 tabs 看后面几类时会被立刻拨回来。 */
+    var lastGid = null;
+    var sync = function () {
+      /* 吸顶 tabs 的下沿就是「正在读的这一行」：卡片顶越过它的最后一类就是当前类。
+         没越过任何一张时（刚进门）保持第一类，不会出现「一个都不亮」。
+         两处边界要留住：
+         - +4px 容差：tabs 点过去是把卡片顶对齐到下沿，scrollTo 取整后差 0-1px 是常态，
+           不加容差就会停在「上一个类目还亮着」；
+         - 滚到最底：最后一类短（16 个）时它的顶永远越不过那条线，只能单独认一次
+           「已经到底」—— 否则读到最后一类时高亮还停在上一类。 */
+      var line = tabs.getBoundingClientRect().bottom + 4;
+      var active = secs[0];
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+        active = secs[secs.length - 1];
+      } else {
+        secs.forEach(function (s) { if (s.getBoundingClientRect().top <= line) active = s; });
+      }
+      var gid = active.getAttribute('data-gid');
+      if (gid === lastGid) return;
+      lastGid = gid;
+      var on = null;
+      chips.forEach(function (c) {
+        var hit = c.getAttribute('data-gid') === gid;
+        c.classList.toggle('on', hit);
+        if (hit) on = c;
+      });
+      phRevealChip(tabs, on);
+    };
+    var queued = false;
+    var onScroll = function () {
+      if (!tabs.isConnected) { phUnbindTabs(); return; }
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () { queued = false; sync(); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    phTabsOff = function () { window.removeEventListener('scroll', onScroll); };
+    sync();
+  }
+
+  /* 全览网格：全部字素按类目铺开，点哪一格直接进那张讲读卡。
      老师备课时要的是「三秒找到要教的音」，一页页翻做不到。
 
      两条不能省的约束：
@@ -3174,6 +3310,9 @@
 
     PHONICS.groups.forEach(function (g) {
       var sec = el('div', 'card');
+      /* 锚点：tabs 的「跳过去」按 id 找卡片，滚动联动按 data-gid 认是哪一类 */
+      sec.id = phSecId(g.id);
+      sec.setAttribute('data-gid', g.id);
       sec.innerHTML = '<h2 class="section">' + esc(g.label) + ' · ' + g.items.length + ' 个</h2>';
       var grid = el('div', 'ph-grid gph-all');
       g.items.forEach(function (it) {
@@ -3191,10 +3330,9 @@
           '<span class="w">' + (it.sound ? esc(it.sound) : '不发音') + '</span>' +
           (ok ? '<span class="gph-ok-mini">✓</span>' : '');
         cell.onclick = function () {
-          /* 先切回翻卡视图再跳：格子只负责「定位」，详情页才是教读的地方。
-             也走 phCardsJump，保持和箭头/滑动/chips 同一条路径。 */
-          phCardsGrid = false;
-          phCardsJump(idx);
+          /* 格子只负责「定位」：跨层级进讲读卡，不是卡内翻页，所以走 phOpenCard
+             （会把滚动归零 + 记住全览的位置）。 */
+          phOpenCard(idx);
         };
         grid.appendChild(cell);
       });
