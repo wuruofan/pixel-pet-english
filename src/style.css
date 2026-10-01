@@ -112,9 +112,22 @@ html, body {
   font-family: var(--font);
   color: var(--ink);
   background: var(--bg);
+}
+
+/* 下面两条只挂在 html 上，绝对不要再挂到 body —— 那是「主页完全滚不动」的根因。
+   1) body 上写 overflow-x: hidden，会让它的 overflow-y 按规范计算成 auto，
+      body 于是变成一个真正的滚动容器。Gecko 只把 html 的 overflow 传播到视口，
+      body 的不传播，所以 body 那个滚动容器是实打实的。
+   2) body 上再写 overscroll-behavior-y: none，就切断了它「往上滚」的滚动链。
+   两者叠加的结果：手指按在正文上 → 手势命中 body 这个滚动容器 → 可它自己高度等于
+   内容、根本没有可滚区间 → 又不允许把滚动链交给根滚动器 → 手势被就地吃掉，
+   页面一动不动。真机二分验证过：这两条里随便去掉一条就能滚。
+   挂到 html 上不影响效果：overflow 和 overscroll-behavior 都会从根元素传播到视口，
+   横裁、关下拉刷新两个目的都还在。 */
+html {
   overscroll-behavior-y: none;
   /* 摇晃提示用 rotate/translate，旋转会把卡片包围盒撑大、探出视口，
-     导致临时出现横/竖向滚动条。横向裁掉即可（竖向滚动照常）；
+     导致临时出现横向滚动条。横向裁掉即可（竖向滚动照常）；
      竖向撑高很小、落在卡片底部留白内，不会触发竖向滚动条。 */
   overflow-x: hidden;
 }
