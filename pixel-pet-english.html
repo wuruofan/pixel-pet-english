@@ -438,13 +438,18 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
    按钮一致。暗部一律「同色相、只降明度、不掉饱和」（橙色麦克风一直是
    这个规则，是三颗里唯一立得住的）。
 
-   注意：厚弧改由 ::after 伪元素画，不用 border-bottom。因为在
+   注意：厚弧改由 ::after 的 inset box-shadow 画，不用 border-bottom。因为在
    box-sizing:border-box 下，border-bottom 会从 height 里扣掉 5px，
    grid 的 place-items:center 于是把图标对齐到「内容盒」中心而不是圆心，
    视觉上恒定偏上 2.5px（.speak-btn / .mic-btn 都有这个毛病）。
-   伪元素绝对定位、不占布局，height 就等于真实圆直径，图标也真正居中。
-   --rim 声明的就是原来 border-bottom 的粗细，裁切用 calc(100% - rim) 而非
-   百分比，这样改 width/height 时厚弧不会跟着缩放走样。 */
+   inset shadow 是画在圆内的、不占布局，height 就等于真实圆直径，图标也真正居中。
+   --rim 声明的就是原来 border-bottom 的粗细。
+
+   踩过的坑：厚弧一度改用 `clip-path: inset(100% - rim) 0 0 0` 画。那是错的 ——
+   它先按方框裁出一条**水平带**，再由 border-radius 裁圆，两者交线是一段**弦**
+   而非圆弧，结果底部变成一弯月牙：两端翘起、弧顶被削平，看上去像贴了块碎片。
+   同理 `linear-gradient` 收底也逃不掉（还是水平带）。inset box-shadow 跟随
+   border-radius 走，弧线才真正沿圆周。 */
 .speak-btn {
   --rim: 5px;
   width: 62px; height: 62px; border-radius: 50%; cursor: pointer;
@@ -455,12 +460,12 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
   transition: transform .12s, box-shadow .12s;
   position: relative;
 }
-/* 整圆按底边厚度裁一刀：与 border-bottom 在 50% 圆角下的形状完全一致 */
+/* inset shadow 沿 border-radius 裁切，底部得到一道真正的厚弧 */
 .speak-btn::after, .mic-btn::after {
   content: ''; position: absolute; inset: 0; border-radius: 50%;
-  clip-path: inset(calc(100% - var(--rim)) 0 0 0); pointer-events: none;
+  box-shadow: inset 0 calc(var(--rim) * -1) 0 0 currentColor;
+  color: var(--blue-dk); pointer-events: none;
 }
-.speak-btn::after { background: var(--blue-dk); }
 .speak-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(58,44,34,.14); }
 .speak-btn.sm { --rim: 4px; width: 44px; height: 44px; font-size: var(--icon-md); }
 
@@ -518,15 +523,16 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
   transition: transform .12s, box-shadow .12s, background .2s;
   position: relative;
 }
-.mic-btn::after { background: var(--brand-dk); }
+/* 按钮本体 color:#fff（给图标用），所以伪元素必须显式指定暗色，不能靠 currentColor */
+.mic-btn::after { color: var(--brand-dk); }
 .mic-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(58,44,34,.16); }
 .mic-btn.self { background: linear-gradient(160deg, #6fd9a3, var(--green)); }
-.mic-btn.self::after { background: var(--green-dk); }
+.mic-btn.self::after { color: var(--green-dk); }
 .mic-btn.rec {
   background: linear-gradient(160deg, #ff8f85, var(--red));
   animation: mic-pulse 1.1s ease-in-out infinite;
 }
-.mic-btn.rec::after { background: var(--red-dk); }
+.mic-btn.rec::after { color: var(--red-dk); }
 /* 脉冲只动外圈光晕和接触阴影，底边厚弧不动 */
 @keyframes mic-pulse {
   0%,100% { transform: scale(1); box-shadow: 0 8px 14px rgba(58,44,34,.16), 0 0 0 0 rgba(242,84,75,.45); }
@@ -594,6 +600,11 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 
 .q-prompt { text-align: center; font-size: var(--fs-body); color: var(--ink-soft); font-weight: 800; margin-bottom: var(--sp-2); }
 .q-big { text-align: center; font-size: var(--fs-hero); font-weight: 900; margin: var(--sp-2) 0 var(--sp-4); word-break: break-word; }
+/* 「再听一遍」：贴在题面主视觉正下方、居中。尺寸用 .sm 档（44px）而不是
+   常规 62px —— 它是卡住时的工具，不是主控件，抢了主视觉的注意力就本末倒置。
+   q-big 的下边距在此收窄，否则喇叭会被推离它所解释的那个词/图。 */
+.q-speak-wrap { text-align: center; margin: calc(var(--sp-4) * -1 + var(--sp-2)) 0 var(--sp-4); }
+.q-speak-wrap .speak-btn.sm { margin: 0 auto; }
 
 .opts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 .opt {
@@ -3613,6 +3624,18 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     });
   }
 
+  /* 题目里的「再听一遍这个单词」入口。
+     学单词页本来就有独立的 🔊/🐢 按钮行，但拼读（拼一拼）和闯关
+     （看词选义 / 看图选词 / 中译英）的题面主视觉是纯文本或图片，
+     孩子答不上来时最自然的动作是「再听一遍这个词」，却无处可点。
+     模式：把喇叭直接挂在词/图下方（inline），不占一整行，也不与选项争夺
+     注意力。`id` 传 null 时不渲染——纯听音题（listen2en）题面本身就是喇叭，
+     再挂一个会重复。 */
+  function wordSpeakHtml(id, label) {
+    return '<button class="speak-btn sm q-speak" id="' + id + '" aria-label="再听一遍这个单词">' +
+      SPK + '</button>' + (label ? '<div class="muted center" style="margin-top:var(--sp-2)">' + label + '</div>' : '');
+  }
+
   /* 全部词库模式：保留原来的"我记住了 / 上一个 / 下一个"自由翻词体验 */
   function renderLearnBrowse(v) {
     var list = bandWords(S.settings.band);
@@ -4855,6 +4878,12 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       '<h2 class="section">把这个词的音按顺序点出来</h2>' +
       '<div class="wc-visual">' + visualHtml(b.word, 64) + '</div>' +
       '<div class="wc-word">' + b.word + '</div>' +
+      /* The word is the one thing the child cannot ask to hear again here:
+         the round auto-plays once, then nothing repeats it. Every option
+         speaks its own phoneme, not the word, so "say it again" had no
+         affordance. It is a tool for stuck, not a hint — no label, and it
+         disappears once the word is built (the completion box speaks it). */
+      (done ? '' : '<div class="q-speak-wrap">' + wordSpeakHtml('ph-word') + '</div>') +
       (done ? '' : '<div class="ph-build-slots" id="ph-slots">' + slotsHtml + '</div>') +
       (done ? '' : '<div class="muted center" style="margin:var(--sp-1) 0 var(--sp-3)">点一个听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-pool-row" id="ph-pool">' +
@@ -4871,6 +4900,9 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
+
+    var pw = $('#ph-word');
+    if (pw) pw.onclick = function () { speakWord(b.word); };
 
     if (!done) {
       $$('#ph-pool .ph-opt').forEach(function (btn) {
@@ -5010,14 +5042,21 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       return '<i class="' + (r == null ? (i === quiz.idx ? 'cur' : '') : r ? 'ok' : 'no') + '"></i>';
     }).join('') + '</div>';
 
-    var prompt = '', big = '';
-    if (q.mode === 'en2pic') { prompt = '选出这个单词的意思'; big = word; }
+    var prompt = '', big = '', speakId = null;
+    /* Which questions get a "hear it again" button. The single test:
+       does the question SHOW the English word? If it does, the child may
+       simply not know it, and hearing it is support rather than a giveaway.
+       - en2pic / en2cn: spelling is on screen, meaning is what they must find.
+       - pic2en / cn2en: hearing it would name the picture / BE the answer.
+       - listen2en: the question IS the audio; a second speaker is redundant. */
+    if (q.mode === 'en2pic') { prompt = '选出这个单词的意思'; big = word; speakId = 'q-speak-word'; }
     else if (q.mode === 'pic2en') { prompt = '这张图是哪个单词？'; big = '<div style="font-size:var(--icon-hero);line-height:1">' + visualOf(word).emoji + (VISUALS[word] && VISUALS[word].glyph ? ' <span class="glyph-badge" style="display:inline-grid">' + VISUALS[word].glyph + '</span>' : '') + '</div>'; }
     else if (q.mode === 'listen2en') { prompt = '听一听，是哪个单词？'; big = '<button class="speak-btn" id="q-play">' + SPK + '</button>'; }
-    else if (q.mode === 'en2cn') { prompt = '这个单词是什么意思？'; big = word; }
+    else if (q.mode === 'en2cn') { prompt = '这个单词是什么意思？'; big = word; speakId = 'q-speak-word'; }
     else { prompt = '哪个单词是「' + meaningOf(word) + '」？'; big = '<div style="font-size:var(--fs-d1)">' + meaningOf(word) + '</div>'; }
 
     c.innerHTML = prog + '<div class="q-prompt">' + prompt + '</div><div class="q-big">' + big + '</div>' +
+      (speakId ? '<div class="q-speak-wrap">' + wordSpeakHtml(speakId) + '</div>' : '') +
       '<div class="opts" id="opts">' +
       q.opts.map(function (o, i) {
         var inner;
@@ -5041,6 +5080,8 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     } else if (q.mode === 'cn2en') {
       setTimeout(function () { speakWord(word); }, 300);
     }
+    var qs = $('#q-speak-word');
+    if (qs) qs.onclick = function () { speakWord(word); };
 
     $$('#opts .opt').forEach(function (b) {
       b.onclick = function () { answer(q, +b.dataset.i, b); };
