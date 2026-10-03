@@ -2430,6 +2430,18 @@
     });
   }
 
+  /* 题目里的「再听一遍这个单词」入口。
+     学单词页本来就有独立的 🔊/🐢 按钮行，但拼读（拼一拼）和闯关
+     （看词选义 / 看图选词 / 中译英）的题面主视觉是纯文本或图片，
+     孩子答不上来时最自然的动作是「再听一遍这个词」，却无处可点。
+     模式：把喇叭直接挂在词/图下方（inline），不占一整行，也不与选项争夺
+     注意力。`id` 传 null 时不渲染——纯听音题（listen2en）题面本身就是喇叭，
+     再挂一个会重复。 */
+  function wordSpeakHtml(id, label) {
+    return '<button class="speak-btn sm q-speak" id="' + id + '" aria-label="再听一遍这个单词">' +
+      SPK + '</button>' + (label ? '<div class="muted center" style="margin-top:var(--sp-2)">' + label + '</div>' : '');
+  }
+
   /* 全部词库模式：保留原来的"我记住了 / 上一个 / 下一个"自由翻词体验 */
   function renderLearnBrowse(v) {
     var list = bandWords(S.settings.band);
@@ -3672,6 +3684,12 @@
       '<h2 class="section">把这个词的音按顺序点出来</h2>' +
       '<div class="wc-visual">' + visualHtml(b.word, 64) + '</div>' +
       '<div class="wc-word">' + b.word + '</div>' +
+      /* The word is the one thing the child cannot ask to hear again here:
+         the round auto-plays once, then nothing repeats it. Every option
+         speaks its own phoneme, not the word, so "say it again" had no
+         affordance. It is a tool for stuck, not a hint — no label, and it
+         disappears once the word is built (the completion box speaks it). */
+      (done ? '' : '<div class="q-speak-wrap">' + wordSpeakHtml('ph-word') + '</div>') +
       (done ? '' : '<div class="ph-build-slots" id="ph-slots">' + slotsHtml + '</div>') +
       (done ? '' : '<div class="muted center" style="margin:var(--sp-1) 0 var(--sp-3)">点一个听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-pool-row" id="ph-pool">' +
@@ -3688,6 +3706,9 @@
       }).join('')) + '</div>' +
       '<div id="ph-fb"></div>';
     v.appendChild(c);
+
+    var pw = $('#ph-word');
+    if (pw) pw.onclick = function () { speakWord(b.word); };
 
     if (!done) {
       $$('#ph-pool .ph-opt').forEach(function (btn) {
@@ -3827,14 +3848,21 @@
       return '<i class="' + (r == null ? (i === quiz.idx ? 'cur' : '') : r ? 'ok' : 'no') + '"></i>';
     }).join('') + '</div>';
 
-    var prompt = '', big = '';
-    if (q.mode === 'en2pic') { prompt = '选出这个单词的意思'; big = word; }
+    var prompt = '', big = '', speakId = null;
+    /* Which questions get a "hear it again" button. The single test:
+       does the question SHOW the English word? If it does, the child may
+       simply not know it, and hearing it is support rather than a giveaway.
+       - en2pic / en2cn: spelling is on screen, meaning is what they must find.
+       - pic2en / cn2en: hearing it would name the picture / BE the answer.
+       - listen2en: the question IS the audio; a second speaker is redundant. */
+    if (q.mode === 'en2pic') { prompt = '选出这个单词的意思'; big = word; speakId = 'q-speak-word'; }
     else if (q.mode === 'pic2en') { prompt = '这张图是哪个单词？'; big = '<div style="font-size:var(--icon-hero);line-height:1">' + visualOf(word).emoji + (VISUALS[word] && VISUALS[word].glyph ? ' <span class="glyph-badge" style="display:inline-grid">' + VISUALS[word].glyph + '</span>' : '') + '</div>'; }
     else if (q.mode === 'listen2en') { prompt = '听一听，是哪个单词？'; big = '<button class="speak-btn" id="q-play">' + SPK + '</button>'; }
-    else if (q.mode === 'en2cn') { prompt = '这个单词是什么意思？'; big = word; }
+    else if (q.mode === 'en2cn') { prompt = '这个单词是什么意思？'; big = word; speakId = 'q-speak-word'; }
     else { prompt = '哪个单词是「' + meaningOf(word) + '」？'; big = '<div style="font-size:var(--fs-d1)">' + meaningOf(word) + '</div>'; }
 
     c.innerHTML = prog + '<div class="q-prompt">' + prompt + '</div><div class="q-big">' + big + '</div>' +
+      (speakId ? '<div class="q-speak-wrap">' + wordSpeakHtml(speakId) + '</div>' : '') +
       '<div class="opts" id="opts">' +
       q.opts.map(function (o, i) {
         var inner;
@@ -3858,6 +3886,8 @@
     } else if (q.mode === 'cn2en') {
       setTimeout(function () { speakWord(word); }, 300);
     }
+    var qs = $('#q-speak-word');
+    if (qs) qs.onclick = function () { speakWord(word); };
 
     $$('#opts .opt').forEach(function (b) {
       b.onclick = function () { answer(q, +b.dataset.i, b); };
