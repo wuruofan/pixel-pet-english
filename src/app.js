@@ -2081,6 +2081,7 @@
   var learnHitScored = false;   // 本次录音是否已判定命中（避免 onend 重复弹提示）
   var learnSession = 0;         // 每次 start 自增；过期的 onend 直接作废，避免翻词后串台
   var learnEnded = true;        // 本次录音是否已真正结束（onend 触发）；用于兜底检测「卡死」
+  var learnStuck = 0;           // 当前这个词连续识别失败次数；达阈值才提示「长按自评」
   var learnStartTs = 0;         // 本次录音开始时间（诊断：区分「几乎没录上」vs「听了没声音」）
   var learnEngine = 'sf';       // 当前一轮录音走的引擎：仅硅基流动云端 ASR（'sf'）
   var learnEnterDir = 0;        // 新卡入场方向：1=从右（下一题）、-1=从左
@@ -2161,14 +2162,18 @@
       (supported ? '' :
         '<div class="learn-nomic"><span>' + learnNomicText() + '</span>' +
         '<button class="nomic-re" id="mic-recheck" aria-label="配好 Key 后点这里重新检测">🔄</button></div>') +
-      (passed || !supported ? '' :
-        '<button class="btn ghost xs" id="mic-self" style="margin-top:var(--sp-3)">我读过了（自评）</button>') +
-      /* Advancing still requires the reading check — the drill is a reading
-         drill, and a gate that can be walked past teaches nothing. What changed
-         is HOW you advance: one explicit button, matching the phonics and quiz
-         tabs, instead of the card's side arrows plus swipe-to-flip. The
-         self-rating ✅ remains the escape hatch when speech recognition is
-         unavailable or never matches, so the child is never truly stuck. */
+      /* Advancing requires the reading check — the drill is a reading drill,
+         and a gate that can be walked past teaches nothing. What changed is HOW
+         you advance: one explicit button, matching the phonics and quiz tabs,
+         instead of the card's side arrows plus swipe-to-flip.
+
+         There is exactly ONE self-rating control, the ✅ fallback button
+         rendered by learnMicBtnHtml when `supported` is false (no key / not a
+         secure context). The old extra 「我读过了（自评）」 text button that
+         appeared when recognition *did* work was a second way to do the same
+         thing, and a confusing one: it sat right under a live microphone, so
+         kids tapped it instead of reading. Recognition failing to match is now
+         handled by re-trying the mic, not by a button that skips the drill. */
       '<button class="btn green big next-round" id="learn-next"' +
         (passed ? '' : ' disabled title="先跟读出这个词再继续"') +
         ' style="margin-top:var(--sp-4)">' +
@@ -2219,14 +2224,28 @@
     if (passed) return learnPos >= learnQueue.length - 1 ? '✅ 通过！翻过去看今天的结果 🎉' : '✅ 通过！可以翻下一个词啦';
     if (learnBusy) return '正在听…说完再点 ⏹ 停';
     if (!supported) return '读出 “' + word + '” 后点 ✅';
+    /* 一直识别不出来时，唯一的出路是长按 🎤 自评。这句话只在这时才出现，
+       平时不占位，免得孩子看到就想去按它。 */
+    if (learnStuck >= STUCK_HINT_AT) return '还是没认出来？长按 🎤 可以自己记一次';
     return hits > 0 ? '很棒！再读 1 次就过关' : '读出 “' + word + '” 吧';
   }
 
   function bindLearnSpeak(scope) {
     var mic = scope.querySelector('#mic-btn');
     if (mic) mic.onclick = toggleLearnMic;
+    /* Long-press the mic = self-rating this word. It replaces the old always-
+       visible 「我读过了（自评）」 text button, which sat right under a live
+       microphone and got tapped instead of reading.
+       The affordance is only DISCOVERABLE once recognition has actually failed
+       (learnStuck >= STUCK_HINT_AT → the status line says so), because a kid
+       who long-presses by accident must not be able to skip the drill.
+       Long-press (not a second button) so the normal card stays two controls:
+       read, or move on. */
+    if (mic && micEngine() !== 'off') bindLongPress(mic, function () {
+      if (learnPassed[learnPos]) return;      // 已过关，长按无意义
+      selfRateByLongPress();
+    });
     var fb = scope.querySelector('#mic-btn-fb');
-    var self = scope.querySelector('#mic-self');
     /* Self-rating has no recording behind it: every tap is one independent
      * judgement, so it must NOT go through onLearnHit's `learnHitScored`
      * de-duplication. That flag exists so a single recognition that fires
@@ -2236,7 +2255,45 @@
      * HITS_GOAL=2 could never be reached — the escape hatch deadlocked the
      * child on a single word. Clear the flag before each self-rating. */
     if (fb) fb.onclick = function () { learnHitScored = false; onLearnHit(); };
-    if (self) self.onclick = function () { if (learnBusy) abandonLearnMic(); learnHitScored = false; onLearnHit(); };
+  }
+
+  /* 长按识别：500ms 判定，容忍手指轻微抖动。返回解绑函数便于需要时拆。 */
+  function bindLongPress(node, fn) {
+    var timer = null, fired = false;
+    var start = function (e) {
+      /* 只响应主键 / 单指；右键、长按菜单不触发 */
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      fired = false;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fired = true; fn(); }, 500);
+    };
+    var end = function () { clearTimeout(timer); timer = null; };
+    node.addEventListener('pointerdown', start);
+    node.addEventListener('pointerup', end);
+    node.addEventListener('pointercancel', end);
+    node.addEventListener('pointerleave', end);
+    /* 长按已触发时，紧随其后的 click 要吃掉，否则会顺带开关一次录音 */
+    node.addEventListener('click', function (e) {
+      if (!fired) return;
+      fired = false;
+      e.stopPropagation(); e.preventDefault();
+    }, true);
+    return function () {
+      end();
+      node.removeEventListener('pointerdown', start);
+      node.removeEventListener('pointerup', end);
+      node.removeEventListener('pointercancel', end);
+      node.removeEventListener('pointerleave', end);
+    };
+  }
+
+  /* 长按自评：等价于点一次 ✅，走同一套计分与去重规则 */
+  function selfRateByLongPress() {
+    if (learnBusy) abandonLearnMic();
+    learnHitScored = false;
+    learnStuck = 0;
+    onLearnHit();
+    toast('已记一次「我读过了」👍');
   }
 
   /* ---------- 滑动：跟手位移 + 倾斜 ---------- */
@@ -2652,8 +2709,20 @@
     var heard = normalizeSpoken(text);
     var target = learnQueue[learnPos] || '';
     if (heard && spokenMatches(text, target)) { onLearnHit(); return; }
+    /* Not a match. Count it so a word the child simply cannot get past can
+       surface the long-press hint instead of trapping them on it forever. */
+    markLearnStuck();
     if (heard) toast('听到“' + heard + '”，再试试读 “' + target + '” 🎤');
     else toast('没听到声音…大声读 “' + target + '” 试试');
+  }
+
+  /* Consecutive recognition failures on the current word. Reset on a hit, on
+     self-rating, and on every page turn (learnGoNext/abandonLearnMic).
+     Only at STUCK_HINT_AT does the status line teach the long-press escape —
+     before that, a kid who long-presses by accident could skip the drill. */
+  var STUCK_HINT_AT = 2;
+  function markLearnStuck() {
+    if (learnStuck < STUCK_HINT_AT) learnStuck++;
   }
 
   function sfErrMsg(code, m) {
@@ -2729,6 +2798,7 @@
     }
     if (learnHitScored) return;     // 同一次录音里结果可能多次命中，只计一次
     learnHitScored = true;
+    learnStuck = 0;                 // 命中即清零「卡住」计数
     var h = Math.min(HITS_GOAL, hitsFor(learnPos) + 1);
     learnHits[learnPos] = h;
     stopCurrentMic();
@@ -2761,11 +2831,14 @@
   /* 「下一题」：纯导航，不记通过。到末尾即进入结果卡。 */
   function learnGoNext() {
     learnPos = learnPos >= learnQueue.length - 1 ? learnQueue.length : learnPos + 1;
+    /* 「卡住」是 per-word 的：翻页必须清零，否则上一个词连着失败会把
+       下一个词的提示也一起点亮，孩子一进来就看到「长按自评」。 */
+    learnStuck = 0;
     abandonLearnMic(); render();
   }
   function learnGoPrev() {
     if (learnPos <= 0) return;
-    learnPos--; abandonLearnMic(); render();
+    learnPos--; learnStuck = 0; abandonLearnMic(); render();
   }
   /* 桌面端没有触摸：方向键映射到翻词库的左右翻词（今日关卡现在是「下一题」按钮，
      不用方向键）。左右与卡片箭头保持一致：← 上一个、→ 下一个。 */
