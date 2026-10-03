@@ -436,17 +436,33 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
    一小片「翅膀」，轮廓从圆变成碗，看着发闷。改用底边加粗描边 ——
    描边被 50% 圆角裁切后仍是标准圆，底部是一道厚弧，立体语言与全站矩形
    按钮一致。暗部一律「同色相、只降明度、不掉饱和」（橙色麦克风一直是
-   这个规则，是三颗里唯一立得住的）。 */
+   这个规则，是三颗里唯一立得住的）。
+
+   注意：厚弧改由 ::after 伪元素画，不用 border-bottom。因为在
+   box-sizing:border-box 下，border-bottom 会从 height 里扣掉 5px，
+   grid 的 place-items:center 于是把图标对齐到「内容盒」中心而不是圆心，
+   视觉上恒定偏上 2.5px（.speak-btn / .mic-btn 都有这个毛病）。
+   伪元素绝对定位、不占布局，height 就等于真实圆直径，图标也真正居中。
+   --rim 声明的就是原来 border-bottom 的粗细，裁切用 calc(100% - rim) 而非
+   百分比，这样改 width/height 时厚弧不会跟着缩放走样。 */
 .speak-btn {
+  --rim: 5px;
   width: 62px; height: 62px; border-radius: 50%; cursor: pointer;
-  border: 0; border-bottom: 5px solid var(--blue-dk);
+  border: 0;
   background: linear-gradient(160deg, #7cc0ff, var(--blue));
   color: #fff; font-size: var(--icon-md);
   box-shadow: 0 6px 10px rgba(58,44,34,.14); display: grid; place-items: center;
   transition: transform .12s, box-shadow .12s;
+  position: relative;
 }
+/* 整圆按底边厚度裁一刀：与 border-bottom 在 50% 圆角下的形状完全一致 */
+.speak-btn::after, .mic-btn::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  clip-path: inset(calc(100% - var(--rim)) 0 0 0); pointer-events: none;
+}
+.speak-btn::after { background: var(--blue-dk); }
 .speak-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(58,44,34,.14); }
-.speak-btn.sm { width: 44px; height: 44px; font-size: var(--icon-md); border-bottom-width: 4px; }
+.speak-btn.sm { --rim: 4px; width: 44px; height: 44px; font-size: var(--icon-md); }
 
 /* ---------- learn: 跟读命中条 + 录音状态 ---------- */
 .hits-row { display: flex; gap: var(--sp-2); align-items: center; }
@@ -493,20 +509,24 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 .learn-action .speak-btn { width: 58px; height: 58px; font-size: var(--icon-md); }
 .learn-action .mic-btn { width: 88px; height: 88px; font-size: var(--icon-lg); }
 .mic-btn {
+  --rim: 6px;
   width: 84px; height: 84px; border-radius: 50%; cursor: pointer;
-  border: 0; border-bottom: 6px solid var(--brand-dk);
+  border: 0;
   font-size: var(--icon-lg); color: #fff; display: grid; place-items: center;
   background: linear-gradient(160deg, #ffb25c, var(--brand));
   box-shadow: 0 8px 14px rgba(58,44,34,.16);
   transition: transform .12s, box-shadow .12s, background .2s;
+  position: relative;
 }
+.mic-btn::after { background: var(--brand-dk); }
 .mic-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(58,44,34,.16); }
-.mic-btn.self { background: linear-gradient(160deg, #6fd9a3, var(--green)); border-bottom-color: var(--green-dk); }
+.mic-btn.self { background: linear-gradient(160deg, #6fd9a3, var(--green)); }
+.mic-btn.self::after { background: var(--green-dk); }
 .mic-btn.rec {
   background: linear-gradient(160deg, #ff8f85, var(--red));
-  border-bottom-color: var(--red-dk);
   animation: mic-pulse 1.1s ease-in-out infinite;
 }
+.mic-btn.rec::after { background: var(--red-dk); }
 /* 脉冲只动外圈光晕和接触阴影，底边厚弧不动 */
 @keyframes mic-pulse {
   0%,100% { transform: scale(1); box-shadow: 0 8px 14px rgba(58,44,34,.16), 0 0 0 0 rgba(242,84,75,.45); }
@@ -791,12 +811,16 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 @keyframes pb-pop { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
 
 .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
-/* build game answer row: content-sized buttons centered under the slots */
-.ph-pool-row { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-3); margin-top: var(--sp-3); }
-.ph-pool-row .ph-opt { min-width: 84px; }
+/* Quiz options: a fixed 2-column grid, not a wrapping flex row.
+   The flex version (`flex-wrap` + `min-width`) fitted 3 per line on a 390px
+   screen and wrapped the 4th onto its own line — a 3+1 orphan row that read
+   as "one of these is special". `grid-template-columns: repeat(2, 1fr)` makes
+   the shape a stable 2x2 regardless of card width or font size. */
+.ph-pool-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); margin-top: var(--sp-3); }
+.ph-pool-row .ph-opt { min-width: 0; }
 /* IPA-mode build options: the phoneme symbol is the main label, color-coded
    by phoneme kind like the letter blocks */
-.ph-pool-row .ph-opt.ipa { min-width: 88px; border-color: var(--pc, var(--line)); }
+.ph-pool-row .ph-opt.ipa { min-width: 0; border-color: var(--pc, var(--line)); }
 .ph-pool-row .ph-opt.ipa .ph-sound { font-size: var(--fs-ipa); font-weight: 900; color: #fff; background: var(--pc, var(--brand)); border-radius: var(--r-sm); padding: var(--sp-1) var(--sp-3); }
 .ph-opt .ph-sound { font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 800; }
 .ph-card {
@@ -870,7 +894,11 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 
 .speak-btn.playing { animation: pb-pop .55s; }
 
-.speak-btn.big { width: 84px; height: 84px; font-size: var(--icon-lg); margin: var(--sp-1) auto 0; display: block; }
+/* `display: block` here used to override .speak-btn's `display: grid`, which
+   silently killed `place-items: center` — the icon laid out from the top edge.
+   The remaining 2.5px offset came from `border-bottom`, now handled centrally
+   by .speak-btn::after (see the note above .speak-btn). */
+.speak-btn.big { width: 84px; height: 84px; font-size: var(--icon-lg); margin: var(--sp-1) auto 0; display: grid; place-items: center; }
 .ph-ask-letter { display: inline-block; font-size: var(--fs-hero); padding: var(--sp-2) var(--sp-5); }
 .ph-ask-wrap { text-align: center; }
 
@@ -3236,6 +3264,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   var learnHitScored = false;   // 本次录音是否已判定命中（避免 onend 重复弹提示）
   var learnSession = 0;         // 每次 start 自增；过期的 onend 直接作废，避免翻词后串台
   var learnEnded = true;        // 本次录音是否已真正结束（onend 触发）；用于兜底检测「卡死」
+  var learnStuck = 0;           // 当前这个词连续识别失败次数；达阈值才提示「长按自评」
   var learnStartTs = 0;         // 本次录音开始时间（诊断：区分「几乎没录上」vs「听了没声音」）
   var learnEngine = 'sf';       // 当前一轮录音走的引擎：仅硅基流动云端 ASR（'sf'）
   var learnEnterDir = 0;        // 新卡入场方向：1=从右（下一题）、-1=从左
@@ -3316,14 +3345,18 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
       (supported ? '' :
         '<div class="learn-nomic"><span>' + learnNomicText() + '</span>' +
         '<button class="nomic-re" id="mic-recheck" aria-label="配好 Key 后点这里重新检测">🔄</button></div>') +
-      (passed || !supported ? '' :
-        '<button class="btn ghost xs" id="mic-self" style="margin-top:var(--sp-3)">我读过了（自评）</button>') +
-      /* Advancing still requires the reading check — the drill is a reading
-         drill, and a gate that can be walked past teaches nothing. What changed
-         is HOW you advance: one explicit button, matching the phonics and quiz
-         tabs, instead of the card's side arrows plus swipe-to-flip. The
-         self-rating ✅ remains the escape hatch when speech recognition is
-         unavailable or never matches, so the child is never truly stuck. */
+      /* Advancing requires the reading check — the drill is a reading drill,
+         and a gate that can be walked past teaches nothing. What changed is HOW
+         you advance: one explicit button, matching the phonics and quiz tabs,
+         instead of the card's side arrows plus swipe-to-flip.
+
+         There is exactly ONE self-rating control, the ✅ fallback button
+         rendered by learnMicBtnHtml when `supported` is false (no key / not a
+         secure context). The old extra 「我读过了（自评）」 text button that
+         appeared when recognition *did* work was a second way to do the same
+         thing, and a confusing one: it sat right under a live microphone, so
+         kids tapped it instead of reading. Recognition failing to match is now
+         handled by re-trying the mic, not by a button that skips the drill. */
       '<button class="btn green big next-round" id="learn-next"' +
         (passed ? '' : ' disabled title="先跟读出这个词再继续"') +
         ' style="margin-top:var(--sp-4)">' +
@@ -3374,14 +3407,28 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     if (passed) return learnPos >= learnQueue.length - 1 ? '✅ 通过！翻过去看今天的结果 🎉' : '✅ 通过！可以翻下一个词啦';
     if (learnBusy) return '正在听…说完再点 ⏹ 停';
     if (!supported) return '读出 “' + word + '” 后点 ✅';
+    /* 一直识别不出来时，唯一的出路是长按 🎤 自评。这句话只在这时才出现，
+       平时不占位，免得孩子看到就想去按它。 */
+    if (learnStuck >= STUCK_HINT_AT) return '还是没认出来？长按 🎤 可以自己记一次';
     return hits > 0 ? '很棒！再读 1 次就过关' : '读出 “' + word + '” 吧';
   }
 
   function bindLearnSpeak(scope) {
     var mic = scope.querySelector('#mic-btn');
     if (mic) mic.onclick = toggleLearnMic;
+    /* Long-press the mic = self-rating this word. It replaces the old always-
+       visible 「我读过了（自评）」 text button, which sat right under a live
+       microphone and got tapped instead of reading.
+       The affordance is only DISCOVERABLE once recognition has actually failed
+       (learnStuck >= STUCK_HINT_AT → the status line says so), because a kid
+       who long-presses by accident must not be able to skip the drill.
+       Long-press (not a second button) so the normal card stays two controls:
+       read, or move on. */
+    if (mic && micEngine() !== 'off') bindLongPress(mic, function () {
+      if (learnPassed[learnPos]) return;      // 已过关，长按无意义
+      selfRateByLongPress();
+    });
     var fb = scope.querySelector('#mic-btn-fb');
-    var self = scope.querySelector('#mic-self');
     /* Self-rating has no recording behind it: every tap is one independent
      * judgement, so it must NOT go through onLearnHit's `learnHitScored`
      * de-duplication. That flag exists so a single recognition that fires
@@ -3391,7 +3438,45 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
      * HITS_GOAL=2 could never be reached — the escape hatch deadlocked the
      * child on a single word. Clear the flag before each self-rating. */
     if (fb) fb.onclick = function () { learnHitScored = false; onLearnHit(); };
-    if (self) self.onclick = function () { if (learnBusy) abandonLearnMic(); learnHitScored = false; onLearnHit(); };
+  }
+
+  /* 长按识别：500ms 判定，容忍手指轻微抖动。返回解绑函数便于需要时拆。 */
+  function bindLongPress(node, fn) {
+    var timer = null, fired = false;
+    var start = function (e) {
+      /* 只响应主键 / 单指；右键、长按菜单不触发 */
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      fired = false;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fired = true; fn(); }, 500);
+    };
+    var end = function () { clearTimeout(timer); timer = null; };
+    node.addEventListener('pointerdown', start);
+    node.addEventListener('pointerup', end);
+    node.addEventListener('pointercancel', end);
+    node.addEventListener('pointerleave', end);
+    /* 长按已触发时，紧随其后的 click 要吃掉，否则会顺带开关一次录音 */
+    node.addEventListener('click', function (e) {
+      if (!fired) return;
+      fired = false;
+      e.stopPropagation(); e.preventDefault();
+    }, true);
+    return function () {
+      end();
+      node.removeEventListener('pointerdown', start);
+      node.removeEventListener('pointerup', end);
+      node.removeEventListener('pointercancel', end);
+      node.removeEventListener('pointerleave', end);
+    };
+  }
+
+  /* 长按自评：等价于点一次 ✅，走同一套计分与去重规则 */
+  function selfRateByLongPress() {
+    if (learnBusy) abandonLearnMic();
+    learnHitScored = false;
+    learnStuck = 0;
+    onLearnHit();
+    toast('已记一次「我读过了」👍');
   }
 
   /* ---------- 滑动：跟手位移 + 倾斜 ---------- */
@@ -3807,8 +3892,20 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     var heard = normalizeSpoken(text);
     var target = learnQueue[learnPos] || '';
     if (heard && spokenMatches(text, target)) { onLearnHit(); return; }
+    /* Not a match. Count it so a word the child simply cannot get past can
+       surface the long-press hint instead of trapping them on it forever. */
+    markLearnStuck();
     if (heard) toast('听到“' + heard + '”，再试试读 “' + target + '” 🎤');
     else toast('没听到声音…大声读 “' + target + '” 试试');
+  }
+
+  /* Consecutive recognition failures on the current word. Reset on a hit, on
+     self-rating, and on every page turn (learnGoNext/abandonLearnMic).
+     Only at STUCK_HINT_AT does the status line teach the long-press escape —
+     before that, a kid who long-presses by accident could skip the drill. */
+  var STUCK_HINT_AT = 2;
+  function markLearnStuck() {
+    if (learnStuck < STUCK_HINT_AT) learnStuck++;
   }
 
   function sfErrMsg(code, m) {
@@ -3884,6 +3981,7 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
     }
     if (learnHitScored) return;     // 同一次录音里结果可能多次命中，只计一次
     learnHitScored = true;
+    learnStuck = 0;                 // 命中即清零「卡住」计数
     var h = Math.min(HITS_GOAL, hitsFor(learnPos) + 1);
     learnHits[learnPos] = h;
     stopCurrentMic();
@@ -3916,11 +4014,14 @@ window.__PET_IMGS__ = {"cat-adult-droopy":"data:image/png;base64,iVBORw0KGgoAAAA
   /* 「下一题」：纯导航，不记通过。到末尾即进入结果卡。 */
   function learnGoNext() {
     learnPos = learnPos >= learnQueue.length - 1 ? learnQueue.length : learnPos + 1;
+    /* 「卡住」是 per-word 的：翻页必须清零，否则上一个词连着失败会把
+       下一个词的提示也一起点亮，孩子一进来就看到「长按自评」。 */
+    learnStuck = 0;
     abandonLearnMic(); render();
   }
   function learnGoPrev() {
     if (learnPos <= 0) return;
-    learnPos--; abandonLearnMic(); render();
+    learnPos--; learnStuck = 0; abandonLearnMic(); render();
   }
   /* 桌面端没有触摸：方向键映射到翻词库的左右翻词（今日关卡现在是「下一题」按钮，
      不用方向键）。左右与卡片箭头保持一致：← 上一个、→ 下一个。 */
