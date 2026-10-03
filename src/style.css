@@ -419,6 +419,15 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
   border: 3px solid #fff;
 }
 .wc-word { font-size: var(--fs-hero); font-weight: 900; letter-spacing: .5px; line-height: 1.1; word-break: break-word; text-align: center; }
+/* 拼一拼题面：词 + 喇叭同一行。align-items:center 让 44px 的喇叭与
+   hero 字号（约 40px）的词在视觉上齐平；gap 给一点呼吸，不至于贴着字母。
+   inline-flex 而非 block：卡片居中由 .wc-word-row 自身完成，
+   词过长时仍按 flex 居中而不是靠 text-align。 */
+.wc-word-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: var(--sp-3); flex-wrap: wrap;
+}
+.wc-word-row .wc-word { text-align: left; }
 .wc-ipa { color: var(--ink-soft); font-size: var(--fs-body); font-weight: 700; margin-top: var(--sp-1); text-align: center; }
 .wc-cn { font-size: var(--fs-h1); font-weight: 800; color: var(--brand-dk); margin-top: var(--sp-2); text-align: center; }
 
@@ -591,6 +600,12 @@ h2.section { font-size: var(--fs-body); margin: 0 0 var(--sp-3); color: var(--in
 
 .q-prompt { text-align: center; font-size: var(--fs-body); color: var(--ink-soft); font-weight: 800; margin-bottom: var(--sp-2); }
 .q-big { text-align: center; font-size: var(--fs-hero); font-weight: 900; margin: var(--sp-2) 0 var(--sp-4); word-break: break-word; }
+/* `.speak-btn` is `display: grid`, and text-align only aligns INLINE boxes — it
+   does nothing for a grid-level child, so the speaker hugged the left edge
+   (-130px off centre). Centring a block-level box needs auto margins.
+   Applies to every speaker that sits directly in .q-big, which is #q-play
+   (the listen question) as well as the "hear it again" one. */
+.q-big .speak-btn { margin-left: auto; margin-right: auto; }
 /* 「再听一遍」：贴在题面主视觉正下方、居中。尺寸用 .sm 档（44px）而不是
    常规 62px —— 它是卡住时的工具，不是主控件，抢了主视觉的注意力就本末倒置。
    q-big 的下边距在此收窄，否则喇叭会被推离它所解释的那个词/图。 */

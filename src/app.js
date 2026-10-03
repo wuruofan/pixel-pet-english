@@ -2434,12 +2434,23 @@
      学单词页本来就有独立的 🔊/🐢 按钮行，但拼读（拼一拼）和闯关
      （看词选义 / 看图选词 / 中译英）的题面主视觉是纯文本或图片，
      孩子答不上来时最自然的动作是「再听一遍这个词」，却无处可点。
-     模式：把喇叭直接挂在词/图下方（inline），不占一整行，也不与选项争夺
-     注意力。`id` 传 null 时不渲染——纯听音题（listen2en）题面本身就是喇叭，
+     `id` 传 null 时不渲染——纯听音题（listen2en）题面本身就是喇叭，
      再挂一个会重复。 */
   function wordSpeakHtml(id, label) {
     return '<button class="speak-btn sm q-speak" id="' + id + '" aria-label="再听一遍这个单词">' +
       SPK + '</button>' + (label ? '<div class="muted center" style="margin-top:var(--sp-2)">' + label + '</div>' : '');
+  }
+
+  /* 拼一拼的题面：词和喇叭同一行、基线对齐。
+     之前喇叭独占一块、落在词的正下方，读起来像「词」和「喇叭」是两样
+     东西；它解释的就是这个词，所以要贴着词的右侧。inline-flex 而不是
+     把喇叭 inline 化：喇叭是 grid 盒子（有自己的 ::after 厚弧），放进
+     行内流会在基线上留下空隙，对不齐。 */
+  function wordInlineSpeakHtml(word, id) {
+    return '<div class="wc-word-row">' +
+      '<span class="wc-word">' + esc(word) + '</span>' +
+      '<button class="speak-btn sm q-speak" id="' + id + '" aria-label="再听一遍这个单词">' + SPK + '</button>' +
+      '</div>';
   }
 
   /* 全部词库模式：保留原来的"我记住了 / 上一个 / 下一个"自由翻词体验 */
@@ -3683,13 +3694,15 @@
     c.innerHTML =
       '<h2 class="section">把这个词的音按顺序点出来</h2>' +
       '<div class="wc-visual">' + visualHtml(b.word, 64) + '</div>' +
-      '<div class="wc-word">' + b.word + '</div>' +
       /* The word is the one thing the child cannot ask to hear again here:
          the round auto-plays once, then nothing repeats it. Every option
          speaks its own phoneme, not the word, so "say it again" had no
-         affordance. It is a tool for stuck, not a hint — no label, and it
-         disappears once the word is built (the completion box speaks it). */
-      (done ? '' : '<div class="q-speak-wrap">' + wordSpeakHtml('ph-word') + '</div>') +
+         affordance. The speaker sits inline right after the word — it
+         modifies that word, and a speaker on its own line reads as a
+         separate control. It disappears once the word is built (the
+         completion box speaks it). */
+      (done ? '<div class="wc-word">' + esc(b.word) + '</div>'
+            : wordInlineSpeakHtml(b.word, 'ph-word')) +
       (done ? '' : '<div class="ph-build-slots" id="ph-slots">' + slotsHtml + '</div>') +
       (done ? '' : '<div class="muted center" style="margin:var(--sp-1) 0 var(--sp-3)">点一个听读音，按顺序点对就填进格子</div>') +
       '<div class="ph-pool-row" id="ph-pool">' +

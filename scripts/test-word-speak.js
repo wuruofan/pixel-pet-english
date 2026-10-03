@@ -104,12 +104,32 @@ const check = (name, cond, detail) => {
       return window.__spoken.length;
     });
     check('  点击后确实播放了音频', spoken > 0, spoken + ' 个 audio 请求');
+    /* 喇叭贴在词的右侧同一行（它解释的就是这个词），整行仍居中。 */
+    const row = await page.evaluate(() => {
+      const w = document.querySelector('.wc-word-row .wc-word').getBoundingClientRect();
+      const s = document.querySelector('#ph-word').getBoundingClientRect();
+      const r = document.querySelector('.wc-word-row').getBoundingClientRect();
+      const c = document.querySelector('#view .card').getBoundingClientRect();
+      return {
+        dy: Math.abs((w.y + w.height / 2) - (s.y + s.height / 2)),
+        gap: Math.round(s.x - (w.x + w.width)),
+        off: Math.round((r.x + r.width / 2) - (c.x + c.width / 2)),
+      };
+    });
+    check('  喇叭与词同行（垂直居中对齐）', row.dy < 18, 'Δy=' + Math.round(row.dy) + 'px');
+    check('  喇叭紧贴词右侧（间距 8–20px）', row.gap >= 8 && row.gap <= 20, row.gap + 'px');
+    check('  词+喇叭整行仍居中', Math.abs(row.off) <= 2, '偏移 ' + row.off + 'px');
   }
 
   // ---------- 2. 闯关：逐模式检查喇叭是否该出现 ----------
   await goTab('闯关');
   const seen = {};   // prompt -> 该题面状态
-  for (let i = 0; i < 30; i++) {
+  const listenOffsets = [];
+  /* 队列在 buildQueue() 里一次生成后固定，长度 = 设置里的 quizGoal（默认 8）。
+     听音题占 3/5 权重，8 题里通常有 4–5 道，但随机运气差时一题都抽不到。
+     跑完进结果页就重新开一局，最多 4 局，保证有机会覆盖到。 */
+  for (let round = 0; round < 4; round++) {
+   for (let i = 0; i < 30; i++) {
     const st = await page.evaluate(() => {
       const big = document.querySelector('.q-big');
       if (!big) return null;
@@ -126,6 +146,16 @@ const check = (name, cond, detail) => {
       console.log('      「' + st.prompt + '」 再听喇叭=' + (st.has ? '有' : '无') +
         '  题面本身是喇叭=' + (st.hasAudioBtn ? '是' : '否'));
     }
+    /* 听音题的喇叭直接躺在 .q-big 里。.speak-btn 是 grid 盒子，而
+       text-align 只管行内盒 —— 曾经因此偏左 130px。每题都量一次。 */
+    if (st && st.hasAudioBtn) {
+      const off = await page.evaluate(() => {
+        const qb = document.querySelector('.q-big').getBoundingClientRect();
+        const r = document.querySelector('#q-play').getBoundingClientRect();
+        return Math.round((r.x + r.width / 2) - (qb.x + qb.width / 2));
+      });
+      listenOffsets.push(off);
+    }
     const advanced = await page.evaluate(() => {
       /* Answering does NOT advance: answer() renders the feedback block with a
          「下一题」 button (#fb-next). Clicking an option twice is a no-op
@@ -137,10 +167,14 @@ const check = (name, cond, detail) => {
       if (o) { o.click(); return true; }
       const s = document.querySelector('#q-skip');
       if (s) { s.click(); return true; }
+      /* 结果页：重新开一局，让随机有机会覆盖到听音题 */
+      const again = [...document.querySelectorAll('button')].find(b => /再来|继续|再一组|重新/.test(b.textContent));
+      if (again) { again.click(); return true; }
       return false;
     });
     await page.waitForTimeout(340);
     if (!advanced) break;
+   }
   }
   const prompts = Object.keys(seen);
   const withSpeak = prompts.filter(k => seen[k].has);
@@ -153,6 +187,10 @@ const check = (name, cond, detail) => {
     wordTextNoSpeak.length ? '缺：' + wordTextNoSpeak.join(' / ') : '无遗漏');
   check('闯关：听音题不重复出现喇叭', listenQ.every(k => !seen[k].has),
     listenQ.join(' / ') || '本轮未抽到听音题');
+  /* .speak-btn 是 grid 盒子，text-align:center 对它无效 —— 这条断言就是
+     防它再被顶回左边。宽容到 2px：子像素舍入。 */
+  check('闯关：听音题的喇叭水平居中', listenOffsets.length > 0 && listenOffsets.every(o => Math.abs(o) <= 2),
+    listenOffsets.length ? '偏移 ' + listenOffsets.join('/') + 'px' : '本轮未抽到听音题');
 
   console.log('\nTOTAL ' + (pass + fail) + '  PASS ' + pass + '  FAIL ' + fail);
   console.log('--- page errors ---');
